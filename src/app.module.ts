@@ -1,27 +1,27 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { MiddlewareConsumer, Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ConfigModule } from '@nestjs/config';
 import { LoggerMiddleware } from './middlewares/logger.middleware';
 import { UsersModule } from './users/users.module';
 import { WorkspacesModule } from './workspaces/workspaces.module';
-import { MoModule } from './channels/mo.module';
-import { MoModule } from './dms/mo.module';
-import { WorkspaceService } from './workspace/workspace.service';
-import { WorkspaceService } from './workspace/workspace.service';
+import { ChannelsModule } from './channels/channels.module';
+import { DmsModule } from './dms/dms.module';
+import { UsersService } from './users/users.service';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     UsersModule,
     WorkspacesModule,
-    MoModule,
+    ChannelsModule,
+    DmsModule,
   ],
   controllers: [AppController],
-  providers: [AppService, ConfigService, WorkspaceService],
+  providers: [AppService, UsersService],
 })
-export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer): any {
+export class AppModule {
+  configure(consumer: MiddlewareConsumer): void {
     consumer.apply(LoggerMiddleware).forRoutes('*');
   }
 }
