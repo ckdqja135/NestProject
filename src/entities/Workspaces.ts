@@ -12,7 +12,7 @@ import {
 import { Channels } from './Channels';
 import { Dms } from './Dms';
 import { Mentions } from './Mentions';
-import { Workspacemembers } from './Workspacemembers';
+import { WorkspaceMembers } from './Workspacemembers';
 import { Users } from './Users';
 
 @Index('name', ['name'], { unique: true })
@@ -53,10 +53,10 @@ export class Workspaces {
   mentions: Mentions[];
 
   @OneToMany(
-    () => Workspacemembers,
+    () => WorkspaceMembers,
     (workspacemembers) => workspacemembers.workspace,
   )
-  workspacemembers: Workspacemembers[];
+  workspacemembers: WorkspaceMembers[];
 
   @ManyToOne(() => Users, (users) => users.workspaces, {
     onDelete: 'SET NULL',

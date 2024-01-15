@@ -3,9 +3,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Users } from '../entities/Users';
 import bcrypt from 'bcrypt';
-import { WorkspaceMembers } from '../../ch2/src/entities/WorkspaceMembers';
-import { Channelmembers } from '../entities/Channelmembers';
-import { ChannelMembers } from '../../ch2/src/entities/ChannelMembers';
+import { ChannelMembers } from '../entities/Channelmembers';
+import { WorkspaceMembers } from '../entities/Workspacemembers';
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -13,7 +13,7 @@ export class UsersService {
     private usersRepository: Repository<Users>,
     @InjectRepository(WorkspaceMembers)
     private workspaceMembersRepository: Repository<WorkspaceMembers>,
-    @InjectRepository(Channelmembers)
+    @InjectRepository(ChannelMembers)
     private channelMembersRepository: Repository<ChannelMembers>,
     private dataSource: DataSource,
   ) {}
@@ -35,11 +35,11 @@ export class UsersService {
         password: hashedPassword,
       });
       await queryRunner.manager.getRepository(WorkspaceMembers).save({
-        UserId: returned.id,
+        userId: returned.id,
         WorkspaceId: 1,
       });
       await queryRunner.manager.getRepository(ChannelMembers).save({
-        UserId: returned.id,
+        userId: returned.id,
         ChannelId: 1,
       });
       await queryRunner.commitTransaction();

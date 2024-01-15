@@ -4,7 +4,7 @@ import { Users } from './Users';
 
 @Index('UserId', ['userId'], {})
 @Entity('workspacemembers', { schema: 'sleact' })
-export class Workspacemembers {
+export class WorkspaceMembers {
   @Column('datetime', { name: 'loggedInAt', nullable: true })
   loggedInAt: Date | null;
 

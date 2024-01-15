@@ -15,14 +15,13 @@ import { Channels } from './entities/Channels';
 import { Dms } from './entities/Dms';
 import { Channelchats } from './entities/Channelchats';
 import { Mentions } from './entities/Mentions';
-import { Channelmembers } from './entities/Channelmembers';
-import { Workspacemembers } from './entities/Workspacemembers';
 import { Workspaces } from './entities/Workspaces';
 import { AuthModule } from './auth/auth.module';
+import { WorkspaceMembers } from './entities/Workspacemembers';
+import { ChannelMembers } from './entities/ChannelMembers';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Users]),
     ConfigModule.forRoot({ isGlobal: true }),
     AuthModule,
     UsersModule,
@@ -36,21 +35,27 @@ import { AuthModule } from './auth/auth.module';
       username: process.env.DB_USER,
       password: process.env.DB_PW,
       database: process.env.DB_NAME,
-      entities: [
-        Users,
-        Channels,
-        Dms,
-        Channelchats,
-        Mentions,
-        Channelmembers,
-        Workspacemembers,
-        Workspaces,
-      ],
+      // entities: [
+      //   Channelchats,
+      //   ChannelMembers,
+      //   Channels,
+      //   Dms,
+      //   Mentions,
+      //   Users,
+      //   WorkspaceMembers,
+      //   Workspaces,
+      // ],
       synchronize: false,
       logging: true,
       keepConnectionAlive: true,
       migrations: [__dirname + '/src/migrations/*.ts'],
     }),
+    TypeOrmModule.forFeature([
+      Users,
+      Workspaces,
+      WorkspaceMembers,
+      ChannelMembers,
+    ]),
   ],
   controllers: [AppController],
   providers: [AppService, UsersService],
