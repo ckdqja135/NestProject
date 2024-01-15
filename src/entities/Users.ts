@@ -6,10 +6,10 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Channelchats } from './Channelchats';
-import { Channelmembers } from './Channelmembers';
+import { ChannelMembers } from './Channelmembers';
 import { Dms } from './Dms';
 import { Mentions } from './Mentions';
-import { Workspacemembers } from './Workspacemembers';
+import { WorkspaceMembers } from './Workspacemembers';
 import { Workspaces } from './Workspaces';
 
 @Index('email', ['email'], { unique: true })
@@ -39,8 +39,8 @@ export class Users {
   @OneToMany(() => Channelchats, (channelchats) => channelchats.user)
   channelchats: Channelchats[];
 
-  @OneToMany(() => Channelmembers, (channelmembers) => channelmembers.user)
-  channelmembers: Channelmembers[];
+  @OneToMany(() => ChannelMembers, (channelmembers) => channelmembers.user)
+  channelmembers: ChannelMembers[];
 
   @OneToMany(() => Dms, (dms) => dms.sender)
   dms: Dms[];
@@ -55,10 +55,10 @@ export class Users {
   mentions2: Mentions[];
 
   @OneToMany(
-    () => Workspacemembers,
+    () => WorkspaceMembers,
     (workspacemembers) => workspacemembers.user,
   )
-  workspacemembers: Workspacemembers[];
+  workspacemembers: WorkspaceMembers[];
 
   @OneToMany(() => Workspaces, (workspaces) => workspaces.owner)
   workspaces: Workspaces[];
