@@ -7,6 +7,7 @@ import { Header, Container, DragOver } from '@pages/Channel/styles';
 import { IChannel, IChat, IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
 import makeSection from '@utils/makeSection';
+import prependChat from '@utils/prependChat';
 import axios from 'axios';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Scrollbars } from 'react-custom-scrollbars-2';
@@ -61,18 +62,19 @@ const Channel = () => {
       e.preventDefault();
       if (chat?.trim() && chatData && channelData && userData) {
         const savedChat = chat;
-        mutateChat((prevChatData) => {
-          prevChatData?.[0].unshift({
-            id: (chatData[0][0]?.id || 0) + 1,
-            content: savedChat,
-            UserId: userData.id,
-            User: userData,
-            createdAt: new Date(),
-            ChannelId: channelData.id,
-            Channel: channelData,
-          });
-          return prevChatData;
-        }, false).then(() => {
+        mutateChat(
+          (prevChatData) =>
+            prependChat(prevChatData, {
+              id: (chatData[0][0]?.id || 0) + 1,
+              content: savedChat,
+              UserId: userData.id,
+              User: userData,
+              createdAt: new Date(),
+              ChannelId: channelData.id,
+              Channel: channelData,
+            }),
+          false,
+        ).then(() => {
           localStorage.setItem(`${workspace}-${channel}`, new Date().getTime().toString());
           setChat('');
           if (scrollbarRef.current) {
@@ -96,10 +98,7 @@ const Channel = () => {
         data.Channel.name === channel &&
         (data.content.startsWith('uploads\\') || data.content.startsWith('uploads/') || data.UserId !== userData?.id)
       ) {
-        mutateChat((chatData) => {
-          chatData?.[0].unshift(data);
-          return chatData;
-        }, false).then(() => {
+        mutateChat((chatData) => prependChat(chatData, data), false).then(() => {
           if (scrollbarRef.current) {
             if (
               scrollbarRef.current.getScrollHeight() <

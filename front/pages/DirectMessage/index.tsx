@@ -7,6 +7,7 @@ import { Header, Container } from '@pages/DirectMessage/styles';
 import { IDM } from '@typings/db';
 import fetcher from '@utils/fetcher';
 import makeSection from '@utils/makeSection';
+import prependChat from '@utils/prependChat';
 import axios from 'axios';
 import gravatar from 'gravatar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -51,18 +52,19 @@ const DirectMessage = () => {
       e.preventDefault();
       if (chat?.trim() && chatData) {
         const savedChat = chat;
-        mutateChat((prevChatData) => {
-          prevChatData?.[0].unshift({
-            id: (chatData[0][0]?.id || 0) + 1,
-            content: savedChat,
-            SenderId: myData.id,
-            Sender: myData,
-            ReceiverId: userData.id,
-            Receiver: userData,
-            createdAt: new Date(),
-          });
-          return prevChatData;
-        }, false).then(() => {
+        mutateChat(
+          (prevChatData) =>
+            prependChat(prevChatData, {
+              id: (chatData[0][0]?.id || 0) + 1,
+              content: savedChat,
+              SenderId: myData.id,
+              Sender: myData,
+              ReceiverId: userData.id,
+              Receiver: userData,
+              createdAt: new Date(),
+            }),
+          false,
+        ).then(() => {
           localStorage.setItem(`${workspace}-${id}`, new Date().getTime().toString());
           setChat('');
           if (scrollbarRef.current) {
@@ -83,10 +85,7 @@ const DirectMessage = () => {
   const onMessage = useCallback(
     (data: IDM) => {
       if (data.SenderId === Number(id) && myData.id !== Number(id)) {
-        mutateChat((chatData) => {
-          chatData?.[0].unshift(data);
-          return chatData;
-        }, false).then(() => {
+        mutateChat((chatData) => prependChat(chatData, data), false).then(() => {
           if (scrollbarRef.current) {
             if (
               scrollbarRef.current.getScrollHeight() <
