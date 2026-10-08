@@ -1,6 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { Not } from 'typeorm';
 import { ChannelChats } from '../entities/ChannelChats';
 import { ChannelMembers } from '../entities/ChannelMembers';
 import { Channels } from '../entities/Channels';
@@ -13,7 +14,11 @@ import { ChannelsService } from './channels.service';
 describe('ChannelsService', () => {
   let service: ChannelsService;
   const channelsRepository = { findOne: jest.fn() };
-  const channelChatsRepository = { save: jest.fn(), findOne: jest.fn() };
+  const channelChatsRepository = {
+    save: jest.fn(),
+    findOne: jest.fn(),
+    count: jest.fn(),
+  };
   const workspacesService = {
     findWorkspaceByUrl: jest.fn(),
     assertMember: jest.fn(),
@@ -69,5 +74,21 @@ describe('ChannelsService', () => {
     });
     expect(eventsGateway.server.to).toHaveBeenCalledWith('/ws-sleact-3');
     expect(emit).toHaveBeenCalledWith('message', chatWithUser);
+  });
+
+  it('안 읽은 메시지 수에서 내가 보낸 메시지는 제외한다', async () => {
+    channelsRepository.findOne.mockResolvedValue({ id: 3, WorkspaceId: 1 });
+    channelChatsRepository.count.mockResolvedValue(1);
+
+    await expect(
+      service.getChannelUnreadsCount('sleact', '일반', 1000, 7),
+    ).resolves.toBe(1);
+    expect(channelChatsRepository.count).toHaveBeenCalledWith({
+      where: {
+        ChannelId: 3,
+        UserId: Not(7),
+        createdAt: expect.any(Object),
+      },
+    });
   });
 });

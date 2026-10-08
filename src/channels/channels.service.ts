@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { MoreThan, Repository } from 'typeorm';
+import { MoreThan, Not, Repository } from 'typeorm';
 import { Channels } from '../entities/Channels';
 import { ChannelMembers } from '../entities/ChannelMembers';
 import { ChannelChats } from '../entities/ChannelChats';
@@ -153,8 +153,13 @@ export class ChannelsService {
     myId: number,
   ) {
     const channel = await this.findChannel(url, name, myId);
+    // 내가 보낸 메시지는 안 읽은 메시지로 세지 않는다
     return this.channelChatsRepository.count({
-      where: { ChannelId: channel.id, createdAt: MoreThan(new Date(after)) },
+      where: {
+        ChannelId: channel.id,
+        UserId: Not(myId),
+        createdAt: MoreThan(new Date(after)),
+      },
     });
   }
 
