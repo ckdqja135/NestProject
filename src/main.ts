@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { HttpExceptionFilter } from './httpException.filter';
@@ -6,13 +7,25 @@ import { ValidationPipe } from '@nestjs/common';
 import passport from 'passport';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
+import path from 'path';
+import fs from 'fs';
 
 declare const module: any;
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  app.useGlobalPipes(new ValidationPipe());
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.enableCors({
+    origin: true,
+    credentials: true,
+  });
+  app.useGlobalPipes(new ValidationPipe({ transform: true }));
   app.useGlobalFilters(new HttpExceptionFilter());
+
+  const uploadsDir = path.join(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir);
+  }
+  app.useStaticAssets(uploadsDir, { prefix: '/uploads' });
 
   const config = new DocumentBuilder()
     .setTitle('Sleact API')

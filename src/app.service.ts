@@ -1,15 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { UsersService } from './users/users.service';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AppService {
-  constructor(private usersService: UsersService) {}
+  constructor(private configService: ConfigService) {}
 
-  async getHello() {
-    this.usersService.getUser();
-    this.getWow();
-    return process.env.SECRET; // better: this.configService.get('SECRET');
+  getHello() {
+    return `Sleact API server (env: ${this.configService.get('NODE_ENV') || 'development'})`;
   }
-
-  async getWow() {}
 }
