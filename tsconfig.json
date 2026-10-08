@@ -18,5 +18,13 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "front",
+    "ch2",
+    "output",
+    "test.js"
+  ]
 }
