@@ -1,29 +1,21 @@
-import { Seeder, SeederFactoryManager } from 'typeorm-extension';
+import { Seeder } from 'typeorm-extension';
 import { DataSource } from 'typeorm';
 import { Workspaces } from '../../entities/Workspaces';
 import { Channels } from '../../entities/Channels';
 
-export default class UserSeeder implements Seeder {
-  public async run(
-    dataSource: DataSource,
-    factoryManager: SeederFactoryManager,
-  ): Promise<any> {
-    const workspacesRepository = dataSource.getRepository(Workspaces);
-    await workspacesRepository.insert([
-      {
-        id: 1,
-        name: 'Sleact',
-        url: 'sleact',
-      },
-    ]);
-    const channelsRepository = dataSource.getRepository(Channels);
-    await channelsRepository.insert([
-      {
-        id: 1,
-        name: '일반',
-        workspaceId: 1,
-        private: false,
-      },
-    ]);
+// 회원가입 시 자동으로 가입되는 기본 워크스페이스(id: 1)와 기본 채널(id: 1)
+export default class InitialDataSeeder implements Seeder {
+  public async run(dataSource: DataSource): Promise<any> {
+    await dataSource.getRepository(Workspaces).save({
+      id: 1,
+      name: 'Sleact',
+      url: 'sleact',
+    });
+    await dataSource.getRepository(Channels).save({
+      id: 1,
+      name: '일반',
+      WorkspaceId: 1,
+      private: false,
+    });
   }
 }
