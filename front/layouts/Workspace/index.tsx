@@ -11,6 +11,7 @@ import DirectMessage from '@pages/DirectMessage';
 import { Button, Input, Label } from '@pages/SignUp/styles';
 import { IChannel, IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
+import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
 import gravatar from 'gravatar';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -60,7 +61,7 @@ const Workspace = () => {
       })
       .catch((error) => {
         console.dir(error);
-        toast.error(error.response?.data, { position: 'bottom-center' });
+        toast.error(getErrorMessage(error), { position: 'bottom-center' });
       });
   }, []);
 
@@ -86,7 +87,7 @@ const Workspace = () => {
         })
         .catch((error) => {
           console.dir(error);
-          toast.error(error.response?.data, { position: 'bottom-center' });
+          toast.error(getErrorMessage(error), { position: 'bottom-center' });
         });
     },
     [newWorkspace, newUrl],

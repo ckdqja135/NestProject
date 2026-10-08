@@ -3,6 +3,7 @@ import useInput from '@hooks/useInput';
 import { Button, Input, Label } from '@pages/SignUp/styles';
 import { IChannel, IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
+import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
 import React, { FC, useCallback } from 'react';
 import { useParams } from 'react-router';
@@ -41,7 +42,7 @@ const CreateChannelModal: FC<Props> = ({ show, onCloseModal, setShowCreateChanne
         })
         .catch((error) => {
           console.dir(error);
-          toast.error(error.response?.data, { position: 'bottom-center' });
+          toast.error(getErrorMessage(error), { position: 'bottom-center' });
         });
     },
     [newChannel, revalidateChannel, setNewChannel, setShowCreateChannelModal, workspace],
