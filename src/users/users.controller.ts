@@ -29,16 +29,18 @@ export class UsersController {
     status: 200,
     description: '성공',
   })
-  @ApiOperation({ summary: '내 정보 조회' })
+  @ApiOperation({ summary: '내 정보 조회 (로그인하지 않았으면 false)' })
   @Get()
   getUsers(@User() user) {
-    return user;
+    return user || false;
   }
-  @UseGuards(new NotLoggedInGuard())
+
+  @UseGuards(NotLoggedInGuard)
   @ApiOperation({ summary: '회원가입' })
   @Post()
   async join(@Body() body: JoinRequestDto) {
     await this.usersService.join(body.email, body.nickname, body.password);
+    return 'ok';
   }
 
   @ApiResponse({
@@ -51,18 +53,24 @@ export class UsersController {
     description: '서버 에러',
   })
   @ApiOperation({ summary: '로그인' })
-  @UseGuards(new LocalAuthGuard())
+  @UseGuards(LocalAuthGuard)
   @Post('login')
   logIn(@User() user) {
     return user;
   }
 
-  @UseGuards(new LoggedInGuard())
+  @UseGuards(LoggedInGuard)
   @ApiOperation({ summary: '로그아웃' })
   @Post('logout')
   logOut(@Req() req, @Res() res) {
-    req.logOut();
-    res.clearCookie('connect.sid', { httpOnly: true });
-    res.send('ok');
+    req.logOut((err) => {
+      if (err) {
+        return res.status(500).send(err.message);
+      }
+      req.session.destroy(() => {
+        res.clearCookie('connect.sid', { httpOnly: true });
+        res.send('ok');
+      });
+    });
   }
 }
