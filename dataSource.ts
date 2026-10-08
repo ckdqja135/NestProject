@@ -13,7 +13,7 @@ import { Workspaces } from './src/entities/Workspaces';
 dotenv.config();
 
 const options: DataSourceOptions & SeederOptions = {
-  type: 'mysql',
+  type: 'mariadb',
   host: process.env.DB_HOST || 'localhost',
   port: Number(process.env.DB_PORT) || 3306,
   username: process.env.DB_USER,

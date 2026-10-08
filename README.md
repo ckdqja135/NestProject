@@ -1,6 +1,6 @@
 # Sleact (Slack 클론)
 
-NestJS + TypeORM(MySQL) + Socket.IO 백엔드와 React 프론트엔드(`front/`)로 구성된 Slack 클론입니다.
+NestJS + TypeORM(MariaDB) + Socket.IO 백엔드와 React 프론트엔드(`front/`)로 구성된 Slack 클론입니다.
 API 명세는 [API.md](./API.md) 참고, Swagger 는 서버 실행 후 http://localhost:3002/api 에서 볼 수 있습니다.
 
 ## 1. 환경 변수 (`.env`)
@@ -14,6 +14,15 @@ DB_NAME=sleact
 ```
 
 ## 2. DB 준비 (최초 1회)
+
+MariaDB 설치 및 root 비밀번호 설정 (macOS/Homebrew):
+
+```bash
+brew install mariadb
+brew services start mariadb
+mariadb -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '123456';"
+```
+
 
 ```bash
 npm install
