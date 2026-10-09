@@ -2,9 +2,11 @@ import {
   Body,
   Controller,
   DefaultValuePipe,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Query,
   UploadedFiles,
@@ -23,6 +25,7 @@ import { LoggedInGuard } from '../auth/logged-in.guard';
 import { User } from '../common/decorators/user.decorator';
 import { InviteMemberDto } from '../common/dto/invite-member.dto';
 import { PostChatDto } from '../common/dto/post-chat.dto';
+import { ReactionDto } from '../common/dto/reaction.dto';
 import { imageUploadOptions } from '../common/upload';
 import { Users } from '../entities/Users';
 import { ChannelsService } from './channels.service';
@@ -98,16 +101,124 @@ export class ChannelsController {
     );
   }
 
-  @ApiOperation({ summary: '채널 채팅 전송' })
+  @ApiOperation({ summary: '채널 채팅 전송 (저장된 메시지 반환)' })
   @Post(':name/chats')
-  async postChat(
+  postChat(
     @Param('url') url: string,
     @Param('name') name: string,
     @Body() body: PostChatDto,
     @User() user: Users,
   ) {
-    await this.channelsService.postChat(url, name, body.content, user.id);
+    return this.channelsService.postChat(url, name, body.content, user.id);
+  }
+
+  @ApiOperation({ summary: '채널 메시지 수정 (작성자만)' })
+  @Patch(':name/chats/:chatId')
+  editChat(
+    @Param('url') url: string,
+    @Param('name') name: string,
+    @Param('chatId', ParseIntPipe) chatId: number,
+    @Body() body: PostChatDto,
+    @User() user: Users,
+  ) {
+    return this.channelsService.editChat(
+      url,
+      name,
+      chatId,
+      body.content,
+      user.id,
+    );
+  }
+
+  @ApiOperation({ summary: '채널 메시지 삭제 (작성자만, 답글도 함께 삭제)' })
+  @Delete(':name/chats/:chatId')
+  async deleteChat(
+    @Param('url') url: string,
+    @Param('name') name: string,
+    @Param('chatId', ParseIntPipe) chatId: number,
+    @User() user: Users,
+  ) {
+    await this.channelsService.deleteChat(url, name, chatId, user.id);
     return 'ok';
+  }
+
+  @ApiOperation({ summary: '스레드 답글 목록' })
+  @Get(':name/chats/:chatId/replies')
+  getReplies(
+    @Param('url') url: string,
+    @Param('name') name: string,
+    @Param('chatId', ParseIntPipe) chatId: number,
+    @User() user: Users,
+  ) {
+    return this.channelsService.getReplies(url, name, chatId, user.id);
+  }
+
+  @ApiOperation({ summary: '스레드 답글 작성' })
+  @Post(':name/chats/:chatId/replies')
+  postReply(
+    @Param('url') url: string,
+    @Param('name') name: string,
+    @Param('chatId', ParseIntPipe) chatId: number,
+    @Body() body: PostChatDto,
+    @User() user: Users,
+  ) {
+    return this.channelsService.postReply(
+      url,
+      name,
+      chatId,
+      body.content,
+      user.id,
+    );
+  }
+
+  @ApiOperation({ summary: '이모지 리액션 토글 (있으면 취소, 없으면 추가)' })
+  @Post(':name/chats/:chatId/reactions')
+  toggleReaction(
+    @Param('url') url: string,
+    @Param('name') name: string,
+    @Param('chatId', ParseIntPipe) chatId: number,
+    @Body() body: ReactionDto,
+    @User() user: Users,
+  ) {
+    return this.channelsService.toggleReaction(
+      url,
+      name,
+      chatId,
+      body.emoji,
+      user.id,
+    );
+  }
+
+  @ApiOperation({ summary: '메시지 고정' })
+  @Post(':name/chats/:chatId/pin')
+  pinChat(
+    @Param('url') url: string,
+    @Param('name') name: string,
+    @Param('chatId', ParseIntPipe) chatId: number,
+    @User() user: Users,
+  ) {
+    return this.channelsService.setPinned(url, name, chatId, true, user.id);
+  }
+
+  @ApiOperation({ summary: '메시지 고정 해제' })
+  @Delete(':name/chats/:chatId/pin')
+  unpinChat(
+    @Param('url') url: string,
+    @Param('name') name: string,
+    @Param('chatId', ParseIntPipe) chatId: number,
+    @User() user: Users,
+  ) {
+    return this.channelsService.setPinned(url, name, chatId, false, user.id);
+  }
+
+  @ApiOperation({ summary: '고정된 메시지 목록' })
+  @Get(':name/pinned')
+  getPinned(
+    @Param('url') url: string,
+    @Param('name') name: string,
+    @User() user: Users,
+  ) {
+    return this.channelsService.getPinnedChats(url, name, user.id);
   }
 
   @ApiOperation({ summary: '채널 이미지 전송' })
@@ -153,6 +264,17 @@ export class ChannelsController {
       body.email,
       user.id,
     );
+    return 'ok';
+  }
+
+  @ApiOperation({ summary: '채널 나가기 (일반 채널 제외)' })
+  @Delete(':name/members/me')
+  async leaveChannel(
+    @Param('url') url: string,
+    @Param('name') name: string,
+    @User() user: Users,
+  ) {
+    await this.channelsService.leaveChannel(url, name, user.id);
     return 'ok';
   }
 }

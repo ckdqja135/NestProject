@@ -4,7 +4,7 @@ import { ChannelsService } from './channels.service';
 
 describe('ChannelsController', () => {
   let controller: ChannelsController;
-  const channelsService = { postChat: jest.fn() };
+  const channelsService = { postChat: jest.fn(), leaveChannel: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -20,16 +20,29 @@ describe('ChannelsController', () => {
     expect(controller).toBeDefined();
   });
 
-  it('채팅 전송 후 ok 를 반환한다', async () => {
+  it('채팅 전송 후 저장된 메시지를 반환한다', async () => {
+    const saved = { id: 1, content: '안녕' };
+    channelsService.postChat.mockResolvedValue(saved);
     await expect(
       controller.postChat('sleact', '일반', { content: '안녕' }, {
         id: 1,
       } as any),
-    ).resolves.toBe('ok');
+    ).resolves.toBe(saved);
     expect(channelsService.postChat).toHaveBeenCalledWith(
       'sleact',
       '일반',
       '안녕',
+      1,
+    );
+  });
+
+  it('채널 나가기 후 ok 를 반환한다', async () => {
+    await expect(
+      controller.leaveChannel('sleact', '자유', { id: 1 } as any),
+    ).resolves.toBe('ok');
+    expect(channelsService.leaveChannel).toHaveBeenCalledWith(
+      'sleact',
+      '자유',
       1,
     );
   });
