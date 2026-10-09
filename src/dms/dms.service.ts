@@ -166,7 +166,7 @@ export class DmsService {
     myId: number,
   ) {
     const dm = await this.findMyDM(url, id, dmId, myId);
-    await this.dmsRepository.update(dm.id, { content });
+    await this.dmsRepository.update(dm.id, { content, editedAt: new Date() });
     const updated = await this.dmsRepository.findOne({
       where: { id: dm.id },
       relations: ['Sender', 'Receiver'],

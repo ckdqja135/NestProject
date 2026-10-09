@@ -159,6 +159,7 @@ describe('ChannelsService', () => {
 
       expect(channelChatsRepository.update).toHaveBeenCalledWith(9, {
         content: '수정',
+        editedAt: expect.any(Date),
       });
       expect(emit).toHaveBeenCalledWith('messageUpdated', updated);
     });

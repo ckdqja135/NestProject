@@ -250,7 +250,10 @@ export class ChannelsService {
     if (chat.UserId !== myId) {
       throw new ForbiddenException('내가 보낸 메시지만 수정할 수 있습니다.');
     }
-    await this.channelChatsRepository.update(chat.id, { content });
+    await this.channelChatsRepository.update(chat.id, {
+      content,
+      editedAt: new Date(),
+    });
     const updated = await this.findChatWithRelations(chat.id);
     this.emitToChannel(url, channel.id, 'messageUpdated', updated);
     return updated;

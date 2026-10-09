@@ -28,6 +28,10 @@ export class DMs {
   @UpdateDateColumn()
   updatedAt: Date;
 
+  // 내용을 수정한 시각 (고정 등 다른 변경과 구분하기 위해 updatedAt 과 별도로 관리)
+  @Column('datetime', { name: 'editedAt', nullable: true })
+  editedAt: Date | null;
+
   @Column('int', { name: 'WorkspaceId', nullable: true })
   WorkspaceId: number | null;
 
