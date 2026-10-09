@@ -20,10 +20,12 @@ describe('DmsController', () => {
     expect(controller).toBeDefined();
   });
 
-  it('DM 전송 후 ok 를 반환한다', async () => {
+  it('DM 전송 후 저장된 메시지를 반환한다', async () => {
+    const saved = { id: 1, content: '안녕' };
+    dmsService.createWorkspaceDMChats.mockResolvedValue(saved);
     await expect(
       controller.postChat('sleact', 2, { content: '안녕' }, { id: 1 } as any),
-    ).resolves.toBe('ok');
+    ).resolves.toBe(saved);
     expect(dmsService.createWorkspaceDMChats).toHaveBeenCalledWith(
       'sleact',
       '안녕',

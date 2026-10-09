@@ -2,9 +2,11 @@ import {
   Body,
   Controller,
   DefaultValuePipe,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Query,
   UploadedFiles,
@@ -36,7 +38,11 @@ export class DmsController {
 
   @ApiParam({ name: 'url', required: true, description: '워크스페이스 url' })
   @ApiParam({ name: 'id', required: true, description: '사용자 아이디' })
-  @ApiQuery({ name: 'perPage', required: false, description: '한 번에 가져오는 개수' })
+  @ApiQuery({
+    name: 'perPage',
+    required: false,
+    description: '한 번에 가져오는 개수',
+  })
   @ApiQuery({ name: 'page', required: false, description: '불러올 페이지' })
   @ApiOperation({ summary: 'DM 목록' })
   @Get(':id/chats')
@@ -62,15 +68,43 @@ export class DmsController {
     return this.dmsService.getDMUnreadsCount(url, id, user.id, after);
   }
 
-  @ApiOperation({ summary: 'DM 전송' })
+  @ApiOperation({ summary: 'DM 전송 (저장된 메시지 반환)' })
   @Post(':id/chats')
-  async postChat(
+  postChat(
     @Param('url') url: string,
     @Param('id', ParseIntPipe) id: number,
     @Body() body: PostChatDto,
     @User() user: Users,
   ) {
-    await this.dmsService.createWorkspaceDMChats(url, body.content, id, user.id);
+    return this.dmsService.createWorkspaceDMChats(
+      url,
+      body.content,
+      id,
+      user.id,
+    );
+  }
+
+  @ApiOperation({ summary: 'DM 수정 (보낸 사람만)' })
+  @Patch(':id/chats/:dmId')
+  editChat(
+    @Param('url') url: string,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('dmId', ParseIntPipe) dmId: number,
+    @Body() body: PostChatDto,
+    @User() user: Users,
+  ) {
+    return this.dmsService.editDM(url, id, dmId, body.content, user.id);
+  }
+
+  @ApiOperation({ summary: 'DM 삭제 (보낸 사람만)' })
+  @Delete(':id/chats/:dmId')
+  async deleteChat(
+    @Param('url') url: string,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('dmId', ParseIntPipe) dmId: number,
+    @User() user: Users,
+  ) {
+    await this.dmsService.deleteDM(url, id, dmId, user.id);
     return 'ok';
   }
 
@@ -84,7 +118,12 @@ export class DmsController {
     @UploadedFiles() files: Express.Multer.File[],
     @User() user: Users,
   ) {
-    await this.dmsService.createWorkspaceDMImages(url, files || [], id, user.id);
+    await this.dmsService.createWorkspaceDMImages(
+      url,
+      files || [],
+      id,
+      user.id,
+    );
     return 'ok';
   }
 }
