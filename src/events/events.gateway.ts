@@ -61,6 +61,40 @@ export class EventsGateway
     socket.nsp.emit('onlineList', this.getOnlineList(namespace));
   }
 
+  // 입력 중 표시: 채널이면 채널 룸에, DM 이면 상대방 소켓에 전달 (보낸 사람 제외)
+  @SubscribeMessage('typing')
+  handleTyping(
+    @MessageBody()
+    data: { channelId?: number; receiverId?: number; nickname: string },
+    @ConnectedSocket() socket: Socket,
+  ) {
+    const namespace = socket.nsp.name;
+    const userId = onlineMap[namespace]?.[socket.id];
+    if (!userId || !data) {
+      return;
+    }
+    const payload = {
+      userId,
+      nickname: String(data.nickname || '').slice(0, 30),
+      channelId: data.channelId ?? null,
+      dm: !data.channelId,
+    };
+    if (data.channelId) {
+      const room = `${namespace}-${data.channelId}`;
+      // 참여 중인 채널에만 보낼 수 있다
+      if (socket.rooms.has(room)) {
+        socket.to(room).emit('typing', payload);
+      }
+    } else if (data.receiverId) {
+      const targets = Object.keys(onlineMap[namespace] || {}).filter(
+        (id) => onlineMap[namespace][id] === data.receiverId,
+      );
+      if (targets.length) {
+        socket.nsp.to(targets).emit('typing', payload);
+      }
+    }
+  }
+
   private getOnlineList(namespace: string) {
     return [...new Set(Object.values(onlineMap[namespace] || {}))];
   }
