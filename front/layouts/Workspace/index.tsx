@@ -4,6 +4,7 @@ import DMList from '@components/DMList';
 import InviteWorkspaceModal from '@components/InviteWorkspaceModal';
 import Menu from '@components/Menu';
 import Modal from '@components/Modal';
+import SearchModal from '@components/SearchModal';
 import useInput from '@hooks/useInput';
 import useSocket from '@hooks/useSocket';
 import Channel from '@pages/Channel';
@@ -139,6 +140,7 @@ const Workspace = () => {
   return (
     <div>
       <Header>
+        {userData && <SearchModal workspace={workspace} myId={userData.id} />}
         {userData && (
           <RightMenu>
             <span onClick={onClickUserProfile}>
