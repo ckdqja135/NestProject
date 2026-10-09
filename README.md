@@ -5,15 +5,18 @@ API 명세는 [API.md](./API.md) 참고, Swagger 는 서버 실행 후 http://lo
 
 ## 1. 환경 변수 (`.env`)
 
+`.env` 는 비밀번호가 들어가므로 git 에 올리지 않습니다. 예시 파일을 복사해서 값을 채우세요.
+
+```bash
+cp .env.example .env
 ```
-SECRET=세션_시크릿
-DB_USER=root
-DB_PW=비밀번호
-DB_NAME=shlack
-# 선택: DB_HOST(기본 localhost), DB_PORT(기본 3306), PORT(기본 3002)
-# 선택: GIF 검색 사용 시 GIPHY API 키 (https://developers.giphy.com 에서 무료 발급)
-GIPHY_API_KEY=
-```
+
+| 이름 | 설명 |
+|---|---|
+| `SECRET` | 세션 쿠키 서명용 비밀값 |
+| `DB_USER`, `DB_PW`, `DB_NAME` | MariaDB 접속 정보 (DB 이름 기본 `shlack`) |
+| `DB_HOST`, `DB_PORT`, `PORT` | 선택. 기본값 localhost / 3306 / 3002 |
+| `GIPHY_API_KEY` | 선택. GIF 검색용 키 (https://developers.giphy.com 에서 무료 발급) |
 
 ## 2. DB 준비 (최초 1회)
 

@@ -32,8 +32,10 @@ web_modules/
 .node_repl_history
 *.tgz
 .yarn-integrity
-a-nest/.env
-.env.test
+# 환경 변수 (비밀번호, 시크릿) - 예시는 .env.example 참고
+.env
+.env.*
+!.env.example
 .cache
 .parcel-cache
 .next
