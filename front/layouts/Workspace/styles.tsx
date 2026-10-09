@@ -21,43 +21,6 @@ export const ProfileImg = styled.img`
   right: 16px;
 `;
 
-export const ProfileModal = styled.div`
-  display: flex;
-  padding: 20px;
-
-  & img {
-    display: flex;
-  }
-
-  & > div {
-    display: flex;
-    flex-direction: column;
-    margin-left: 10px;
-  }
-
-  & #profile-name {
-    font-weight: bold;
-    display: inline-flex;
-  }
-
-  & #profile-active {
-    font-size: 13px;
-    display: inline-flex;
-  }
-`;
-
-export const LogOutButton = styled.button`
-  border: none;
-  width: 100%;
-  border-top: 1px solid rgb(29, 28, 29);
-  background: transparent;
-  display: block;
-  height: 33px;
-  padding: 5px 20px 5px;
-  outline: none;
-  cursor: pointer;
-`;
-
 export const WorkspaceWrapper = styled.div`
   display: flex;
   flex: 1;
@@ -157,6 +120,7 @@ export const MenuScroll = styled.div`
 export const WorkspaceModal = styled.div`
   width: 280px;
   padding: 6px 0;
+  text-align: left; /* 상단 바(text-align: center) 안에 들어가도 왼쪽 정렬 */
 
   & > header {
     display: flex;
@@ -179,6 +143,14 @@ export const WorkspaceModal = styled.div`
       justify-content: center;
     }
 
+    & .avatar {
+      flex: 0 0 36px;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      object-fit: cover;
+    }
+
     & > div {
       display: flex;
       flex-direction: column;
@@ -195,6 +167,13 @@ export const WorkspaceModal = styled.div`
     & small {
       font-size: 12px;
       color: #616061;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    & small.online {
+      color: #007a5a;
     }
   }
 
@@ -247,11 +226,19 @@ export const AddButton = styled.button`
   height: 40px;
   background: transparent;
   border: none;
+  border-radius: 10px;
   cursor: pointer;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
 `;
 
 export const WorkspaceButton = styled.button`
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   width: 40px;
   height: 40px;
   border-radius: 10px;
@@ -262,4 +249,16 @@ export const WorkspaceButton = styled.button`
   font-weight: 700;
   color: black;
   cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 100ms, box-shadow 100ms;
+
+  &:hover {
+    opacity: 1;
+  }
+
+  /* 현재 워크스페이스: 흰 테두리로 강조 */
+  &.active {
+    opacity: 1;
+    box-shadow: 0 0 0 2px white;
+  }
 `;

@@ -1,15 +1,13 @@
 import ChannelList from '@components/ChannelList';
 import CreateChannelModal from '@components/CreateChannelModal';
+import CreateWorkspaceModal from '@components/CreateWorkspaceModal';
 import DMList from '@components/DMList';
 import InviteWorkspaceModal from '@components/InviteWorkspaceModal';
 import Menu from '@components/Menu';
-import Modal from '@components/Modal';
 import SearchModal from '@components/SearchModal';
-import useInput from '@hooks/useInput';
 import useSocket from '@hooks/useSocket';
 import Channel from '@pages/Channel';
 import DirectMessage from '@pages/DirectMessage';
-import { Button, Input, Label } from '@pages/SignUp/styles';
 import { IChannel, IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
 import getErrorMessage from '@utils/getErrorMessage';
@@ -27,10 +25,8 @@ import {
   Channels,
   Chats,
   Header,
-  LogOutButton,
   MenuScroll,
   ProfileImg,
-  ProfileModal,
   RightMenu,
   WorkspaceButton,
   WorkspaceModal,
@@ -51,8 +47,6 @@ const Workspace = () => {
   const [showCreateChannelModal, setShowCreateChannelModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
-  const [newWorkspace, onChangeNewWorkspace, setNewWorkspace] = useInput('');
-  const [newUrl, onChangeNewUrl, setNewUrl] = useInput('');
 
   const onLogOut = useCallback(() => {
     axios
@@ -65,34 +59,6 @@ const Workspace = () => {
         toast.error(getErrorMessage(error), { position: 'bottom-center' });
       });
   }, []);
-
-  const onCreateWorkspace = useCallback(
-    (e) => {
-      e.preventDefault();
-      if (!newWorkspace || !newWorkspace.trim()) {
-        return;
-      }
-      if (!newUrl || !newUrl.trim()) {
-        return;
-      }
-      axios
-        .post('/api/workspaces', {
-          workspace: newWorkspace,
-          url: newUrl,
-        })
-        .then(() => {
-          revalidateUser();
-          setShowCreateWorkspaceModal(false);
-          setNewWorkspace('');
-          setNewUrl('');
-        })
-        .catch((error) => {
-          console.dir(error);
-          toast.error(getErrorMessage(error), { position: 'bottom-center' });
-        });
-    },
-    [newWorkspace, newUrl],
-  );
 
   const onClickCreateWorkspace = useCallback(() => {
     setShowCreateWorkspaceModal(true);
@@ -151,15 +117,29 @@ const Workspace = () => {
               <ProfileImg src={gravatar.url(userData.email, { s: '28px', d: 'retro' })} alt={userData.nickname} />
             </span>
             {showUserMenu && (
-              <Menu style={{ right: 0, top: 38 }} show={showUserMenu} onCloseModal={onClickUserProfile}>
-                <ProfileModal>
-                  <img src={gravatar.url(userData.email, { s: '36px', d: 'retro' })} alt={userData.nickname} />
-                  <div>
-                    <span id="profile-name">{userData.nickname}</span>
-                    <span id="profile-active">Active</span>
-                  </div>
-                </ProfileModal>
-                <LogOutButton onClick={onLogOut}>로그아웃</LogOutButton>
+              <Menu
+                style={{ right: 8, top: 42, minWidth: 0 }}
+                show={showUserMenu}
+                onCloseModal={onClickUserProfile}
+                closeButton={false}
+              >
+                <WorkspaceModal>
+                  <header>
+                    <img className="ws-icon" src={gravatar.url(userData.email, { s: '72px', d: 'retro' })} alt="" />
+                    <div>
+                      <strong>{userData.nickname}</strong>
+                      <small>{userData.email}</small>
+                      <small className="online">● 온라인</small>
+                    </div>
+                  </header>
+                  <ul role="menu">
+                    <li>
+                      <button type="button" role="menuitem" className="danger" onClick={onLogOut}>
+                        로그아웃
+                      </button>
+                    </li>
+                  </ul>
+                </WorkspaceModal>
               </Menu>
             )}
           </RightMenu>
@@ -168,13 +148,24 @@ const Workspace = () => {
       <WorkspaceWrapper>
         <Workspaces>
           {userData?.Workspaces.map((ws) => {
+            const isActive = ws.url === workspace;
             return (
-              <Link key={ws.id} to={`/workspace/${ws.url}/channel/일반`}>
-                <WorkspaceButton>{ws.name.slice(0, 1).toUpperCase()}</WorkspaceButton>
+              <Link
+                key={ws.id}
+                to={`/workspace/${ws.url}/channel/일반`}
+                title={ws.name}
+                aria-label={`${ws.name} 워크스페이스`}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                <WorkspaceButton as="span" className={isActive ? 'active' : undefined}>
+                  {ws.name.slice(0, 1).toUpperCase()}
+                </WorkspaceButton>
               </Link>
             );
           })}
-          <AddButton onClick={onClickCreateWorkspace}>+</AddButton>
+          <AddButton onClick={onClickCreateWorkspace} title="워크스페이스 만들기" aria-label="워크스페이스 만들기">
+            +
+          </AddButton>
         </Workspaces>
         <Channels>
           <WorkspaceName onClick={toggleWorkspaceModal}>
@@ -226,19 +217,7 @@ const Workspace = () => {
           </Switch>
         </Chats>
       </WorkspaceWrapper>
-      <Modal show={showCreateWorkspaceModal} onCloseModal={onCloseModal}>
-        <form onSubmit={onCreateWorkspace}>
-          <Label id="workspace-label">
-            <span>워크스페이스 이름</span>
-            <Input id="workspace" value={newWorkspace} onChange={onChangeNewWorkspace} />
-          </Label>
-          <Label id="workspace-url-label">
-            <span>워크스페이스 url</span>
-            <Input id="workspace-url" value={newUrl} onChange={onChangeNewUrl} />
-          </Label>
-          <Button type="submit">생성하기</Button>
-        </form>
-      </Modal>
+      <CreateWorkspaceModal show={showCreateWorkspaceModal} onCloseModal={onCloseModal} />
       <CreateChannelModal
         show={showCreateChannelModal}
         onCloseModal={onCloseModal}
