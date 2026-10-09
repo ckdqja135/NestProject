@@ -7,12 +7,15 @@ import ThreadPanel from '@components/ThreadPanel';
 import TypingIndicator from '@components/TypingIndicator';
 import useInput from '@hooks/useInput';
 import useSocket from '@hooks/useSocket';
+import GifPicker from '@components/GifPicker';
+import useImageUpload from '@hooks/useImageUpload';
 import useTyping from '@hooks/useTyping';
 import { Header, Container, DragOver, HeaderButton, Layout } from '@pages/Channel/styles';
 import { IChannel, IChat, IDM, IReaction, IUser } from '@typings/db';
 import { createTempId, removeChatFromPages, updateChatInPages } from '@utils/chatPages';
 import fetcher from '@utils/fetcher';
 import getErrorMessage from '@utils/getErrorMessage';
+import { toGifContent } from '@utils/gif';
 import makeSection from '@utils/makeSection';
 import prependChat from '@utils/prependChat';
 import axios from 'axios';
@@ -93,45 +96,57 @@ const Channel = () => {
     [onChangeChat, notifyTyping],
   );
 
+  // 텍스트 메시지와 GIF 가 함께 쓰는 전송 로직 (낙관적 업데이트 후 서버 응답으로 교체)
+  const sendMessage = useCallback(
+    (content: string) => {
+      if (!chatData || !channelData || !userData) {
+        return;
+      }
+      const tempId = createTempId();
+      mutateChat(
+        (prevChatData) =>
+          prependChat(prevChatData, {
+            id: tempId,
+            content,
+            UserId: userData.id,
+            User: userData,
+            createdAt: new Date(),
+            ChannelId: channelData.id,
+            Channel: channelData,
+            Reactions: [],
+            replyCount: 0,
+          }),
+        false,
+      ).then(() => {
+        localStorage.setItem(`${workspace}-${channel}`, new Date().getTime().toString());
+        scrollbarRef.current?.scrollToBottom();
+      });
+      axios
+        .post<IChat>(chatsKey, { content })
+        .then(({ data }) => {
+          // 임시 메시지를 서버가 저장한 메시지로 바꿔야 바로 수정/삭제할 수 있다
+          mutateChat((pages) => updateChatInPages(pages, tempId, () => data), false);
+        })
+        .catch((error) => {
+          mutateChat((pages) => removeChatFromPages(pages, tempId), false);
+          showError(error);
+        });
+    },
+    [workspace, channel, channelData, userData, chatData, mutateChat, chatsKey],
+  );
+
   const onSubmitForm = useCallback(
     (e) => {
       e.preventDefault();
-      if (chat?.trim() && chatData && channelData && userData) {
-        const savedChat = chat;
-        const tempId = createTempId();
-        mutateChat(
-          (prevChatData) =>
-            prependChat(prevChatData, {
-              id: tempId,
-              content: savedChat,
-              UserId: userData.id,
-              User: userData,
-              createdAt: new Date(),
-              ChannelId: channelData.id,
-              Channel: channelData,
-              Reactions: [],
-              replyCount: 0,
-            }),
-          false,
-        ).then(() => {
-          localStorage.setItem(`${workspace}-${channel}`, new Date().getTime().toString());
-          setChat('');
-          scrollbarRef.current?.scrollToBottom();
-        });
-        axios
-          .post<IChat>(`${chatsKey}`, { content: savedChat })
-          .then(({ data }) => {
-            // 임시 메시지를 서버가 저장한 메시지로 바꿔야 바로 수정/삭제할 수 있다
-            mutateChat((pages) => updateChatInPages(pages, tempId, () => data), false);
-          })
-          .catch((error) => {
-            mutateChat((pages) => removeChatFromPages(pages, tempId), false);
-            showError(error);
-          });
+      if (chat?.trim()) {
+        sendMessage(chat);
+        setChat('');
       }
     },
-    [chat, workspace, channel, channelData, userData, chatData, mutateChat, setChat, chatsKey],
+    [chat, sendMessage, setChat],
   );
+
+  const onSelectGif = useCallback((url: string) => sendMessage(toGifContent(url)), [sendMessage]);
 
   const onMessage = useCallback(
     (data: IChat) => {
@@ -282,36 +297,30 @@ const Channel = () => {
       .catch(showError);
   }, [workspace, channel, mutateChannels, history]);
 
+  const onUploaded = useCallback(() => {
+    localStorage.setItem(`${workspace}-${channel}`, new Date().getTime().toString());
+  }, [workspace, channel]);
+  const { upload, uploading } = useImageUpload(`/api/workspaces/${workspace}/channels/${channel}/images`, onUploaded);
+
   const onDrop = useCallback(
     (e) => {
       e.preventDefault();
-      const formData = new FormData();
-      if (e.dataTransfer.items) {
-        // Use DataTransferItemList interface to access the file(s)
-        for (let i = 0; i < e.dataTransfer.items.length; i++) {
-          // If dropped items aren't files, reject them
-          if (e.dataTransfer.items[i].kind === 'file') {
-            const file = e.dataTransfer.items[i].getAsFile();
-            formData.append('image', file);
-          }
-        }
-      } else {
-        // Use DataTransfer interface to access the file(s)
-        for (let i = 0; i < e.dataTransfer.files.length; i++) {
-          formData.append('image', e.dataTransfer.files[i]);
-        }
-      }
-      axios.post(`/api/workspaces/${workspace}/channels/${channel}/images`, formData).then(() => {
-        setDragOver(false);
-        localStorage.setItem(`${workspace}-${channel}`, new Date().getTime().toString());
-      });
+      setDragOver(false);
+      upload(Array.from(e.dataTransfer.files || []));
     },
-    [workspace, channel],
+    [upload],
   );
 
   const onDragOver = useCallback((e) => {
     e.preventDefault();
     setDragOver(true);
+  }, []);
+
+  const onDragLeave = useCallback((e) => {
+    // 자식 요소로 이동할 때도 dragleave 가 발생하므로 영역을 벗어날 때만 끈다
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setDragOver(false);
+    }
   }, []);
 
   if (channelsData && !channelData) {
@@ -323,9 +332,12 @@ const Channel = () => {
 
   return (
     <Layout>
-      <Container onDrop={onDrop} onDragOver={onDragOver}>
+      <Container onDrop={onDrop} onDragOver={onDragOver} onDragLeave={onDragLeave}>
         <Header>
-          <span>#{channel}</span>
+          <span title={channelData?.private ? '비공개 채널' : '공개 채널'}>
+            {channelData?.private ? '🔒 ' : '#'}
+            {channel}
+          </span>
           <div style={{ display: 'flex', flex: 1, justifyContent: 'flex-end', alignItems: 'center', gap: 4 }}>
             <HeaderButton
               type="button"
@@ -368,6 +380,9 @@ const Channel = () => {
           onChangeChat={onChangeChatWithTyping}
           placeholder={`Message #${channel}`}
           data={channelMembersData}
+          onAttachFiles={upload}
+          uploading={uploading}
+          toolbarExtra={<GifPicker onSelect={onSelectGif} />}
         />
         <InviteChannelModal
           show={showInviteChannelModal}
@@ -375,7 +390,7 @@ const Channel = () => {
           setShowInviteChannelModal={setShowInviteChannelModal}
         />
         <ToastContainer position="bottom-center" />
-        {dragOver && <DragOver>업로드!</DragOver>}
+        {dragOver && <DragOver>여기에 놓아서 이미지/GIF 업로드</DragOver>}
       </Container>
       {threadParent && userData && (
         <ThreadPanel

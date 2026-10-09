@@ -10,6 +10,7 @@ import {
 } from '@components/Chat/styles';
 import { IChat, IDM, IUser } from '@typings/db';
 import { isTempId } from '@utils/chatPages';
+import { parseGifContent } from '@utils/gif';
 import dayjs from 'dayjs';
 import gravatar from 'gravatar';
 import React, { FC, useMemo, memo, useState, useCallback } from 'react';
@@ -33,7 +34,8 @@ interface Props {
   actions?: ChatActions;
 }
 
-const BACK_URL = process.env.NODE_ENV === 'development' ? 'http://localhost:3002' : 'https://sleact.nodebird.com';
+// 업로드 이미지 주소. 배포 시에는 같은 서버(same origin)
+const BACK_URL = process.env.NODE_ENV === 'development' ? 'http://localhost:3002' : '';
 const isImage = (content: string) => content.startsWith('uploads\\') || content.startsWith('uploads/');
 
 const Chat: FC<Props> = memo(({ data, myId, actions }) => {
@@ -46,9 +48,12 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
 
+  const gifUrl = useMemo(() => parseGifContent(data.content), [data.content]);
   const result = useMemo<(string | JSX.Element)[] | JSX.Element>(
     () =>
-      isImage(data.content) ? (
+      gifUrl ? (
+        <img src={gifUrl} alt="GIF" style={{ maxHeight: 200, maxWidth: '100%', borderRadius: 4 }} />
+      ) : isImage(data.content) ? (
         <img src={`${BACK_URL}/${data.content}`} style={{ maxHeight: 200 }} />
       ) : (
         regexifyString({
@@ -67,7 +72,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
           input: data.content,
         })
       ),
-    [workspace, data.content],
+    [workspace, data.content, gifUrl],
   );
 
   // 같은 이모지끼리 묶어서 개수와 내가 눌렀는지 표시
@@ -133,7 +138,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
 
   // 전송 중(임시 id)인 메시지에는 액션을 보여주지 않는다
   const canAct = !!actions && !isTempId(data.id);
-  const canEdit = canAct && isMine && !!actions?.onEdit && !isImage(data.content);
+  const canEdit = canAct && isMine && !!actions?.onEdit && !isImage(data.content) && !gifUrl;
   const canDelete = canAct && isMine && !!actions?.onDelete;
   const canReact = canAct && !!channelChat && !!actions?.onReact;
   const canReply = canAct && !!channelChat && !channelChat.ParentId && !!actions?.onReply;

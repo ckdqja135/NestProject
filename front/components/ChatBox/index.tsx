@@ -1,4 +1,13 @@
-import { ChatArea, Form, MentionsTextarea, SendButton, Toolbox, EachMention } from '@components/ChatBox/styles';
+import {
+  AttachButton,
+  ChatArea,
+  Form,
+  MentionsTextarea,
+  SendButton,
+  Toolbox,
+  EachMention,
+} from '@components/ChatBox/styles';
+import { ACCEPT_IMAGES } from '@hooks/useImageUpload';
 import { IUser } from '@typings/db';
 import autosize from 'autosize';
 import gravatar from 'gravatar';
@@ -12,9 +21,46 @@ interface Props {
   placeholder: string;
   data?: IUser[];
   inputId?: string;
+  onAttachFiles?: (files: File[]) => void; // 있으면 이미지 첨부 버튼과 붙여넣기 업로드를 켠다
+  uploading?: boolean;
+  toolbarExtra?: React.ReactNode; // 첨부 버튼 옆에 추가할 도구 (예: GIF 검색)
 }
-const ChatBox: FC<Props> = ({ onSubmitForm, chat, onChangeChat, placeholder, data, inputId = 'editor-chat' }) => {
+const ChatBox: FC<Props> = ({
+  onSubmitForm,
+  chat,
+  onChangeChat,
+  placeholder,
+  data,
+  inputId = 'editor-chat',
+  onAttachFiles,
+  uploading,
+  toolbarExtra,
+}) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const onChangeFile = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(e.target.files || []);
+      e.target.value = ''; // 같은 파일을 다시 고를 수 있게 초기화
+      if (files.length) {
+        onAttachFiles?.(files);
+      }
+    },
+    [onAttachFiles],
+  );
+
+  // 클립보드의 이미지(스크린샷, 복사한 GIF 등)를 붙여넣으면 바로 업로드
+  const onPaste = useCallback(
+    (e: React.ClipboardEvent) => {
+      const files = Array.from(e.clipboardData?.files || []);
+      if (onAttachFiles && files.length) {
+        e.preventDefault();
+        onAttachFiles(files);
+      }
+    },
+    [onAttachFiles],
+  );
   useEffect(() => {
     if (textareaRef.current) {
       autosize(textareaRef.current);
@@ -56,7 +102,7 @@ const ChatBox: FC<Props> = ({ onSubmitForm, chat, onChangeChat, placeholder, dat
 
   return (
     <ChatArea>
-      <Form onSubmit={onSubmitForm}>
+      <Form onSubmit={onSubmitForm} onPaste={onPaste}>
         <MentionsTextarea
           id={inputId}
           value={chat}
@@ -74,6 +120,29 @@ const ChatBox: FC<Props> = ({ onSubmitForm, chat, onChangeChat, placeholder, dat
           />
         </MentionsTextarea>
         <Toolbox>
+          {onAttachFiles && (
+            <>
+              <AttachButton
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                aria-label="이미지/GIF 첨부"
+                title="이미지/GIF 첨부"
+              >
+                {uploading ? '업로드 중...' : '＋ 이미지/GIF'}
+              </AttachButton>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ACCEPT_IMAGES}
+                multiple
+                hidden
+                onChange={onChangeFile}
+                data-testid={`${inputId}-file`}
+              />
+            </>
+          )}
+          {toolbarExtra}
           <SendButton
             className={
               'c-button-unstyled c-icon_button c-icon_button--light c-icon_button--size_medium c-texty_input__button c-texty_input__button--send' +

@@ -1,9 +1,11 @@
 import Chat, { ChatActions } from '@components/Chat';
 import ChatBox from '@components/ChatBox';
+import GifPicker from '@components/GifPicker';
 import { Divider, EmptyText, Panel, PanelBody, PanelHeader } from '@components/SidePanel/styles';
 import { IChat, IReaction, IUser } from '@typings/db';
 import { createTempId } from '@utils/chatPages';
 import fetcher from '@utils/fetcher';
+import { toGifContent } from '@utils/gif';
 import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
 import React, { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -81,13 +83,8 @@ const ThreadPanel: FC<Props> = ({ workspace, channel, parent, me, members, socke
 
   const onChangeReply = useCallback((e) => setReply(e.target.value), []);
 
-  const onSubmitReply = useCallback(
-    (e) => {
-      e.preventDefault();
-      const content = reply.trim();
-      if (!content) {
-        return;
-      }
+  const sendReply = useCallback(
+    (content: string) => {
       const tempId = createTempId();
       const optimistic: IChat = {
         id: tempId,
@@ -101,7 +98,6 @@ const ThreadPanel: FC<Props> = ({ workspace, channel, parent, me, members, socke
         Reactions: [],
       };
       mutate((prev) => [...(prev || []), optimistic], false);
-      setReply('');
       axios
         .post<IChat>(`/api/workspaces/${workspace}/channels/${channel}/chats/${parent.id}/replies`, { content })
         .then(({ data }) => {
@@ -119,8 +115,22 @@ const ThreadPanel: FC<Props> = ({ workspace, channel, parent, me, members, socke
           toast.error(getErrorMessage(error), { position: 'bottom-center' });
         });
     },
-    [reply, me, parent, workspace, channel, mutate],
+    [me, parent, workspace, channel, mutate],
   );
+
+  const onSubmitReply = useCallback(
+    (e) => {
+      e.preventDefault();
+      const content = reply.trim();
+      if (content) {
+        sendReply(content);
+        setReply('');
+      }
+    },
+    [reply, sendReply],
+  );
+
+  const onSelectGif = useCallback((url: string) => sendReply(toGifContent(url)), [sendReply]);
 
   return (
     <Panel aria-label="스레드">
@@ -146,6 +156,7 @@ const ThreadPanel: FC<Props> = ({ workspace, channel, parent, me, members, socke
         onChangeChat={onChangeReply}
         placeholder="답글 달기..."
         data={members}
+        toolbarExtra={<GifPicker onSelect={onSelectGif} placement="up-left" />}
       />
     </Panel>
   );

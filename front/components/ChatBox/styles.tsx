@@ -83,3 +83,23 @@ export const EachMention = styled.button<{ focus: boolean }>`
     color: white;
   `};
 `;
+
+export const AttachButton = styled.button`
+  margin-left: 8px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 12px;
+  color: #1d1c1d;
+  cursor: pointer;
+
+  &:hover {
+    background: #f2f2f2;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+`;

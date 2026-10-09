@@ -1,7 +1,8 @@
 import { useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 
-const backUrl = process.env.NODE_ENV === 'production' ? 'https://sleact.nodebird.com' : 'http://localhost:3002';
+// 배포 시에는 같은 서버(same origin)
+const backUrl = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3002';
 
 const sockets: { [key: string]: Socket } = {};
 const useSocket = (workspace?: string): [Socket | undefined, () => void] => {
@@ -18,6 +19,7 @@ const useSocket = (workspace?: string): [Socket | undefined, () => void] => {
   if (!sockets[workspace]) {
     sockets[workspace] = io(`${backUrl}/ws-${workspace}`, {
       transports: ['websocket'],
+      withCredentials: true, // 서버가 로그인 세션 쿠키로 사용자를 확인한다
     });
     console.info('create socket', workspace, sockets[workspace]);
     sockets[workspace].on('connect_error', (err) => {
