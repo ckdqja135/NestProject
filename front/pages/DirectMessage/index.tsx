@@ -1,16 +1,21 @@
+import { ChatActions } from '@components/Chat';
 import ChatBox from '@components/ChatBox';
 import ChatList from '@components/ChatList';
 import useInput from '@hooks/useInput';
 import useSocket from '@hooks/useSocket';
+import useTyping from '@hooks/useTyping';
+import TypingIndicator from '@components/TypingIndicator';
 import { DragOver } from '@pages/Channel/styles';
 import { Header, Container } from '@pages/DirectMessage/styles';
-import { IDM } from '@typings/db';
+import { IChat, IDM } from '@typings/db';
+import { createTempId, removeChatFromPages, updateChatInPages } from '@utils/chatPages';
+import getErrorMessage from '@utils/getErrorMessage';
 import fetcher from '@utils/fetcher';
 import makeSection from '@utils/makeSection';
 import prependChat from '@utils/prependChat';
 import axios from 'axios';
 import gravatar from 'gravatar';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Scrollbars } from 'react-custom-scrollbars-2';
 import { useParams } from 'react-router';
 import { toast } from 'react-toastify';
@@ -46,16 +51,34 @@ const DirectMessage = () => {
 
   const isEmpty = chatData?.[0]?.length === 0;
   const isReachingEnd = isEmpty || (chatData && chatData[chatData.length - 1]?.length < PAGE_SIZE);
+  const chatsKey = `/api/workspaces/${workspace}/dms/${id}/chats`;
+  const { typingUsers, notifyTyping, clearTypingUser } = useTyping({
+    socket,
+    nickname: myData?.nickname,
+    receiverId: Number(id),
+  });
+
+  const onChangeChatWithTyping = useCallback(
+    (e) => {
+      onChangeChat(e);
+      // 나에게 보내는 DM 이면 입력 중 표시를 보낼 필요가 없다
+      if (myData && myData.id !== Number(id)) {
+        notifyTyping();
+      }
+    },
+    [onChangeChat, notifyTyping, myData, id],
+  );
 
   const onSubmitForm = useCallback(
     (e) => {
       e.preventDefault();
       if (chat?.trim() && chatData) {
         const savedChat = chat;
+        const tempId = createTempId();
         mutateChat(
           (prevChatData) =>
             prependChat(prevChatData, {
-              id: (chatData[0][0]?.id || 0) + 1,
+              id: tempId,
               content: savedChat,
               SenderId: myData.id,
               Sender: myData,
@@ -67,24 +90,27 @@ const DirectMessage = () => {
         ).then(() => {
           localStorage.setItem(`${workspace}-${id}`, new Date().getTime().toString());
           setChat('');
-          if (scrollbarRef.current) {
-            console.log('scrollToBottom!', scrollbarRef.current?.getValues());
-            scrollbarRef.current.scrollToBottom();
-          }
+          scrollbarRef.current?.scrollToBottom();
         });
         axios
-          .post(`/api/workspaces/${workspace}/dms/${id}/chats`, {
-            content: chat,
+          .post<IDM>(chatsKey, { content: savedChat })
+          .then(({ data }) => {
+            // 임시 메시지를 서버가 저장한 메시지로 바꿔야 바로 수정/삭제할 수 있다
+            mutateChat((pages) => updateChatInPages(pages, tempId, () => data), false);
           })
-          .catch(console.error);
+          .catch((error) => {
+            mutateChat((pages) => removeChatFromPages(pages, tempId), false);
+            toast.error(getErrorMessage(error), { position: 'bottom-center' });
+          });
       }
     },
-    [chat, workspace, id, myData, userData, chatData, mutateChat, setChat],
+    [chat, workspace, id, myData, userData, chatData, mutateChat, setChat, chatsKey],
   );
 
   const onMessage = useCallback(
     (data: IDM) => {
       if (data.SenderId === Number(id) && myData.id !== Number(id)) {
+        clearTypingUser(data.SenderId);
         mutateChat((chatData) => prependChat(chatData, data), false).then(() => {
           if (scrollbarRef.current) {
             if (
@@ -107,15 +133,63 @@ const DirectMessage = () => {
         });
       }
     },
-    [id, myData, mutateChat],
+    [id, myData, mutateChat, clearTypingUser],
+  );
+
+  // 이 대화방(나 ↔ id)의 메시지인지
+  const isThisConversation = useCallback(
+    (data: { SenderId: number; ReceiverId: number }) =>
+      !!myData &&
+      ((data.SenderId === myData.id && data.ReceiverId === Number(id)) ||
+        (data.SenderId === Number(id) && data.ReceiverId === myData.id)),
+    [myData, id],
+  );
+
+  const onDMUpdated = useCallback(
+    (data: IDM) => {
+      if (isThisConversation(data)) {
+        mutateChat((pages) => updateChatInPages(pages, data.id, () => data), false);
+      }
+    },
+    [isThisConversation, mutateChat],
+  );
+
+  const onDMDeleted = useCallback(
+    (data: { id: number; SenderId: number; ReceiverId: number }) => {
+      if (isThisConversation(data)) {
+        mutateChat((pages) => removeChatFromPages(pages, data.id), false);
+      }
+    },
+    [isThisConversation, mutateChat],
   );
 
   useEffect(() => {
     socket?.on('dm', onMessage);
+    socket?.on('dmUpdated', onDMUpdated);
+    socket?.on('dmDeleted', onDMDeleted);
     return () => {
       socket?.off('dm', onMessage);
+      socket?.off('dmUpdated', onDMUpdated);
+      socket?.off('dmDeleted', onDMDeleted);
     };
-  }, [socket, onMessage]);
+  }, [socket, onMessage, onDMUpdated, onDMDeleted]);
+
+  // DM 은 수정/삭제만 지원 (화면 갱신은 소켓 이벤트로 처리)
+  const actions: ChatActions = useMemo(
+    () => ({
+      onEdit: (target: IDM | IChat, content: string) =>
+        axios.patch(`${chatsKey}/${target.id}`, { content }).catch((error) => {
+          toast.error(getErrorMessage(error), { position: 'bottom-center' });
+          throw error;
+        }),
+      onDelete: (target: IDM | IChat) => {
+        axios
+          .delete(`${chatsKey}/${target.id}`)
+          .catch((error) => toast.error(getErrorMessage(error), { position: 'bottom-center' }));
+      },
+    }),
+    [chatsKey],
+  );
 
   useEffect(() => {
     localStorage.setItem(`${workspace}-${id}`, new Date().getTime().toString());
@@ -176,11 +250,14 @@ const DirectMessage = () => {
         isEmpty={isEmpty}
         chatSections={chatSections}
         setSize={setSize}
+        myId={myData.id}
+        actions={actions}
       />
+      <TypingIndicator names={typingUsers} />
       <ChatBox
         onSubmitForm={onSubmitForm}
         chat={chat}
-        onChangeChat={onChangeChat}
+        onChangeChat={onChangeChatWithTyping}
         placeholder={`Message ${userData.nickname}`}
         data={[]}
       />
