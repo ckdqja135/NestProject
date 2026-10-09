@@ -11,6 +11,7 @@ import { Channels } from '../entities/Channels';
 import { WorkspaceMembers } from '../entities/WorkspaceMembers';
 import { ChannelMembers } from '../entities/ChannelMembers';
 import { Users } from '../entities/Users';
+import { EventsGateway } from '../events/events.gateway';
 
 @Injectable()
 export class WorkspacesService {
@@ -26,6 +27,7 @@ export class WorkspacesService {
     @InjectRepository(Users)
     private usersRepository: Repository<Users>,
     private dataSource: DataSource,
+    private eventsGateway: EventsGateway,
   ) {}
 
   async findWorkspaceByUrl(url: string) {
@@ -131,6 +133,8 @@ export class WorkspacesService {
         UserId: user.id,
       });
     }
+    // 초대받은 사람의 화면(다른 워크스페이스에 접속 중이어도)에 워크스페이스 목록 갱신을 알린다
+    this.eventsGateway.notifyWorkspacesChanged(user.id);
   }
 
   async kickMember(url: string, targetId: number, myId: number) {
@@ -156,6 +160,8 @@ export class WorkspacesService {
         UserId: targetId,
       });
     }
+    // 내보낸 사람의 소켓 연결을 끊어 이 워크스페이스 메시지를 더 받지 못하게 한다
+    this.eventsGateway.removeUserFromWorkspace(url, targetId);
   }
 
   async getWorkspaceMember(url: string, id: number, myId: number) {

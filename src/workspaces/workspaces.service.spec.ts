@@ -11,6 +11,7 @@ import { Channels } from '../entities/Channels';
 import { Users } from '../entities/Users';
 import { WorkspaceMembers } from '../entities/WorkspaceMembers';
 import { Workspaces } from '../entities/Workspaces';
+import { EventsGateway } from '../events/events.gateway';
 import { WorkspacesService } from './workspaces.service';
 
 describe('WorkspacesService', () => {
@@ -19,6 +20,10 @@ describe('WorkspacesService', () => {
   const workspaceMembersRepository = { findOne: jest.fn(), delete: jest.fn() };
   const channelsRepository = { find: jest.fn() };
   const channelMembersRepository = { delete: jest.fn() };
+  const eventsGateway = {
+    removeUserFromWorkspace: jest.fn(),
+    notifyWorkspacesChanged: jest.fn(),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -40,6 +45,7 @@ describe('WorkspacesService', () => {
         },
         { provide: getRepositoryToken(Users), useValue: {} },
         { provide: DataSource, useValue: {} },
+        { provide: EventsGateway, useValue: eventsGateway },
       ],
     }).compile();
 
@@ -89,6 +95,20 @@ describe('WorkspacesService', () => {
         UserId: 2,
       });
       expect(channelMembersRepository.delete).toHaveBeenCalledTimes(2);
+    });
+
+    it('내보낸 사람의 소켓 연결을 끊는다', async () => {
+      channelsRepository.find.mockResolvedValue([]);
+      await service.kickMember('shlack', 2, 10);
+      expect(eventsGateway.removeUserFromWorkspace).toHaveBeenCalledWith(
+        'shlack',
+        2,
+      );
+    });
+
+    it('권한이 없어 실패하면 소켓은 건드리지 않는다', async () => {
+      await expect(service.kickMember('shlack', 3, 2)).rejects.toThrow();
+      expect(eventsGateway.removeUserFromWorkspace).not.toHaveBeenCalled();
     });
   });
 });
