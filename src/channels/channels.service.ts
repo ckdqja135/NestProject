@@ -34,6 +34,7 @@ export class ChannelsService {
     private eventsGateway: EventsGateway,
   ) {}
 
+  // 채널 멤버만 채널을 다룰 수 있다. 비공개 채널은 존재 여부도 숨기도록 404 로 응답한다.
   private async findChannel(url: string, name: string, myId: number) {
     const workspace = await this.workspacesService.findWorkspaceByUrl(url);
     await this.workspacesService.assertMember(workspace.id, myId);
@@ -42,6 +43,15 @@ export class ChannelsService {
     });
     if (!channel) {
       throw new NotFoundException('존재하지 않는 채널입니다.');
+    }
+    const isMember = await this.channelMembersRepository.findOne({
+      where: { ChannelId: channel.id, UserId: myId },
+    });
+    if (!isMember) {
+      if (channel.private) {
+        throw new NotFoundException('존재하지 않는 채널입니다.');
+      }
+      throw new ForbiddenException('채널에 참여한 뒤 이용할 수 있습니다.');
     }
     return channel;
   }
@@ -67,9 +77,18 @@ export class ChannelsService {
     return this.findChannel(url, name, myId);
   }
 
-  async createWorkspaceChannel(url: string, name: string, myId: number) {
+  async createWorkspaceChannel(
+    url: string,
+    name: string,
+    isPrivate: boolean,
+    myId: number,
+  ) {
     const workspace = await this.workspacesService.findWorkspaceByUrl(url);
     await this.workspacesService.assertMember(workspace.id, myId);
+    if (name === 'browse') {
+      // GET channels/browse(채널 둘러보기) 경로와 겹치므로 사용할 수 없다
+      throw new BadRequestException('사용할 수 없는 채널 이름입니다.');
+    }
     const exists = await this.channelsRepository.findOne({
       where: { WorkspaceId: workspace.id, name },
     });
@@ -79,11 +98,61 @@ export class ChannelsService {
     const channel = await this.channelsRepository.save({
       name,
       WorkspaceId: workspace.id,
+      private: isPrivate,
     });
     await this.channelMembersRepository.save({
       UserId: myId,
       ChannelId: channel.id,
     });
+    return channel;
+  }
+
+  // 채널 둘러보기: 워크스페이스의 공개 채널 목록 (참여 여부, 멤버 수 포함)
+  async browsePublicChannels(url: string, myId: number) {
+    const workspace = await this.workspacesService.findWorkspaceByUrl(url);
+    await this.workspacesService.assertMember(workspace.id, myId);
+    const channels = await this.channelsRepository
+      .createQueryBuilder('channels')
+      .loadRelationCountAndMap(
+        'channels.memberCount',
+        'channels.ChannelMembers',
+      )
+      .where('channels.WorkspaceId = :workspaceId', {
+        workspaceId: workspace.id,
+      })
+      .andWhere('channels.private = :private', { private: false })
+      .orderBy('channels.name', 'ASC')
+      .getMany();
+    const joined = await this.channelMembersRepository.find({
+      where: { UserId: myId },
+      select: ['ChannelId'],
+    });
+    const joinedIds = new Set(joined.map((m) => m.ChannelId));
+    return channels.map((channel) => ({
+      ...channel,
+      joined: joinedIds.has(channel.id),
+    }));
+  }
+
+  // 공개 채널에 스스로 참여. 비공개 채널은 초대로만 들어올 수 있다.
+  async joinChannel(url: string, name: string, myId: number) {
+    const workspace = await this.workspacesService.findWorkspaceByUrl(url);
+    await this.workspacesService.assertMember(workspace.id, myId);
+    const channel = await this.channelsRepository.findOne({
+      where: { WorkspaceId: workspace.id, name },
+    });
+    if (!channel || channel.private) {
+      throw new NotFoundException('존재하지 않는 채널입니다.');
+    }
+    const already = await this.channelMembersRepository.findOne({
+      where: { ChannelId: channel.id, UserId: myId },
+    });
+    if (!already) {
+      await this.channelMembersRepository.save({
+        ChannelId: channel.id,
+        UserId: myId,
+      });
+    }
     return channel;
   }
 

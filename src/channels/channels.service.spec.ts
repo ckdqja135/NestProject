@@ -39,8 +39,13 @@ const createQueryBuilderMock = () => {
 describe('ChannelsService', () => {
   let service: ChannelsService;
   let qb: ReturnType<typeof createQueryBuilderMock>;
-  const channelsRepository = { findOne: jest.fn() };
-  const channelMembersRepository = { delete: jest.fn() };
+  const channelsRepository = { findOne: jest.fn(), save: jest.fn() };
+  const channelMembersRepository = {
+    delete: jest.fn(),
+    findOne: jest.fn(),
+    find: jest.fn(),
+    save: jest.fn(),
+  };
   const channelChatsRepository = {
     save: jest.fn(),
     findOne: jest.fn(),
@@ -93,6 +98,11 @@ describe('ChannelsService', () => {
     channelChatsRepository.createQueryBuilder.mockReturnValue(qb);
     workspacesService.findWorkspaceByUrl.mockResolvedValue({ id: 1 });
     channelsRepository.findOne.mockResolvedValue(channel);
+    // 기본: 요청한 사람은 채널 멤버
+    channelMembersRepository.findOne.mockResolvedValue({
+      ChannelId: 3,
+      UserId: 1,
+    });
   });
 
   it('should be defined', () => {
@@ -102,7 +112,7 @@ describe('ChannelsService', () => {
   it('없는 채널이면 NotFoundException', async () => {
     channelsRepository.findOne.mockResolvedValue(null);
     await expect(
-      service.getWorkspaceChannel('sleact', 'nope', 1),
+      service.getWorkspaceChannel('shlack', 'nope', 1),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
@@ -111,7 +121,7 @@ describe('ChannelsService', () => {
     const chatWithUser = { id: 9, content: '안녕', User: { id: 1 } };
     qb.getOne.mockResolvedValue(chatWithUser);
 
-    await expect(service.postChat('sleact', '일반', '안녕', 1)).resolves.toBe(
+    await expect(service.postChat('shlack', '일반', '안녕', 1)).resolves.toBe(
       chatWithUser,
     );
 
@@ -121,7 +131,7 @@ describe('ChannelsService', () => {
       ChannelId: 3,
       ParentId: null,
     });
-    expect(eventsGateway.server.to).toHaveBeenCalledWith('/ws-sleact-3');
+    expect(eventsGateway.server.to).toHaveBeenCalledWith('/ws-shlack-3');
     expect(emit).toHaveBeenCalledWith('message', chatWithUser);
   });
 
@@ -129,7 +139,7 @@ describe('ChannelsService', () => {
     channelChatsRepository.count.mockResolvedValue(1);
 
     await expect(
-      service.getChannelUnreadsCount('sleact', '일반', 1000, 7),
+      service.getChannelUnreadsCount('shlack', '일반', 1000, 7),
     ).resolves.toBe(1);
     expect(channelChatsRepository.count).toHaveBeenCalledWith({
       where: {
@@ -145,7 +155,7 @@ describe('ChannelsService', () => {
     it('남이 보낸 메시지는 수정할 수 없다', async () => {
       channelChatsRepository.findOne.mockResolvedValue({ id: 9, UserId: 2 });
       await expect(
-        service.editChat('sleact', '일반', 9, '수정', 1),
+        service.editChat('shlack', '일반', 9, '수정', 1),
       ).rejects.toBeInstanceOf(ForbiddenException);
       expect(channelChatsRepository.update).not.toHaveBeenCalled();
     });
@@ -155,7 +165,7 @@ describe('ChannelsService', () => {
       const updated = { id: 9, content: '수정' };
       qb.getOne.mockResolvedValue(updated);
 
-      await service.editChat('sleact', '일반', 9, '수정', 1);
+      await service.editChat('shlack', '일반', 9, '수정', 1);
 
       expect(channelChatsRepository.update).toHaveBeenCalledWith(9, {
         content: '수정',
@@ -171,7 +181,7 @@ describe('ChannelsService', () => {
         ParentId: null,
       });
 
-      await service.deleteChat('sleact', '일반', 9, 1);
+      await service.deleteChat('shlack', '일반', 9, 1);
 
       expect(channelChatsRepository.delete).toHaveBeenCalledWith(9);
       expect(emit).toHaveBeenCalledWith('messageDeleted', {
@@ -191,7 +201,7 @@ describe('ChannelsService', () => {
       channelChatsRepository.save.mockResolvedValue({ id: 10 });
       qb.getOne.mockResolvedValue({ id: 10, ParentId: 9 });
 
-      await service.postReply('sleact', '일반', 9, '답글', 2);
+      await service.postReply('shlack', '일반', 9, '답글', 2);
 
       expect(channelChatsRepository.save).toHaveBeenCalledWith({
         content: '답글',
@@ -204,7 +214,7 @@ describe('ChannelsService', () => {
     it('답글에는 다시 답글을 달 수 없다', async () => {
       channelChatsRepository.findOne.mockResolvedValue({ id: 10, ParentId: 9 });
       await expect(
-        service.postReply('sleact', '일반', 10, '답글', 2),
+        service.postReply('shlack', '일반', 10, '답글', 2),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
   });
@@ -220,7 +230,7 @@ describe('ChannelsService', () => {
 
     it('누르지 않은 이모지면 추가한다', async () => {
       reactionsRepository.findOne.mockResolvedValue(null);
-      await service.toggleReaction('sleact', '일반', 9, '👍', 1);
+      await service.toggleReaction('shlack', '일반', 9, '👍', 1);
       expect(reactionsRepository.save).toHaveBeenCalledWith({
         ChatId: 9,
         UserId: 1,
@@ -234,7 +244,7 @@ describe('ChannelsService', () => {
 
     it('이미 누른 이모지면 취소한다', async () => {
       reactionsRepository.findOne.mockResolvedValue({ id: 5 });
-      await service.toggleReaction('sleact', '일반', 9, '👍', 1);
+      await service.toggleReaction('shlack', '일반', 9, '👍', 1);
       expect(reactionsRepository.delete).toHaveBeenCalledWith(5);
       expect(reactionsRepository.save).not.toHaveBeenCalled();
     });
@@ -244,7 +254,7 @@ describe('ChannelsService', () => {
     channelChatsRepository.findOne.mockResolvedValue({ id: 9, UserId: 2 });
     qb.getOne.mockResolvedValue({ id: 9, pinned: true });
 
-    await service.setPinned('sleact', '일반', 9, true, 1);
+    await service.setPinned('shlack', '일반', 9, true, 1);
 
     expect(channelChatsRepository.update).toHaveBeenCalledWith(9, {
       pinned: true,
@@ -258,18 +268,82 @@ describe('ChannelsService', () => {
   describe('채널 나가기', () => {
     it('일반 채널은 나갈 수 없다', async () => {
       await expect(
-        service.leaveChannel('sleact', '일반', 1),
+        service.leaveChannel('shlack', '일반', 1),
       ).rejects.toBeInstanceOf(BadRequestException);
       expect(channelMembersRepository.delete).not.toHaveBeenCalled();
     });
 
     it('다른 채널은 멤버에서 제거된다', async () => {
       channelsRepository.findOne.mockResolvedValue({ id: 4, name: '자유' });
-      await service.leaveChannel('sleact', '자유', 1);
+      await service.leaveChannel('shlack', '자유', 1);
       expect(channelMembersRepository.delete).toHaveBeenCalledWith({
         ChannelId: 4,
         UserId: 1,
       });
+    });
+  });
+
+  describe('공개/비공개 채널', () => {
+    it('멤버가 아니면 비공개 채널은 존재 자체를 숨긴다 (404)', async () => {
+      channelsRepository.findOne.mockResolvedValue({
+        ...channel,
+        private: true,
+      });
+      channelMembersRepository.findOne.mockResolvedValue(null);
+      await expect(
+        service.getWorkspaceChannelChats('shlack', '비밀', 20, 1, 9),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('멤버가 아니면 공개 채널도 참여 전에는 이용할 수 없다 (403)', async () => {
+      channelsRepository.findOne.mockResolvedValue({
+        ...channel,
+        private: false,
+      });
+      channelMembersRepository.findOne.mockResolvedValue(null);
+      await expect(
+        service.postChat('shlack', '자유', '안녕', 9),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(channelChatsRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('비공개 채널로 생성할 수 있다', async () => {
+      channelsRepository.findOne.mockResolvedValue(null);
+      channelsRepository.save.mockResolvedValue({ id: 5 });
+      await service.createWorkspaceChannel('shlack', '비밀', true, 1);
+      expect(channelsRepository.save).toHaveBeenCalledWith({
+        name: '비밀',
+        WorkspaceId: 1,
+        private: true,
+      });
+      expect(channelMembersRepository.save).toHaveBeenCalledWith({
+        UserId: 1,
+        ChannelId: 5,
+      });
+    });
+
+    it("'browse' 는 채널 이름으로 쓸 수 없다", async () => {
+      await expect(
+        service.createWorkspaceChannel('shlack', 'browse', false, 1),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('공개 채널에는 스스로 참여할 수 있다', async () => {
+      channelsRepository.findOne.mockResolvedValue({ id: 4, private: false });
+      channelMembersRepository.findOne.mockResolvedValue(null);
+      await service.joinChannel('shlack', '자유', 9);
+      expect(channelMembersRepository.save).toHaveBeenCalledWith({
+        ChannelId: 4,
+        UserId: 9,
+      });
+    });
+
+    it('비공개 채널에는 스스로 참여할 수 없다', async () => {
+      channelsRepository.findOne.mockResolvedValue({ id: 4, private: true });
+      await expect(
+        service.joinChannel('shlack', '비밀', 9),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(channelMembersRepository.save).not.toHaveBeenCalled();
     });
   });
 });

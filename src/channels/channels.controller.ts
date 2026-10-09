@@ -51,7 +51,28 @@ export class ChannelsController {
     @Body() body: CreateChannelDto,
     @User() user: Users,
   ) {
-    return this.channelsService.createWorkspaceChannel(url, body.name, user.id);
+    return this.channelsService.createWorkspaceChannel(
+      url,
+      body.name,
+      !!body.private,
+      user.id,
+    );
+  }
+
+  @ApiOperation({ summary: '채널 둘러보기 (공개 채널 목록)' })
+  @Get('browse')
+  browseChannels(@Param('url') url: string, @User() user: Users) {
+    return this.channelsService.browsePublicChannels(url, user.id);
+  }
+
+  @ApiOperation({ summary: '공개 채널 참여 (비공개 채널은 초대로만 참여)' })
+  @Post(':name/join')
+  joinChannel(
+    @Param('url') url: string,
+    @Param('name') name: string,
+    @User() user: Users,
+  ) {
+    return this.channelsService.joinChannel(url, name, user.id);
   }
 
   @ApiOperation({ summary: '특정 채널 정보' })

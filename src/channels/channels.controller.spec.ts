@@ -24,12 +24,12 @@ describe('ChannelsController', () => {
     const saved = { id: 1, content: '안녕' };
     channelsService.postChat.mockResolvedValue(saved);
     await expect(
-      controller.postChat('sleact', '일반', { content: '안녕' }, {
+      controller.postChat('shlack', '일반', { content: '안녕' }, {
         id: 1,
       } as any),
     ).resolves.toBe(saved);
     expect(channelsService.postChat).toHaveBeenCalledWith(
-      'sleact',
+      'shlack',
       '일반',
       '안녕',
       1,
@@ -38,10 +38,10 @@ describe('ChannelsController', () => {
 
   it('채널 나가기 후 ok 를 반환한다', async () => {
     await expect(
-      controller.leaveChannel('sleact', '자유', { id: 1 } as any),
+      controller.leaveChannel('shlack', '자유', { id: 1 } as any),
     ).resolves.toBe('ok');
     expect(channelsService.leaveChannel).toHaveBeenCalledWith(
-      'sleact',
+      'shlack',
       '자유',
       1,
     );

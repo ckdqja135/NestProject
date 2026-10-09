@@ -22,12 +22,8 @@ export class Channels {
   @Column('varchar', { name: 'name', length: 30 })
   name: string;
 
-  @Column('tinyint', {
-    name: 'private',
-    nullable: true,
-    width: 1,
-    default: () => "'0'",
-  })
+  // 비공개 채널 여부 (초대받은 사람만 참여). boolean 타입이어야 0/1 이 아닌 true/false 로 변환된다.
+  @Column('boolean', { name: 'private', nullable: true, default: false })
   private: boolean | null;
 
   @CreateDateColumn()
