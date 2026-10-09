@@ -6,6 +6,7 @@ import { ChannelMembers } from './src/entities/ChannelMembers';
 import { Channels } from './src/entities/Channels';
 import { DMs } from './src/entities/DMs';
 import { Mentions } from './src/entities/Mentions';
+import { Reactions } from './src/entities/Reactions';
 import { Users } from './src/entities/Users';
 import { WorkspaceMembers } from './src/entities/WorkspaceMembers';
 import { Workspaces } from './src/entities/Workspaces';
@@ -25,6 +26,7 @@ const options: DataSourceOptions & SeederOptions = {
     Channels,
     DMs,
     Mentions,
+    Reactions,
     Users,
     WorkspaceMembers,
     Workspaces,

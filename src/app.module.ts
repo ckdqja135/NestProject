@@ -15,6 +15,7 @@ import { ChannelMembers } from './entities/ChannelMembers';
 import { Channels } from './entities/Channels';
 import { DMs } from './entities/DMs';
 import { Mentions } from './entities/Mentions';
+import { Reactions } from './entities/Reactions';
 import { Users } from './entities/Users';
 import { WorkspaceMembers } from './entities/WorkspaceMembers';
 import { Workspaces } from './entities/Workspaces';
@@ -35,6 +36,7 @@ import { Workspaces } from './entities/Workspaces';
         Channels,
         DMs,
         Mentions,
+        Reactions,
         Users,
         WorkspaceMembers,
         Workspaces,

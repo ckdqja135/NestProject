@@ -5,14 +5,17 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Users } from './Users';
 import { Channels } from './Channels';
+import { Reactions } from './Reactions';
 
 @Index('UserId', ['UserId'], {})
 @Index('ChannelId', ['ChannelId'], {})
+@Index('ParentId', ['ParentId'], {})
 @Entity({ name: 'channelchats' })
 export class ChannelChats {
   @PrimaryGeneratedColumn({ type: 'int', name: 'id' })
@@ -33,6 +36,13 @@ export class ChannelChats {
   @Column('int', { name: 'ChannelId', nullable: true })
   ChannelId: number | null;
 
+  // 스레드 답글이면 원본 메시지 id, 일반 메시지면 null
+  @Column('int', { name: 'ParentId', nullable: true })
+  ParentId: number | null;
+
+  @Column('boolean', { name: 'pinned', default: false })
+  pinned: boolean;
+
   @ManyToOne(() => Users, (users) => users.ChannelChats, {
     onDelete: 'SET NULL',
     onUpdate: 'CASCADE',
@@ -46,4 +56,20 @@ export class ChannelChats {
   })
   @JoinColumn([{ name: 'ChannelId', referencedColumnName: 'id' }])
   Channel: Channels;
+
+  @ManyToOne(() => ChannelChats, (chat) => chat.Replies, {
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+  })
+  @JoinColumn([{ name: 'ParentId', referencedColumnName: 'id' }])
+  Parent: ChannelChats;
+
+  @OneToMany(() => ChannelChats, (chat) => chat.Parent)
+  Replies: ChannelChats[];
+
+  @OneToMany(() => Reactions, (reactions) => reactions.Chat)
+  Reactions: Reactions[];
+
+  // 답글 수 (조회 시 계산, DB 컬럼 아님)
+  replyCount?: number;
 }
