@@ -44,6 +44,11 @@ export class DmsController {
     description: '한 번에 가져오는 개수',
   })
   @ApiQuery({ name: 'page', required: false, description: '불러올 페이지' })
+  @ApiQuery({
+    name: 'beforeId',
+    required: false,
+    description: '이 메시지 id 보다 오래된 메시지 (커서, page 대신 사용 권장)',
+  })
   @ApiOperation({ summary: 'DM 목록' })
   @Get(':id/chats')
   getChat(
@@ -51,9 +56,17 @@ export class DmsController {
     @Param('id', ParseIntPipe) id: number,
     @Query('perPage', new DefaultValuePipe(20), ParseIntPipe) perPage: number,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('beforeId', new DefaultValuePipe(0), ParseIntPipe) beforeId: number, // 0 이면 커서 없음
     @User() user: Users,
   ) {
-    return this.dmsService.getWorkspaceDMChats(url, id, user.id, perPage, page);
+    return this.dmsService.getWorkspaceDMChats(
+      url,
+      id,
+      user.id,
+      Math.min(Math.max(perPage, 1), 100),
+      Math.max(page, 1),
+      beforeId,
+    );
   }
 
   @ApiOperation({ summary: '안 읽은 DM 개수' })

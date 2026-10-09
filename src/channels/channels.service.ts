@@ -200,6 +200,8 @@ export class ChannelsService {
       ChannelId: channel.id,
       UserId: user.id,
     });
+    // 초대받은 사람이 새로고침 없이 바로 이 채널 메시지를 받도록 소켓 방을 다시 맞춘다
+    await this.eventsGateway.refreshUserChannels(url, user.id);
   }
 
   // 채팅 목록/단건 조회 공통 쿼리 (작성자, 채널, 리액션, 답글 수 포함)
@@ -230,23 +232,29 @@ export class ChannelsService {
     this.eventsGateway.server.to(`/ws-${url}-${channelId}`).emit(event, data);
   }
 
+  // beforeId 가 있으면 그 메시지보다 오래된 것을 가져온다 (커서 방식).
+  // 새 메시지가 계속 들어와도 페이지 경계가 밀려 같은 메시지가 중복되지 않는다.
   async getWorkspaceChannelChats(
     url: string,
     name: string,
     perPage: number,
     page: number,
     myId: number,
+    beforeId?: number,
   ) {
     const channel = await this.findChannel(url, name, myId);
     // 스레드 답글은 채널 본문에 표시하지 않는다
-    return this.chatQuery()
+    const query = this.chatQuery()
       .where('chats.ChannelId = :channelId', { channelId: channel.id })
       .andWhere('chats.ParentId IS NULL')
-      .orderBy('chats.createdAt', 'DESC')
-      .addOrderBy('chats.id', 'DESC')
-      .take(perPage)
-      .skip(perPage * (page - 1))
-      .getMany();
+      .orderBy('chats.id', 'DESC')
+      .take(perPage);
+    if (beforeId) {
+      query.andWhere('chats.id < :beforeId', { beforeId });
+    } else {
+      query.skip(perPage * (page - 1));
+    }
+    return query.getMany();
   }
 
   async getChannelUnreadsCount(

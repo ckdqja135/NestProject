@@ -65,7 +65,10 @@ describe('ChannelsService', () => {
     assertMember: jest.fn(),
   };
   const emit = jest.fn();
-  const eventsGateway = { server: { to: jest.fn(() => ({ emit })) } };
+  const eventsGateway = {
+    server: { to: jest.fn(() => ({ emit })) },
+    refreshUserChannels: jest.fn(),
+  };
   const channel = { id: 3, name: '일반', WorkspaceId: 1 };
 
   beforeEach(async () => {
@@ -345,5 +348,44 @@ describe('ChannelsService', () => {
       ).rejects.toBeInstanceOf(NotFoundException);
       expect(channelMembersRepository.save).not.toHaveBeenCalled();
     });
+  });
+
+  describe('채팅 목록 커서', () => {
+    it('beforeId 가 있으면 그보다 오래된 메시지를 id 순으로 가져온다', async () => {
+      qb.getMany.mockResolvedValue([]);
+      await service.getWorkspaceChannelChats('shlack', '일반', 20, 1, 1, 50);
+      expect(qb.orderBy).toHaveBeenCalledWith('chats.id', 'DESC');
+      expect(qb.andWhere).toHaveBeenCalledWith('chats.id < :beforeId', {
+        beforeId: 50,
+      });
+      expect(qb.skip).not.toHaveBeenCalled();
+    });
+
+    it('beforeId 가 없으면 기존 page 방식으로 동작한다', async () => {
+      qb.getMany.mockResolvedValue([]);
+      await service.getWorkspaceChannelChats('shlack', '일반', 20, 2, 1);
+      expect(qb.skip).toHaveBeenCalledWith(20);
+    });
+  });
+
+  it('채널에 초대하면 초대받은 사람의 소켓 방을 바로 맞춘다', async () => {
+    const userQb = {
+      innerJoin: jest.fn(() => userQb),
+      where: jest.fn(() => userQb),
+      getOne: jest.fn().mockResolvedValue({ id: 9 }),
+    };
+    const usersRepository = (service as any).usersRepository;
+    usersRepository.createQueryBuilder = jest.fn(() => userQb);
+    channelMembersRepository.findOne
+      .mockResolvedValueOnce({ ChannelId: 3, UserId: 1 }) // 초대하는 사람은 멤버
+      .mockResolvedValueOnce(null); // 초대받는 사람은 아직 멤버 아님
+
+    await service.createWorkspaceChannelMembers('shlack', '일반', 'b@b.com', 1);
+
+    expect(channelMembersRepository.save).toHaveBeenCalledWith({
+      ChannelId: 3,
+      UserId: 9,
+    });
+    expect(eventsGateway.refreshUserChannels).toHaveBeenCalledWith('shlack', 9);
   });
 });

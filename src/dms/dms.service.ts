@@ -29,15 +29,17 @@ export class DmsService {
     return workspace;
   }
 
+  // beforeId 가 있으면 그 메시지보다 오래된 것을 가져온다 (커서 방식)
   async getWorkspaceDMChats(
     url: string,
     id: number,
     myId: number,
     perPage: number,
     page: number,
+    beforeId?: number,
   ) {
     const workspace = await this.findWorkspace(url, id, myId);
-    return this.dmsRepository
+    const query = this.dmsRepository
       .createQueryBuilder('dms')
       .innerJoinAndSelect('dms.Sender', 'sender')
       .innerJoinAndSelect('dms.Receiver', 'receiver')
@@ -46,11 +48,14 @@ export class DmsService {
         '((dms.SenderId = :myId AND dms.ReceiverId = :id) OR (dms.ReceiverId = :myId AND dms.SenderId = :id))',
         { id, myId },
       )
-      .orderBy('dms.createdAt', 'DESC')
-      .addOrderBy('dms.id', 'DESC')
-      .take(perPage)
-      .skip(perPage * (page - 1))
-      .getMany();
+      .orderBy('dms.id', 'DESC')
+      .take(perPage);
+    if (beforeId) {
+      query.andWhere('dms.id < :beforeId', { beforeId });
+    } else {
+      query.skip(perPage * (page - 1));
+    }
+    return query.getMany();
   }
 
   async getDMUnreadsCount(

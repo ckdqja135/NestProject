@@ -31,6 +31,9 @@ import { Users } from '../entities/Users';
 import { ChannelsService } from './channels.service';
 import { CreateChannelDto } from './dto/create-channel.dto';
 
+// 한 번에 가져오는 채팅 수 제한 (1~100)
+const clampPerPage = (perPage: number) => Math.min(Math.max(perPage, 1), 100);
+
 @ApiTags('CHANNEL')
 @ApiCookieAuth('connect.sid')
 @UseGuards(LoggedInGuard)
@@ -88,20 +91,27 @@ export class ChannelsController {
   @ApiOperation({ summary: '채널 채팅 목록' })
   @ApiQuery({ name: 'perPage', required: false })
   @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({
+    name: 'beforeId',
+    required: false,
+    description: '이 메시지 id 보다 오래된 메시지 (커서, page 대신 사용 권장)',
+  })
   @Get(':name/chats')
   getChats(
     @Param('url') url: string,
     @Param('name') name: string,
     @Query('perPage', new DefaultValuePipe(20), ParseIntPipe) perPage: number,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('beforeId', new DefaultValuePipe(0), ParseIntPipe) beforeId: number, // 0 이면 커서 없음
     @User() user: Users,
   ) {
     return this.channelsService.getWorkspaceChannelChats(
       url,
       name,
-      perPage,
-      page,
+      clampPerPage(perPage),
+      Math.max(page, 1),
       user.id,
+      beforeId,
     );
   }
 
