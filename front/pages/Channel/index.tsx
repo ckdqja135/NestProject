@@ -23,7 +23,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Scrollbars } from 'react-custom-scrollbars-2';
 import { useParams } from 'react-router';
 import { Redirect, useHistory } from 'react-router-dom';
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 
@@ -389,7 +389,6 @@ const Channel = () => {
           onCloseModal={onCloseModal}
           setShowInviteChannelModal={setShowInviteChannelModal}
         />
-        <ToastContainer position="bottom-center" />
         {dragOver && <DragOver>여기에 놓아서 이미지/GIF 업로드</DragOver>}
       </Container>
       {threadParent && userData && (
