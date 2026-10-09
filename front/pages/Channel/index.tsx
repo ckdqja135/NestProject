@@ -13,7 +13,7 @@ import useImageUpload from '@hooks/useImageUpload';
 import useTyping from '@hooks/useTyping';
 import { Header, Container, DragOver, HeaderButton, Layout } from '@pages/Channel/styles';
 import { IChannel, IChat, IDM, IReaction, IUser } from '@typings/db';
-import { createTempId, removeChatFromPages, updateChatInPages } from '@utils/chatPages';
+import { createTempId, cursorPageKey, removeChatFromPages, updateChatInPages } from '@utils/chatPages';
 import fetcher from '@utils/fetcher';
 import getErrorMessage from '@utils/getErrorMessage';
 import { toGifContent } from '@utils/gif';
@@ -47,7 +47,7 @@ const Channel = () => {
     mutate: mutateChat,
     setSize,
   } = useSWRInfinite<IChat[]>(
-    (index) => `/api/workspaces/${workspace}/channels/${channel}/chats?perPage=${PAGE_SIZE}&page=${index + 1}`,
+    cursorPageKey(`/api/workspaces/${workspace}/channels/${channel}/chats`, PAGE_SIZE),
     fetcher,
     {
       onSuccess(data) {

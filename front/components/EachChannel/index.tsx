@@ -39,9 +39,17 @@ const EachChannel: VFC<Props> = ({ channel }) => {
         mutate((prev) => (prev || 0) + 1, false);
       }
     };
+    // 메시지가 삭제되면 안 읽은 수를 서버에서 다시 받는다
+    const onDeleted = (data: { ChannelId: number }) => {
+      if (data.ChannelId === channel.id && !isViewingRef.current) {
+        mutate();
+      }
+    };
     socket?.on('message', onMessage);
+    socket?.on('messageDeleted', onDeleted);
     return () => {
       socket?.off('message', onMessage);
+      socket?.off('messageDeleted', onDeleted);
     };
   }, [socket, channel.id, userData?.id, mutate]);
 

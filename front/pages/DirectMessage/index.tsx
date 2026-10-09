@@ -12,7 +12,7 @@ import useOnlineList from '@hooks/useOnlineList';
 import { DragOver } from '@pages/Channel/styles';
 import { Header, Container } from '@pages/DirectMessage/styles';
 import { IChat, IDM } from '@typings/db';
-import { createTempId, removeChatFromPages, updateChatInPages } from '@utils/chatPages';
+import { createTempId, cursorPageKey, removeChatFromPages, updateChatInPages } from '@utils/chatPages';
 import getErrorMessage from '@utils/getErrorMessage';
 import fetcher from '@utils/fetcher';
 import { toGifContent } from '@utils/gif';
@@ -38,19 +38,15 @@ const DirectMessage = () => {
     data: chatData,
     mutate: mutateChat,
     setSize,
-  } = useSWRInfinite<IDM[]>(
-    (index) => `/api/workspaces/${workspace}/dms/${id}/chats?perPage=${PAGE_SIZE}&page=${index + 1}`,
-    fetcher,
-    {
-      onSuccess(data) {
-        if (data?.length === 1) {
-          setTimeout(() => {
-            scrollbarRef.current?.scrollToBottom();
-          }, 100);
-        }
-      },
+  } = useSWRInfinite<IDM[]>(cursorPageKey(`/api/workspaces/${workspace}/dms/${id}/chats`, PAGE_SIZE), fetcher, {
+    onSuccess(data) {
+      if (data?.length === 1) {
+        setTimeout(() => {
+          scrollbarRef.current?.scrollToBottom();
+        }, 100);
+      }
     },
-  );
+  });
   const [chat, onChangeChat, setChat] = useInput('');
   const scrollbarRef = useRef<Scrollbars>(null);
   const [dragOver, setDragOver] = useState(false);

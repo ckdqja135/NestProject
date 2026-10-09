@@ -42,9 +42,17 @@ const EachDM: VFC<Props> = ({ member, isOnline }) => {
         }
       }
     };
+    // 상대가 보낸 DM 이 삭제되면 안 읽은 수를 서버에서 다시 받는다
+    const onDMDeleted = (data: { SenderId: number; ReceiverId: number }) => {
+      if (data.SenderId === member.id && data.ReceiverId === userData?.id && !isViewingRef.current) {
+        mutate();
+      }
+    };
     socket?.on('dm', onDM);
+    socket?.on('dmDeleted', onDMDeleted);
     return () => {
       socket?.off('dm', onDM);
+      socket?.off('dmDeleted', onDMDeleted);
     };
   }, [socket, member.id, userData?.id, mutate]);
 

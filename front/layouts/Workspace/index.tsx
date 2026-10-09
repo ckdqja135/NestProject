@@ -16,8 +16,7 @@ import gravatar from 'gravatar';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router';
 import { Link, Redirect, Route, Switch } from 'react-router-dom';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { toast } from 'react-toastify';
 import useSWR from 'swr';
 
 import {
@@ -41,7 +40,10 @@ const Workspace = () => {
   const { workspace } = params;
   const [socket, disconnectSocket] = useSocket(workspace);
   const { data: userData, mutate: revalidateUser } = useSWR<IUser | false>('/api/users', fetcher);
-  const { data: channelData } = useSWR<IChannel[]>(userData ? `/api/workspaces/${workspace}/channels` : null, fetcher);
+  const { data: channelData, mutate: revalidateChannels } = useSWR<IChannel[]>(
+    userData ? `/api/workspaces/${workspace}/channels` : null,
+    fetcher,
+  );
   const [showCreateWorkspaceModal, setShowCreateWorkspaceModal] = useState(false);
   const [showInviteWorkspaceModal, setShowInviteWorkspaceModal] = useState(false);
   const [showCreateChannelModal, setShowCreateChannelModal] = useState(false);
@@ -101,10 +103,35 @@ const Workspace = () => {
     }
   }, [socket, userData, channelData]);
 
+  // 서버가 알려주는 멤버십 변경: 채널 초대, 워크스페이스 초대, 워크스페이스에서 내보내짐
+  useEffect(() => {
+    const onChannelsChanged = () => revalidateChannels();
+    const onWorkspacesChanged = () => revalidateUser();
+    const onRemoved = () => {
+      toast.info('워크스페이스에서 내보내졌습니다.', { position: 'bottom-center' });
+      revalidateUser();
+    };
+    socket?.on('channelsChanged', onChannelsChanged);
+    socket?.on('workspacesChanged', onWorkspacesChanged);
+    socket?.on('removedFromWorkspace', onRemoved);
+    return () => {
+      socket?.off('channelsChanged', onChannelsChanged);
+      socket?.off('workspacesChanged', onWorkspacesChanged);
+      socket?.off('removedFromWorkspace', onRemoved);
+    };
+  }, [socket, revalidateChannels, revalidateUser]);
+
   const currentWorkspace = userData ? userData.Workspaces.find((v) => v.url === workspace) : undefined;
 
   if (userData === false) {
     return <Redirect to="/login" />;
+  }
+  // 속하지 않은(내보내졌거나 없는) 워크스페이스 주소면 내 첫 워크스페이스로 보낸다
+  if (userData && !currentWorkspace) {
+    const first = userData.Workspaces[0];
+    if (first) {
+      return <Redirect to={`/workspace/${first.url}/channel/일반`} />;
+    }
   }
 
   return (
@@ -228,7 +255,6 @@ const Workspace = () => {
         onCloseModal={onCloseModal}
         setShowInviteWorkspaceModal={setShowInviteWorkspaceModal}
       />
-      <ToastContainer position="bottom-center" />
     </div>
   );
 };
