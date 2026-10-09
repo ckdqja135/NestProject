@@ -1,6 +1,7 @@
-import { IUser } from '@typings/db';
+import useSocket from '@hooks/useSocket';
+import { IDM, IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
-import React, { useEffect, VFC } from 'react';
+import React, { useEffect, useRef, VFC } from 'react';
 import { useParams } from 'react-router';
 import { NavLink, useLocation } from 'react-router-dom';
 import useSWR from 'swr';
@@ -21,11 +22,31 @@ const EachDM: VFC<Props> = ({ member, isOnline }) => {
     fetcher,
   );
 
+  const [socket] = useSocket(workspace);
+  const isViewing = location.pathname === `/workspace/${workspace}/dm/${member.id}`;
+  const isViewingRef = useRef(isViewing);
+  isViewingRef.current = isViewing;
+
   useEffect(() => {
-    if (location.pathname === `/workspace/${workspace}/dm/${member.id}`) {
+    if (isViewing) {
       mutate(0);
     }
-  }, [mutate, location.pathname, workspace, member]);
+  }, [mutate, isViewing]);
+
+  // 새 DM 이 오면 안 읽은 수를 실시간으로 올린다
+  useEffect(() => {
+    const onDM = (data: IDM) => {
+      if (data.SenderId === member.id && data.ReceiverId === userData?.id && data.SenderId !== userData?.id) {
+        if (!isViewingRef.current) {
+          mutate((prev) => (prev || 0) + 1, false);
+        }
+      }
+    };
+    socket?.on('dm', onDM);
+    return () => {
+      socket?.off('dm', onDM);
+    };
+  }, [socket, member.id, userData?.id, mutate]);
 
   return (
     <NavLink key={member.id} activeClassName="selected" to={`/workspace/${workspace}/dm/${member.id}`}>

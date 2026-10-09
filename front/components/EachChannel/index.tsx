@@ -1,6 +1,7 @@
-import { IChannel, IUser } from '@typings/db';
+import useSocket from '@hooks/useSocket';
+import { IChannel, IChat, IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
-import React, { useEffect, VFC } from 'react';
+import React, { useEffect, useRef, VFC } from 'react';
 import { useParams } from 'react-router';
 import { NavLink, useLocation } from 'react-router-dom';
 import useSWR from 'swr';
@@ -20,11 +21,29 @@ const EachChannel: VFC<Props> = ({ channel }) => {
     fetcher,
   );
 
+  const [socket] = useSocket(workspace);
+  const isViewing = location.pathname === `/workspace/${workspace}/channel/${channel.name}`;
+  const isViewingRef = useRef(isViewing);
+  isViewingRef.current = isViewing;
+
   useEffect(() => {
-    if (location.pathname === `/workspace/${workspace}/channel/${channel.name}`) {
+    if (isViewing) {
       mutate(0);
     }
-  }, [mutate, location.pathname, workspace, channel]);
+  }, [mutate, isViewing]);
+
+  // 새 메시지가 오면 안 읽은 수를 실시간으로 올린다 (내 메시지, 스레드 답글 제외)
+  useEffect(() => {
+    const onMessage = (data: IChat) => {
+      if (data.ChannelId === channel.id && !data.ParentId && data.UserId !== userData?.id && !isViewingRef.current) {
+        mutate((prev) => (prev || 0) + 1, false);
+      }
+    };
+    socket?.on('message', onMessage);
+    return () => {
+      socket?.off('message', onMessage);
+    };
+  }, [socket, channel.id, userData?.id, mutate]);
 
   return (
     <NavLink key={channel.name} activeClassName="selected" to={`/workspace/${workspace}/channel/${channel.name}`}>
