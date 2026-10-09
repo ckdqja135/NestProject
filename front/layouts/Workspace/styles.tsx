@@ -155,23 +155,82 @@ export const MenuScroll = styled.div`
 `;
 
 export const WorkspaceModal = styled.div`
-  padding: 10px 0 0;
+  width: 280px;
+  padding: 6px 0;
 
-  & h2 {
-    padding-left: 20px;
+  & > header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px 14px;
+    border-bottom: 1px solid #e8e8e8;
+
+    & .ws-icon {
+      flex: 0 0 36px;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: #4a154b;
+      color: white;
+      font-weight: 800;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    & > div {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    & strong {
+      font-size: 15px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    & small {
+      font-size: 12px;
+      color: #616061;
+    }
   }
 
-  & > button {
+  & > ul {
+    list-style: none;
+    margin: 0;
+    padding: 6px 0 0;
+  }
+
+  & li.divider {
+    height: 1px;
+    margin: 6px 0;
+    background: #e8e8e8;
+  }
+
+  & button {
+    display: block;
     width: 100%;
-    height: 28px;
-    padding: 4px;
+    padding: 7px 24px;
     border: none;
     background: transparent;
-    border-top: 1px solid rgb(28, 29, 28);
+    text-align: left;
+    font-size: 15px;
+    color: #1d1c1d;
     cursor: pointer;
 
-    &:last-of-type {
-      border-bottom: 1px solid rgb(28, 29, 28);
+    &:hover,
+    &:focus-visible {
+      background: #1264a3;
+      color: white;
+      outline: none;
+    }
+
+    &.danger:hover,
+    &.danger:focus-visible {
+      background: #e01e5a;
     }
   }
 `;

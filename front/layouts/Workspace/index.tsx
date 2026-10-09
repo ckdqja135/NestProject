@@ -99,10 +99,12 @@ const Workspace = () => {
   }, []);
 
   const onClickAddChannel = useCallback(() => {
+    setShowWorkspaceModal(false);
     setShowCreateChannelModal(true);
   }, []);
 
   const onClickInviteWorkspace = useCallback(() => {
+    setShowWorkspaceModal(false);
     setShowInviteWorkspaceModal(true);
   }, []);
 
@@ -132,6 +134,8 @@ const Workspace = () => {
       socket?.emit('login', { id: userData?.id, channels: channelData.map((v) => v.id) });
     }
   }, [socket, userData, channelData]);
+
+  const currentWorkspace = userData ? userData.Workspaces.find((v) => v.url === workspace) : undefined;
 
   if (userData === false) {
     return <Redirect to="/login" />;
@@ -177,12 +181,38 @@ const Workspace = () => {
             {userData?.Workspaces.find((v) => v.url === workspace)?.name}
           </WorkspaceName>
           <MenuScroll>
-            <Menu show={showWorkspaceModal} onCloseModal={toggleWorkspaceModal} style={{ top: 95, left: 80 }}>
+            <Menu
+              show={showWorkspaceModal}
+              onCloseModal={toggleWorkspaceModal}
+              style={{ top: 100, left: 76, minWidth: 0 }}
+              closeButton={false}
+            >
               <WorkspaceModal>
-                <h2>{userData?.Workspaces.find((v) => v.url === workspace)?.name}</h2>
-                <button onClick={onClickInviteWorkspace}>워크스페이스에 사용자 초대</button>
-                <button onClick={onClickAddChannel}>채널 만들기</button>
-                <button onClick={onLogOut}>로그아웃</button>
+                <header>
+                  <span className="ws-icon">{currentWorkspace?.name.slice(0, 1).toUpperCase()}</span>
+                  <div>
+                    <strong>{currentWorkspace?.name}</strong>
+                    <small>{currentWorkspace?.url}</small>
+                  </div>
+                </header>
+                <ul role="menu">
+                  <li>
+                    <button type="button" role="menuitem" onClick={onClickInviteWorkspace}>
+                      워크스페이스에 사용자 초대
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" role="menuitem" onClick={onClickAddChannel}>
+                      채널 만들기
+                    </button>
+                  </li>
+                  <li className="divider" role="separator" />
+                  <li>
+                    <button type="button" role="menuitem" className="danger" onClick={onLogOut}>
+                      {userData?.nickname ? `${userData.nickname} 로그아웃` : '로그아웃'}
+                    </button>
+                  </li>
+                </ul>
               </WorkspaceModal>
             </Menu>
             <ChannelList />
