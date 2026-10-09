@@ -12,8 +12,9 @@ interface Props {
   setSize: (f: (size: number) => number) => Promise<(IDM | IChat)[][] | undefined>;
   myId?: number;
   actions?: ChatActions;
+  intro?: React.ReactNode; // 첫 메시지까지 모두 불러왔을 때 맨 위에 보여줄 대화 시작 안내
 }
-const ChatList: FC<Props> = ({ scrollbarRef, isReachingEnd, isEmpty, chatSections, setSize, myId, actions }) => {
+const ChatList: FC<Props> = ({ scrollbarRef, isReachingEnd, isEmpty, chatSections, setSize, myId, actions, intro }) => {
   const onScroll = useCallback(
     (values) => {
       if (values.scrollTop === 0 && !isReachingEnd && !isEmpty) {
@@ -28,6 +29,7 @@ const ChatList: FC<Props> = ({ scrollbarRef, isReachingEnd, isEmpty, chatSection
   return (
     <ChatZone>
       <Scrollbars autoHide ref={scrollbarRef} onScrollFrame={onScroll}>
+        {isReachingEnd && intro}
         {Object.entries(chatSections).map(([date, chats]) => {
           return (
             <Section className={`section-${date}`} key={date}>

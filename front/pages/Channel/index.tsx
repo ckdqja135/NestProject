@@ -5,6 +5,7 @@ import InviteChannelModal from '@components/InviteChannelModal';
 import PinnedPanel from '@components/PinnedPanel';
 import ThreadPanel from '@components/ThreadPanel';
 import TypingIndicator from '@components/TypingIndicator';
+import ConversationIntro from '@components/ConversationIntro';
 import useInput from '@hooks/useInput';
 import useSocket from '@hooks/useSocket';
 import GifPicker from '@components/GifPicker';
@@ -154,6 +155,8 @@ const Channel = () => {
         return;
       }
       clearTypingUser(data.UserId);
+      // 보고 있는 동안 받은 메시지는 읽은 것으로 기록 (나중에 안 읽음으로 다시 잡히지 않게)
+      localStorage.setItem(`${workspace}-${channel}`, new Date().getTime().toString());
       // 스레드 답글이면 원본 메시지의 답글 수만 올린다 (답글 목록은 스레드 패널이 처리)
       if (data.ParentId) {
         mutateChat(
@@ -189,7 +192,7 @@ const Channel = () => {
         }
       });
     },
-    [channel, userData, mutateChat, clearTypingUser],
+    [workspace, channel, userData, mutateChat, clearTypingUser],
   );
 
   const onMessageUpdated = useCallback(
@@ -372,13 +375,24 @@ const Channel = () => {
           setSize={setSize}
           myId={userData?.id}
           actions={actions}
+          intro={
+            <ConversationIntro
+              icon={channelData?.private ? '🔒' : '#'}
+              title={`${channelData?.private ? '🔒 ' : '#'}${channel} 채널의 시작`}
+              description={
+                channelData?.private
+                  ? '초대받은 멤버만 볼 수 있는 비공개 채널입니다.'
+                  : '워크스페이스의 누구나 참여할 수 있는 공개 채널입니다.'
+              }
+            />
+          }
         />
         <TypingIndicator names={typingUsers} />
         <ChatBox
           onSubmitForm={onSubmitForm}
           chat={chat}
           onChangeChat={onChangeChatWithTyping}
-          placeholder={`Message #${channel}`}
+          placeholder={`${channelData?.private ? '🔒' : '#'}${channel}에 메시지 보내기`}
           data={channelMembersData}
           onAttachFiles={upload}
           uploading={uploading}

@@ -7,6 +7,8 @@ import GifPicker from '@components/GifPicker';
 import useImageUpload from '@hooks/useImageUpload';
 import useTyping from '@hooks/useTyping';
 import TypingIndicator from '@components/TypingIndicator';
+import ConversationIntro from '@components/ConversationIntro';
+import useOnlineList from '@hooks/useOnlineList';
 import { DragOver } from '@pages/Channel/styles';
 import { Header, Container } from '@pages/DirectMessage/styles';
 import { IChat, IDM } from '@typings/db';
@@ -29,6 +31,7 @@ const PAGE_SIZE = 20;
 const DirectMessage = () => {
   const { workspace, id } = useParams<{ workspace: string; id: string }>();
   const [socket] = useSocket(workspace);
+  const onlineList = useOnlineList(workspace);
   const { data: myData } = useSWR('/api/users', fetcher);
   const { data: userData } = useSWR(`/api/workspaces/${workspace}/users/${id}`, fetcher);
   const {
@@ -126,6 +129,8 @@ const DirectMessage = () => {
     (data: IDM) => {
       if (data.SenderId === Number(id) && myData.id !== Number(id)) {
         clearTypingUser(data.SenderId);
+        // 보고 있는 동안 받은 메시지는 읽은 것으로 기록 (나중에 안 읽음으로 다시 잡히지 않게)
+        localStorage.setItem(`${workspace}-${id}`, new Date().getTime().toString());
         mutateChat((chatData) => prependChat(chatData, data), false).then(() => {
           if (scrollbarRef.current) {
             if (
@@ -148,7 +153,7 @@ const DirectMessage = () => {
         });
       }
     },
-    [id, myData, mutateChat, clearTypingUser],
+    [id, workspace, myData, mutateChat, clearTypingUser],
   );
 
   // 이 대화방(나 ↔ id)의 메시지인지
@@ -243,11 +248,23 @@ const DirectMessage = () => {
 
   const chatSections = makeSection(chatData ? ([] as IDM[]).concat(...chatData).reverse() : []);
 
+  const isSelf = myData.id === userData.id;
+  const isOnline = onlineList.includes(userData.id);
+  const mentionTargets = isSelf ? [myData] : [userData, myData];
+
   return (
     <Container onDrop={onDrop} onDragOver={onDragOver} onDragLeave={onDragLeave}>
       <Header>
-        <img src={gravatar.url(userData.email, { s: '24px', d: 'retro' })} alt={userData.nickname} />
-        <span>{userData.nickname}</span>
+        <img src={gravatar.url(userData.email, { s: '64px', d: 'retro' })} alt="" />
+        <div>
+          <strong>
+            {userData.nickname}
+            {isSelf && <span className="me"> (나)</span>}
+          </strong>
+          <small className={isOnline ? 'online' : undefined}>
+            {isSelf ? '나에게 보내는 메모' : isOnline ? '● 온라인' : '○ 오프라인'}
+          </small>
+        </div>
       </Header>
       <ChatList
         scrollbarRef={scrollbarRef}
@@ -257,14 +274,30 @@ const DirectMessage = () => {
         setSize={setSize}
         myId={myData.id}
         actions={actions}
+        intro={
+          <ConversationIntro
+            image={gravatar.url(userData.email, { s: '144px', d: 'retro' })}
+            title={isSelf ? `${userData.nickname} (나)` : userData.nickname}
+            description={
+              isSelf ? (
+                '나에게 보내는 메모 공간입니다. 할 일, 링크, 메모를 남겨두세요.'
+              ) : (
+                <>
+                  <b>{userData.nickname}</b>님과 나눈 다이렉트 메시지의 시작입니다. 여기서 나눈 대화는 두 사람만 볼 수
+                  있습니다.
+                </>
+              )
+            }
+          />
+        }
       />
       <TypingIndicator names={typingUsers} />
       <ChatBox
         onSubmitForm={onSubmitForm}
         chat={chat}
         onChangeChat={onChangeChatWithTyping}
-        placeholder={`Message ${userData.nickname}`}
-        data={[]}
+        placeholder={isSelf ? '나에게 메모 남기기' : `${userData.nickname}님에게 메시지 보내기`}
+        data={mentionTargets}
         onAttachFiles={upload}
         uploading={uploading}
         toolbarExtra={<GifPicker onSelect={onSelectGif} />}

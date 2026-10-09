@@ -18,7 +18,36 @@ export const Header = styled.header`
   font-weight: bold;
   align-items: center;
 
-  & img {
-    margin-right: 5px;
+  & > img {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    margin-right: 10px;
+  }
+
+  & > div {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+  }
+
+  & strong {
+    font-size: 16px;
+  }
+
+  & .me {
+    font-weight: normal;
+    color: #616061;
+  }
+
+  & small {
+    font-size: 12px;
+    font-weight: normal;
+    color: #616061;
+    margin-top: 2px;
+  }
+
+  & small.online {
+    color: #007a5a;
   }
 `;
