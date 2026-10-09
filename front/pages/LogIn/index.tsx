@@ -6,6 +6,9 @@ import React, { useCallback, useState } from 'react';
 import { Redirect } from 'react-router-dom';
 import useSWR from 'swr';
 
+// 회원가입 시 자동으로 들어가는 기본 워크스페이스
+const DEFAULT_WORKSPACE = 'shlack';
+
 const LogIn = () => {
   const { data: userData, error, mutate } = useSWR('/api/users', fetcher);
   const [logInError, setLogInError] = useState(false);
@@ -37,12 +40,12 @@ const LogIn = () => {
   console.log(error, userData);
   if (!error && userData) {
     console.log('로그인됨', userData);
-    return <Redirect to="/workspace/sleact/channel/일반" />;
+    return <Redirect to={`/workspace/${userData.Workspaces?.[0]?.url ?? DEFAULT_WORKSPACE}/channel/일반`} />;
   }
 
   return (
     <div id="container">
-      <Header>Sleact</Header>
+      <Header>Shlack</Header>
       <Form onSubmit={onSubmit}>
         <Label id="email-label">
           <span>이메일 주소</span>

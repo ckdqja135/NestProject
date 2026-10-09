@@ -5,7 +5,7 @@ export class CreateWorkspaceDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(30)
-  @ApiProperty({ example: '슬리액트', description: '워크스페이스명' })
+  @ApiProperty({ example: '슐랙', description: '워크스페이스명' })
   public workspace: string;
 
   @IsString()
@@ -14,6 +14,6 @@ export class CreateWorkspaceDto {
   @Matches(/^[a-zA-Z0-9-_]+$/, {
     message: 'url은 영문, 숫자, -, _ 만 사용할 수 있습니다.',
   })
-  @ApiProperty({ example: 'sleact', description: 'url 주소' })
+  @ApiProperty({ example: 'shlack', description: 'url 주소' })
   public url: string;
 }

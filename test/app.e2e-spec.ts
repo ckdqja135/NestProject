@@ -24,7 +24,7 @@ describe('AppController (e2e)', () => {
     return request(app.getHttpServer())
       .get('/')
       .expect(200)
-      .expect(/Sleact API server/);
+      .expect(/Shlack API server/);
   });
 
   it('DB(.env 설정)에 연결되고 시드 데이터가 있다', async () => {
@@ -34,6 +34,6 @@ describe('AppController (e2e)', () => {
     const [workspace] = await dataSource.query(
       'SELECT url FROM workspaces WHERE id = 1',
     );
-    expect(workspace?.url).toBe('sleact');
+    expect(workspace?.url).toBe('shlack');
   });
 });

@@ -38,7 +38,7 @@ describe('DmsService', () => {
   });
 
   afterEach(() => {
-    delete onlineMap['/ws-sleact'];
+    delete onlineMap['/ws-shlack'];
   });
 
   it('should be defined', () => {
@@ -46,12 +46,12 @@ describe('DmsService', () => {
   });
 
   it('DM 저장 후 받는 사람과 보낸 사람의 소켓으로 dm 이벤트를 보낸다', async () => {
-    onlineMap['/ws-sleact'] = { socketA: 1, socketB: 2, socketC: 3 };
+    onlineMap['/ws-shlack'] = { socketA: 1, socketB: 2, socketC: 3 };
     dmsRepository.save.mockResolvedValue({ id: 5 });
     const dm = { id: 5, content: '안녕', SenderId: 1, ReceiverId: 2 };
     dmsRepository.findOne.mockResolvedValue(dm);
 
-    await service.createWorkspaceDMChats('sleact', '안녕', 2, 1);
+    await service.createWorkspaceDMChats('shlack', '안녕', 2, 1);
 
     expect(dmsRepository.save).toHaveBeenCalledWith({
       content: '안녕',
@@ -70,7 +70,7 @@ describe('DmsService', () => {
     dmsRepository.save.mockResolvedValue({ id: 5 });
     dmsRepository.findOne.mockResolvedValue({ id: 5 });
 
-    await service.createWorkspaceDMChats('sleact', '안녕', 2, 1);
+    await service.createWorkspaceDMChats('shlack', '안녕', 2, 1);
 
     expect(eventsGateway.server.to).not.toHaveBeenCalled();
   });
@@ -83,7 +83,7 @@ describe('DmsService', () => {
         ReceiverId: 1,
       });
       await expect(
-        service.editDM('sleact', 2, 5, '수정', 1),
+        service.editDM('shlack', 2, 5, '수정', 1),
       ).rejects.toBeInstanceOf(ForbiddenException);
     });
 
@@ -93,20 +93,20 @@ describe('DmsService', () => {
         SenderId: 1,
         ReceiverId: 3,
       });
-      await expect(service.deleteDM('sleact', 2, 5, 1)).rejects.toBeInstanceOf(
+      await expect(service.deleteDM('shlack', 2, 5, 1)).rejects.toBeInstanceOf(
         NotFoundException,
       );
     });
 
     it('보낸 DM 을 삭제하면 두 사람에게 dmDeleted 이벤트를 보낸다', async () => {
-      onlineMap['/ws-sleact'] = { socketA: 1, socketB: 2 };
+      onlineMap['/ws-shlack'] = { socketA: 1, socketB: 2 };
       dmsRepository.findOne.mockResolvedValue({
         id: 5,
         SenderId: 1,
         ReceiverId: 2,
       });
 
-      await service.deleteDM('sleact', 2, 5, 1);
+      await service.deleteDM('shlack', 2, 5, 1);
 
       expect(dmsRepository.delete).toHaveBeenCalledWith(5);
       expect(eventsGateway.server.to).toHaveBeenCalledWith([

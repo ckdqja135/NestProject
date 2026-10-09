@@ -56,12 +56,12 @@ const SignUp = () => {
   );
 
   if (userData) {
-    return <Redirect to="/workspace/sleact" />;
+    return <Redirect to={`/workspace/${userData.Workspaces?.[0]?.url ?? 'shlack'}/channel/일반`} />;
   }
 
   return (
     <div id="container">
-      <Header>Sleact</Header>
+      <Header>Shlack</Header>
       <Form onSubmit={onSubmit}>
         <Label id="email-label">
           <span>이메일 주소</span>

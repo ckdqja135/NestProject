@@ -70,20 +70,20 @@ describe('WorkspacesService', () => {
     });
 
     it('소유자가 아닌 사람이 다른 멤버를 내보내면 ForbiddenException', async () => {
-      await expect(service.kickMember('sleact', 3, 2)).rejects.toBeInstanceOf(
+      await expect(service.kickMember('shlack', 3, 2)).rejects.toBeInstanceOf(
         ForbiddenException,
       );
     });
 
     it('소유자는 워크스페이스를 나갈 수 없다', async () => {
-      await expect(service.kickMember('sleact', 10, 10)).rejects.toBeInstanceOf(
+      await expect(service.kickMember('shlack', 10, 10)).rejects.toBeInstanceOf(
         BadRequestException,
       );
     });
 
     it('본인 탈퇴 시 워크스페이스와 모든 채널 멤버에서 제거한다', async () => {
       channelsRepository.find.mockResolvedValue([{ id: 1 }, { id: 2 }]);
-      await service.kickMember('sleact', 2, 2);
+      await service.kickMember('shlack', 2, 2);
       expect(workspaceMembersRepository.delete).toHaveBeenCalledWith({
         WorkspaceId: 1,
         UserId: 2,

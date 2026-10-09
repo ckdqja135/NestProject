@@ -38,10 +38,10 @@ describe('WorkspacesController', () => {
 
   it('멤버 초대 후 ok 를 반환한다', async () => {
     await expect(
-      controller.inviteMembersToWorkspace('sleact', { email: 'b@b.com' }, user),
+      controller.inviteMembersToWorkspace('shlack', { email: 'b@b.com' }, user),
     ).resolves.toBe('ok');
     expect(workspacesService.inviteMember).toHaveBeenCalledWith(
-      'sleact',
+      'shlack',
       'b@b.com',
       1,
     );

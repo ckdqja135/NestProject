@@ -24,10 +24,10 @@ describe('DmsController', () => {
     const saved = { id: 1, content: '안녕' };
     dmsService.createWorkspaceDMChats.mockResolvedValue(saved);
     await expect(
-      controller.postChat('sleact', 2, { content: '안녕' }, { id: 1 } as any),
+      controller.postChat('shlack', 2, { content: '안녕' }, { id: 1 } as any),
     ).resolves.toBe(saved);
     expect(dmsService.createWorkspaceDMChats).toHaveBeenCalledWith(
-      'sleact',
+      'shlack',
       '안녕',
       2,
       1,

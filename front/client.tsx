@@ -9,8 +9,7 @@ import SWRDevtools from '@jjordy/swr-devtools';
 import App from './layouts/App';
 
 axios.defaults.withCredentials = true;
-axios.defaults.baseURL =
-  process.env.NODE_ENV === 'production' ? 'https://sleact.nodebird.com' : 'http://localhost:3090';
+axios.defaults.baseURL = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3090'; // 배포 시에는 같은 서버(same origin)
 console.log('env', process.env.NODE_ENV === 'production');
 render(
   <BrowserRouter>

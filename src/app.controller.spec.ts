@@ -20,7 +20,7 @@ describe('AppController', () => {
 
   describe('root', () => {
     it('서버 안내 문구를 반환한다', () => {
-      expect(appController.getHello()).toBe('Sleact API server (env: test)');
+      expect(appController.getHello()).toBe('Shlack API server (env: test)');
     });
   });
 });

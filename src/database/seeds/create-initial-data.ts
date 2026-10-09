@@ -8,8 +8,8 @@ export default class InitialDataSeeder implements Seeder {
   public async run(dataSource: DataSource): Promise<any> {
     await dataSource.getRepository(Workspaces).save({
       id: 1,
-      name: 'Sleact',
-      url: 'sleact',
+      name: 'Shlack',
+      url: 'shlack',
     });
     await dataSource.getRepository(Channels).save({
       id: 1,

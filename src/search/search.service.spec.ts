@@ -55,13 +55,13 @@ describe('SearchService', () => {
   });
 
   it('빈 검색어는 BadRequestException', async () => {
-    await expect(service.search('sleact', '   ', 1)).rejects.toBeInstanceOf(
+    await expect(service.search('shlack', '   ', 1)).rejects.toBeInstanceOf(
       BadRequestException,
     );
   });
 
   it('채널 메시지와 DM 검색 결과를 함께 반환한다', async () => {
-    await expect(service.search('sleact', ' 바나나 ', 1)).resolves.toEqual({
+    await expect(service.search('shlack', ' 바나나 ', 1)).resolves.toEqual({
       chats: [{ id: 1 }],
       dms: [{ id: 2 }],
     });

@@ -30,7 +30,7 @@ export class UsersService {
         nickname,
         password: hashedPassword,
       });
-      // 기본 워크스페이스(sleact)와 기본 채널(일반)에 자동 가입
+      // 기본 워크스페이스(shlack)와 기본 채널(일반)에 자동 가입
       await queryRunner.manager.getRepository(WorkspaceMembers).save({
         UserId: returned.id,
         WorkspaceId: 1,
