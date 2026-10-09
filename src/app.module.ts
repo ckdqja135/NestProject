@@ -10,6 +10,7 @@ import { DmsModule } from './dms/dms.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { EventsModule } from './events/events.module';
+import { SearchModule } from './search/search.module';
 import { ChannelChats } from './entities/ChannelChats';
 import { ChannelMembers } from './entities/ChannelMembers';
 import { Channels } from './entities/Channels';
@@ -52,6 +53,7 @@ import { Workspaces } from './entities/Workspaces';
     ChannelsModule,
     DmsModule,
     EventsModule,
+    SearchModule,
   ],
   controllers: [AppController],
   providers: [AppService],
