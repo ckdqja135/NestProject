@@ -6,6 +6,8 @@ export const Container = styled.div`
   height: calc(100vh - 38px);
   flex-flow: column;
   position: relative;
+  flex: 1;
+  min-width: 0;
 `;
 
 export const Header = styled.header`
@@ -31,4 +33,24 @@ export const DragOver = styled.div`
   align-items: center;
   justify-content: center;
   font-size: 40px;
+`;
+
+export const Layout = styled.div`
+  display: flex;
+  height: calc(100vh - 38px);
+`;
+
+export const HeaderButton = styled.button`
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  margin-right: 4px;
+
+  &:hover,
+  &.active {
+    background: #f2f2f2;
+  }
 `;
