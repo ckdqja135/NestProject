@@ -3,8 +3,7 @@ import styled from '@emotion/styled';
 export const List = styled.div`
   max-height: 360px;
   overflow-y: auto;
-  margin-bottom: 24px;
-  text-align: left;
+  margin: 0 -4px;
   border-top: 1px solid #eee;
 `;
 
