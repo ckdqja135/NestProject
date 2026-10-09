@@ -1,4 +1,4 @@
-import Chat from '@components/Chat';
+import Chat, { ChatActions } from '@components/Chat';
 import { ChatZone, Section, StickyHeader } from '@components/ChatList/styles';
 import { IChat, IDM } from '@typings/db';
 import React, { FC, RefObject, useCallback } from 'react';
@@ -10,8 +10,10 @@ interface Props {
   isEmpty: boolean;
   chatSections: { [key: string]: (IDM | IChat)[] };
   setSize: (f: (size: number) => number) => Promise<(IDM | IChat)[][] | undefined>;
+  myId?: number;
+  actions?: ChatActions;
 }
-const ChatList: FC<Props> = ({ scrollbarRef, isReachingEnd, isEmpty, chatSections, setSize }) => {
+const ChatList: FC<Props> = ({ scrollbarRef, isReachingEnd, isEmpty, chatSections, setSize, myId, actions }) => {
   const onScroll = useCallback(
     (values) => {
       if (values.scrollTop === 0 && !isReachingEnd && !isEmpty) {
@@ -33,7 +35,7 @@ const ChatList: FC<Props> = ({ scrollbarRef, isReachingEnd, isEmpty, chatSection
                 <button>{date}</button>
               </StickyHeader>
               {chats.map((chat) => (
-                <Chat key={chat.id} data={chat} />
+                <Chat key={chat.id} data={chat} myId={myId} actions={actions} />
               ))}
             </Section>
           );

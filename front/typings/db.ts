@@ -16,6 +16,13 @@ export interface IChannel {
   WorkspaceId: number;
 }
 
+export interface IReaction {
+  id: number;
+  emoji: string;
+  ChatId: number;
+  UserId: number;
+}
+
 export interface IChat {
   // 채널의 채팅
   id: number;
@@ -23,8 +30,13 @@ export interface IChat {
   User: IUser; // 보낸 사람
   content: string;
   createdAt: Date;
+  editedAt?: Date | null; // 내용을 수정한 시각
   ChannelId: number;
   Channel: IChannel;
+  ParentId?: number | null; // 스레드 답글이면 원본 메시지 id
+  pinned?: boolean;
+  replyCount?: number;
+  Reactions?: IReaction[];
 }
 
 export interface IDM {
@@ -36,6 +48,7 @@ export interface IDM {
   Receiver: IUser;
   content: string;
   createdAt: Date;
+  editedAt?: Date | null;
 }
 
 export interface IWorkspace {
@@ -43,4 +56,16 @@ export interface IWorkspace {
   name: string;
   url: string; // 주소 창에 보이는 주소
   OwnerId: number; // 워크스페이스 만든 사람 아이디
+}
+
+export interface ISearchResult {
+  chats: IChat[];
+  dms: IDM[];
+}
+
+export interface ITyping {
+  userId: number;
+  nickname: string;
+  channelId: number | null;
+  dm: boolean;
 }
