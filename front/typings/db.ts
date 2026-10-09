@@ -12,7 +12,7 @@ export interface IUserWithOnline extends IUser {
 export interface IChannel {
   id: number;
   name: string;
-  private: boolean; // 비공개 채널 여부, 강좌에서는 모두 false(공개)
+  private: boolean; // 비공개 채널 여부 (초대받은 사람만 참여)
   WorkspaceId: number;
 }
 

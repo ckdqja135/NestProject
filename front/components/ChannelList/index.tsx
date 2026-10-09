@@ -1,4 +1,5 @@
 import { CollapseButton } from '@components/DMList/styles';
+import BrowseChannelsModal from '@components/BrowseChannelsModal';
 import EachChannel from '@components/EachChannel';
 import { IChannel, IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
@@ -14,6 +15,7 @@ interface Props {
 const ChannelList: FC<Props> = () => {
   const { workspace } = useParams<{ workspace?: string }>();
   const [channelCollapse, setChannelCollapse] = useState(false);
+  const [showBrowse, setShowBrowse] = useState(false);
   const { data: userData } = useSWR<IUser>('/api/users', fetcher, {
     dedupingInterval: 2000, // 2초
   });
@@ -40,7 +42,26 @@ const ChannelList: FC<Props> = () => {
           channelData?.map((channel) => {
             return <EachChannel key={channel.id} channel={channel} />;
           })}
+        {!channelCollapse && (
+          <button
+            type="button"
+            onClick={() => setShowBrowse(true)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'rgb(188, 171, 188)',
+              padding: '4px 16px 4px 36px',
+              cursor: 'pointer',
+              fontSize: 15,
+              textAlign: 'left',
+              width: '100%',
+            }}
+          >
+            ＋ 채널 둘러보기
+          </button>
+        )}
       </div>
+      <BrowseChannelsModal show={showBrowse} workspace={workspace} onCloseModal={() => setShowBrowse(false)} />
     </>
   );
 };
