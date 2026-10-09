@@ -11,8 +11,9 @@ interface Props {
   onChangeChat: (e: any) => void;
   placeholder: string;
   data?: IUser[];
+  inputId?: string;
 }
-const ChatBox: FC<Props> = ({ onSubmitForm, chat, onChangeChat, placeholder, data }) => {
+const ChatBox: FC<Props> = ({ onSubmitForm, chat, onChangeChat, placeholder, data, inputId = 'editor-chat' }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     if (textareaRef.current) {
@@ -57,7 +58,7 @@ const ChatBox: FC<Props> = ({ onSubmitForm, chat, onChangeChat, placeholder, dat
     <ChatArea>
       <Form onSubmit={onSubmitForm}>
         <MentionsTextarea
-          id="editor-chat"
+          id={inputId}
           value={chat}
           onChange={onChangeChat}
           onKeyPress={onKeydownChat}

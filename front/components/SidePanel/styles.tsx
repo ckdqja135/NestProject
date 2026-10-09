@@ -1,0 +1,67 @@
+import styled from '@emotion/styled';
+
+export const Panel = styled.aside`
+  width: 380px;
+  flex: 0 0 380px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-left: 1px solid #ddd;
+  background: white;
+`;
+
+export const PanelHeader = styled.header`
+  height: 64px;
+  flex: 0 0 64px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px 0 20px;
+  border-bottom: 1px solid #eee;
+  font-weight: bold;
+
+  & > span {
+    flex: 1;
+  }
+
+  & > small {
+    font-weight: normal;
+    color: #888;
+    margin-left: 6px;
+    flex: 1;
+  }
+
+  & > button {
+    border: none;
+    background: transparent;
+    font-size: 24px;
+    cursor: pointer;
+    line-height: 1;
+  }
+`;
+
+export const PanelBody = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+`;
+
+export const Divider = styled.div`
+  display: flex;
+  align-items: center;
+  margin: 8px 20px;
+  font-size: 12px;
+  color: #888;
+
+  &::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #eee;
+    margin-left: 8px;
+  }
+`;
+
+export const EmptyText = styled.p`
+  padding: 20px;
+  color: #888;
+  text-align: center;
+`;
