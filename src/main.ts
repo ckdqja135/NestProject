@@ -9,6 +9,7 @@ import cookieParser from 'cookie-parser';
 import session from 'express-session';
 import path from 'path';
 import fs from 'fs';
+import { SessionIoAdapter } from './events/session-io.adapter';
 
 declare const module: any;
 
@@ -28,26 +29,33 @@ async function bootstrap() {
   app.useStaticAssets(uploadsDir, { prefix: '/uploads' });
 
   const config = new DocumentBuilder()
-    .setTitle('Sleact API')
-    .setDescription('Sleact 개발을 위한 API 문서입니다.')
+    .setTitle('Shlack API')
+    .setDescription('Shlack 개발을 위한 API 문서입니다.')
     .setVersion('1.0')
     .addCookieAuth('connect.sid')
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
+  const sessionMiddleware = session({
+    resave: false,
+    saveUninitialized: false,
+    secret: process.env.SECRET,
+    cookie: {
+      httpOnly: true,
+    },
+  });
   app.use(cookieParser());
-  app.use(
-    session({
-      resave: false,
-      saveUninitialized: false,
-      secret: process.env.SECRET,
-      cookie: {
-        httpOnly: true,
-      },
-    }),
-  );
+  app.use(sessionMiddleware);
   app.use(passport.initialize());
   app.use(passport.session());
+  // 소켓 연결에도 같은 세션을 적용해 로그인한 사용자만 접속할 수 있게 한다
+  app.useWebSocketAdapter(
+    new SessionIoAdapter(app, [
+      sessionMiddleware,
+      passport.initialize(),
+      passport.session(),
+    ]),
+  );
 
   const port = process.env.PORT || 3002;
   await app.listen(port);
