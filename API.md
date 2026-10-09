@@ -12,10 +12,17 @@ HTTP 요청 리스트(ajax)
 - return: IChannel[]
 ### POST /workspaces/:workspace/channels
 - :workspace 내부에 채널을 생성함
-- body: { name: string(이름) }
+- body: { name: string(이름), private?: boolean(비공개 채널 여부) }
+- return: IChannel
+### GET /workspaces/:workspace/channels/browse
+- 채널 둘러보기: 공개 채널 목록 (비공개 채널은 포함되지 않음)
+- return: (IChannel & { memberCount: number, joined: boolean })[]
+### POST /workspaces/:workspace/channels/:channel/join
+- 공개 채널에 참여 (비공개 채널은 초대로만 참여, 404)
 - return: IChannel
 ### GET /workspaces/:workspace/channels/:channel
 - :workspace 내부의 :channel 정보를 가져옴
+- 채널 관련 API(:channel 이 들어가는 API)는 모두 채널 멤버만 사용 가능. 비멤버는 공개 채널이면 403, 비공개 채널이면 404
 - return: IChannel
 ### GET /workspaces/:workspace/channels/:channel/chats
 - :workspace 내부의 :channel의 채팅을 가져옴
@@ -64,7 +71,7 @@ HTTP 요청 리스트(ajax)
 - 채널 나가기 (일반 채널은 불가)
 - return: 'ok'
 ### POST /workspaces/:workspace/channels/:channel/images
-- :workspace 내부의 :channel의 이미지를 저장
+- :workspace 내부의 :channel의 이미지를 저장 (JPG/PNG/GIF/WebP, 20MB 이하, 최대 10개)
 - body: { image: 이미지(multipart) }
 - return: 'ok'
 - message 소켓 이벤트가 emit됨
@@ -90,6 +97,14 @@ HTTP 요청 리스트(ajax)
 - 내가 보낸 DM 삭제
 - return: 'ok'
 - dmDeleted 소켓 이벤트가 emit됨
+### GET /gifs/status
+- GIF 검색 사용 가능 여부 (서버에 GIPHY_API_KEY 설정 여부)
+- return: { enabled: boolean }
+### GET /gifs
+- GIPHY GIF 검색 (q 가 없으면 인기 GIF)
+- query: { q?: string, offset?: number }
+- return: { id, title, url, previewUrl, width, height }[]
+- GIF 메시지는 채팅 본문을 `gif:<url>` 로 보내며, GIPHY 미디어 주소만 이미지로 표시됨
 ### GET /workspaces/:workspace/search
 - 참여 중인 채널 메시지와 내 DM 검색
 - query: { q: string(검색어) }
@@ -166,11 +181,12 @@ HTTP 요청 리스트(ajax)
 ## socket.emit
 클라이언트에서 서버로 보내는 이벤트(클라이언트에서는 emit으로 보냄)
 ### login
-- 워크스페이스, 채널이 로딩 완료되었을 때 서버에 로그인했음을 알리는 이벤트
-- 클라이언트 data: { id: number(유저 아이디), channels: number[](채널 아이디 리스트) }
+- 워크스페이스, 채널이 로딩 완료되었을 때(채널 참여/나가기 후 포함) 보내는 이벤트
+- 서버는 클라이언트가 보낸 값을 쓰지 않고, 로그인 세션과 DB 의 채널 멤버 정보로 참여 채널 방을 다시 맞춘다
+- 소켓 연결 자체도 로그인 세션 쿠키가 있어야 하며, 워크스페이스 멤버가 아니면 연결이 끊긴다
 ### typing
 - 입력 중임을 알리는 이벤트 (채널은 참여 중인 채널에만 전달)
-- 클라이언트 data: { channelId: number, nickname } 또는 { receiverId: number, nickname }
+- 클라이언트 data: { channelId: number } 또는 { receiverId: number } (닉네임은 세션 사용자 기준)
 
 ## disconnect
 - 클라이언트에서 소켓 연결을 종료하는 함수
