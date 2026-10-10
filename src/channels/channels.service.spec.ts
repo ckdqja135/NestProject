@@ -61,6 +61,7 @@ describe('ChannelsService', () => {
     update: jest.fn(),
     delete: jest.fn(),
     createQueryBuilder: jest.fn(),
+    query: jest.fn(),
   };
   const reactionsRepository = {
     findOne: jest.fn(),
@@ -307,6 +308,30 @@ describe('ChannelsService', () => {
         ChannelId: 4,
         UserId: 1,
       });
+    });
+  });
+
+  describe('스레드 모아 보기', () => {
+    it('최근 답글 순서를 지키고 원본 메시지에 마지막 답글을 붙인다', async () => {
+      channelChatsRepository.query.mockResolvedValue([
+        { id: '20', lastReplyId: '25', lastReplyAt: new Date() },
+        { id: '10', lastReplyId: '15', lastReplyAt: new Date() },
+      ]);
+      qb.getMany.mockResolvedValue([{ id: 10 }, { id: 20 }]);
+      channelChatsRepository.find.mockResolvedValue([
+        { id: 15, content: '옛 답글' },
+        { id: 25, content: '새 답글' },
+      ]);
+      const threads = await service.getMyThreads('shlack', 1);
+      expect(threads.map((t: any) => [t.id, t.lastReply.id])).toEqual([
+        [20, 25],
+        [10, 15],
+      ]);
+    });
+
+    it('참여한 스레드가 없으면 빈 목록', async () => {
+      channelChatsRepository.query.mockResolvedValue([]);
+      await expect(service.getMyThreads('shlack', 1)).resolves.toEqual([]);
     });
   });
 

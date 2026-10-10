@@ -16,12 +16,13 @@ import { parseFileContent } from '@utils/fileStore';
 import FileAttachment from '@components/FileAttachment';
 import dayjs from 'dayjs';
 import { avatarUrl } from '@utils/avatar';
-import React, { FC, useMemo, memo, useState, useCallback } from 'react';
+import React, { FC, useMemo, memo, useState, useCallback, useEffect } from 'react';
 import { useParams } from 'react-router';
 import useSWR from 'swr';
 import fetcher from '@utils/fetcher';
 import useSaved, { useToggleSaved } from '@hooks/useSaved';
 import { toast } from 'react-toastify';
+import { subscribeEditRequest } from '@utils/editRequest';
 
 export const EMOJIS = ['👍', '❤️', '😂', '🎉', '😮', '👀'];
 
@@ -111,6 +112,17 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
     setEditText(data.content);
     setEditing(true);
   }, [data.content]);
+
+  // 입력창에서 ↑ 를 누르면 (내 마지막 메시지인) 이 메시지를 수정 모드로 연다
+  useEffect(
+    () =>
+      subscribeEditRequest((id) => {
+        if (id === data.id) {
+          onStartEdit();
+        }
+      }),
+    [data.id, onStartEdit],
+  );
 
   const onSaveEdit = useCallback(() => {
     const content = editText.trim();
@@ -207,7 +219,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
           {data.editedAt && <span className="edited">(수정됨)</span>}
         </div>
         {editing ? (
-          <EditBox>
+          <EditBox data-editing="true">
             <textarea
               autoFocus
               value={editText}

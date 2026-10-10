@@ -6,6 +6,9 @@ import InviteWorkspaceModal from '@components/InviteWorkspaceModal';
 import MembersModal from '@components/MembersModal';
 import MentionsButton from '@components/MentionsButton';
 import SavedButton from '@components/SavedButton';
+import ThreadsButton from '@components/ThreadsButton';
+import QuickSwitcher from '@components/QuickSwitcher';
+import ShortcutsModal from '@components/ShortcutsModal';
 import Menu from '@components/Menu';
 import SearchModal from '@components/SearchModal';
 import useSocket from '@hooks/useSocket';
@@ -72,6 +75,28 @@ const Workspace = () => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showWorkspaceSettings, setShowWorkspaceSettings] = useState(false);
+  const [showQuickSwitcher, setShowQuickSwitcher] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
+  // 전역 단축키: Ctrl/⌘+K 빠른 이동, Ctrl/⌘+/ 단축키 보기
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) {
+        return;
+      }
+      if (e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setShowShortcuts(false);
+        setShowQuickSwitcher((v) => !v);
+      } else if (e.key === '/') {
+        e.preventDefault();
+        setShowQuickSwitcher(false);
+        setShowShortcuts((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
   const [paused, setPaused] = useState(notificationsPaused);
   useUnreadTitle();
   const history = useHistory();
@@ -358,6 +383,7 @@ const Workspace = () => {
     <div>
       <Header>
         {userData && <SearchModal workspace={workspace} myId={userData.id} />}
+        {userData && workspace && <ThreadsButton workspace={workspace} myId={userData.id} />}
         {userData && workspace && <SavedButton workspace={workspace} myId={userData.id} />}
         {userData && workspace && <MentionsButton workspace={workspace} />}
         {userData && (
@@ -454,6 +480,18 @@ const Workspace = () => {
                         }}
                       >
                         이 기기의 파일
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          setShowShortcuts(true);
+                        }}
+                      >
+                        키보드 단축키
                       </button>
                     </li>
                     <li className="divider" role="separator" />
@@ -569,6 +607,15 @@ const Workspace = () => {
       </WorkspaceWrapper>
       <CreateWorkspaceModal show={showCreateWorkspaceModal} onCloseModal={onCloseModal} />
       <StorageModal show={showStorageModal} onCloseModal={() => setShowStorageModal(false)} />
+      {userData && workspace && (
+        <QuickSwitcher
+          show={showQuickSwitcher}
+          workspace={workspace}
+          myId={userData.id}
+          onCloseModal={() => setShowQuickSwitcher(false)}
+        />
+      )}
+      <ShortcutsModal show={showShortcuts} onCloseModal={() => setShowShortcuts(false)} />
       {currentWorkspace && userData && currentWorkspace.OwnerId === userData.id && (
         <WorkspaceSettingsModal
           show={showWorkspaceSettings}

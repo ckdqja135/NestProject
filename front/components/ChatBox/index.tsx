@@ -25,6 +25,7 @@ interface Props {
   uploadProgress?: number;
   toolbarExtra?: React.ReactNode; // 첨부 버튼 옆에 추가할 도구 (예: GIF 검색)
   allowBroadcast?: boolean; // 채널이면 @channel / @here 멘션을 제안한다
+  onEditLast?: () => void; // 입력창이 비어 있을 때 ↑ : 내 마지막 메시지 수정
 }
 
 // 채널 전체 멘션 (서버가 채널 멤버 모두 / 접속 중인 멤버에게 알린다)
@@ -44,6 +45,7 @@ const ChatBox: FC<Props> = ({
   uploadProgress,
   toolbarExtra,
   allowBroadcast,
+  onEditLast,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -86,6 +88,16 @@ const ChatBox: FC<Props> = ({
       }
     },
     [onSubmitForm],
+  );
+
+  const onKeyDownChat = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'ArrowUp' && !e.nativeEvent.isComposing && !chat?.trim() && onEditLast) {
+        e.preventDefault();
+        onEditLast();
+      }
+    },
+    [chat, onEditLast],
   );
 
   const renderUserSuggestion: (
@@ -136,6 +148,7 @@ const ChatBox: FC<Props> = ({
           value={chat}
           onChange={onChangeChat}
           onKeyPress={onKeydownChat}
+          onKeyDown={onKeyDownChat}
           placeholder={placeholder}
           inputRef={textareaRef}
           forceSuggestionsAboveCursor

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ChannelsService } from './channels.service';
 import { ChannelsController } from './channels.controller';
+import { ThreadsController } from './threads.controller';
 import { Channels } from '../entities/Channels';
 import { ChannelMembers } from '../entities/ChannelMembers';
 import { ChannelChats } from '../entities/ChannelChats';
@@ -25,6 +26,6 @@ import { MentionsModule } from '../mentions/mentions.module';
     MentionsModule,
   ],
   providers: [ChannelsService],
-  controllers: [ChannelsController],
+  controllers: [ChannelsController, ThreadsController],
 })
 export class ChannelsModule {}

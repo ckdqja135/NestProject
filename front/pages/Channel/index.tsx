@@ -8,6 +8,9 @@ import TypingIndicator from '@components/TypingIndicator';
 import ConversationIntro from '@components/ConversationIntro';
 import useDraft, { draftKey } from '@hooks/useDraft';
 import useJumpToMessage from '@hooks/useJumpToMessage';
+import useFirstUnread from '@hooks/useFirstUnread';
+import { canClosePanelWithEscape, requestEdit } from '@utils/editRequest';
+
 import useSocket from '@hooks/useSocket';
 import GifPicker from '@components/GifPicker';
 import useFileUpload from '@hooks/useFileUpload';
@@ -16,7 +19,7 @@ import { ArchivedNotice, Header, Container, DragOver, HeaderButton, Layout } fro
 import ChannelSettingsModal from '@components/ChannelSettingsModal';
 import { moveChannelKeys } from '@utils/storageKeys';
 import { IChannel, IChat, IDM, IReaction, IUser } from '@typings/db';
-import { createTempId, cursorPageKey, removeChatFromPages, updateChatInPages } from '@utils/chatPages';
+import { createTempId, cursorPageKey, isTempId, removeChatFromPages, updateChatInPages } from '@utils/chatPages';
 import fetcher from '@utils/fetcher';
 import getErrorMessage from '@utils/getErrorMessage';
 import { toGifContent } from '@utils/gif';
@@ -91,6 +94,46 @@ const Channel = () => {
     setThreadParentId(parentId);
   }, []);
   useJumpToMessage({ pages: chatData, isReachingEnd, setSize, scrollbarRef, onOpenThread });
+
+  // 들어오기 전에 읽지 않은 첫 메시지 위에 '새 메시지' 구분선
+  const isMineChat = useCallback((c: IChat) => c.UserId === userData?.id, [userData?.id]);
+  const firstUnreadId = useFirstUnread(
+    `${workspace}-${channel}`,
+    chatData,
+    isMineChat,
+    scrollbarRef,
+    isReachingEnd,
+    setSize,
+  );
+
+  // 입력창이 비어 있을 때 ↑ : 내 마지막 (글) 메시지를 수정
+  const onEditLast = useCallback(() => {
+    const last = chatData
+      ?.flat()
+      .find(
+        (c) =>
+          c.UserId === userData?.id &&
+          !isTempId(c.id) &&
+          !c.content.startsWith('file:') &&
+          !c.content.startsWith('gif:'),
+      );
+    if (last) {
+      document.querySelector(`[data-chat-id="${last.id}"]`)?.scrollIntoView({ block: 'nearest' });
+      requestEdit(last.id);
+    }
+  }, [chatData, userData?.id]);
+
+  // Esc : 스레드·고정 메시지 패널 닫기
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (canClosePanelWithEscape(e)) {
+        setThreadParentId(null);
+        setShowPinned(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   // 채널을 옮기면 열려 있던 패널을 닫는다
   useEffect(() => {
@@ -462,6 +505,7 @@ const Channel = () => {
           setSize={setSize}
           myId={userData?.id}
           actions={actions}
+          firstUnreadId={firstUnreadId}
           intro={
             <ConversationIntro
               icon={channelData?.private ? '🔒' : '#'}
@@ -492,6 +536,7 @@ const Channel = () => {
             placeholder={`${channelData?.private ? '🔒' : '#'}${channel}에 메시지 보내기`}
             data={channelMembersData}
             allowBroadcast
+            onEditLast={onEditLast}
             onAttachFiles={upload}
             uploading={uploading}
             uploadProgress={progress}

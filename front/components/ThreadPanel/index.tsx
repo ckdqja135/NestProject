@@ -4,6 +4,7 @@ import GifPicker from '@components/GifPicker';
 import { Divider, EmptyText, Panel, PanelBody, PanelHeader } from '@components/SidePanel/styles';
 import { IChat, IReaction, IUser } from '@typings/db';
 import { createTempId } from '@utils/chatPages';
+import { markThreadRead } from '@utils/threadReads';
 import fetcher from '@utils/fetcher';
 import { toGifContent } from '@utils/gif';
 import getErrorMessage from '@utils/getErrorMessage';
@@ -44,8 +45,10 @@ const ThreadPanel: FC<Props> = ({ workspace, channel, parent, me, members, socke
   useEffect(() => {
     if (replies) {
       scrollToBottom();
+      // 스레드를 보고 있으면 지금까지의 답글은 읽은 것으로 (스레드 모아 보기의 '새 답글' 표시)
+      markThreadRead(parent.id);
     }
-  }, [replies?.length, scrollToBottom]);
+  }, [replies?.length, scrollToBottom, parent.id]);
 
   useEffect(() => {
     const onMessage = (data: IChat) => {

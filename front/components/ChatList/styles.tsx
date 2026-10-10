@@ -36,3 +36,24 @@ export const StickyHeader = styled.div`
     outline: none;
   }
 `;
+
+// 들어오기 전에 읽지 않은 첫 메시지 위의 '새 메시지' 구분선
+export const NewDivider = styled.div`
+  display: flex;
+  align-items: center;
+  margin: 4px 20px;
+  color: #e01e5a;
+  font-size: 12px;
+  font-weight: 700;
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    border-top: 1px solid #e01e5a;
+  }
+
+  & > span {
+    padding: 0 8px;
+  }
+`;

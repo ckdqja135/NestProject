@@ -3,6 +3,9 @@ import ChatBox from '@components/ChatBox';
 import ChatList from '@components/ChatList';
 import useDraft, { draftKey } from '@hooks/useDraft';
 import useJumpToMessage from '@hooks/useJumpToMessage';
+import useFirstUnread from '@hooks/useFirstUnread';
+import { canClosePanelWithEscape, requestEdit } from '@utils/editRequest';
+
 import useSocket from '@hooks/useSocket';
 import GifPicker from '@components/GifPicker';
 import useFileUpload from '@hooks/useFileUpload';
@@ -14,7 +17,7 @@ import { DragOver, HeaderButton, Layout } from '@pages/Channel/styles';
 import PinnedPanel from '@components/PinnedPanel';
 import { Header, Container } from '@pages/DirectMessage/styles';
 import { IChat, IDM, IReaction } from '@typings/db';
-import { createTempId, cursorPageKey, removeChatFromPages, updateChatInPages } from '@utils/chatPages';
+import { createTempId, cursorPageKey, isTempId, removeChatFromPages, updateChatInPages } from '@utils/chatPages';
 import getErrorMessage from '@utils/getErrorMessage';
 import fetcher from '@utils/fetcher';
 import { toGifContent } from '@utils/gif';
@@ -56,6 +59,34 @@ const DirectMessage = () => {
   const [dragOver, setDragOver] = useState(false);
   const [showPinned, setShowPinned] = useState(false);
 
+  // 입력창이 비어 있을 때 ↑ : 내 마지막 (글) 메시지를 수정
+  const onEditLast = useCallback(() => {
+    const last = chatData
+      ?.flat()
+      .find(
+        (dm) =>
+          dm.SenderId === myData?.id &&
+          !isTempId(dm.id) &&
+          !dm.content.startsWith('file:') &&
+          !dm.content.startsWith('gif:'),
+      );
+    if (last) {
+      document.querySelector(`[data-chat-id="${last.id}"]`)?.scrollIntoView({ block: 'nearest' });
+      requestEdit(last.id);
+    }
+  }, [chatData, myData?.id]);
+
+  // Esc : 고정 메시지 패널 닫기
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (canClosePanelWithEscape(e)) {
+        setShowPinned(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   // 다른 대화로 옮기면 고정 메시지 패널을 닫는다
   useEffect(() => {
     setShowPinned(false);
@@ -63,6 +94,9 @@ const DirectMessage = () => {
 
   const isEmpty = chatData?.[0]?.length === 0;
   const isReachingEnd = isEmpty || (chatData && chatData[chatData.length - 1]?.length < PAGE_SIZE);
+  // 들어오기 전에 읽지 않은 첫 메시지 위에 '새 메시지' 구분선
+  const isMineDM = useCallback((dm: IDM) => dm.SenderId === myData?.id, [myData?.id]);
+  const firstUnreadId = useFirstUnread(`${workspace}-${id}`, chatData, isMineDM, scrollbarRef, isReachingEnd, setSize);
   useJumpToMessage({ pages: chatData, isReachingEnd, setSize, scrollbarRef });
   const chatsKey = `/api/workspaces/${workspace}/dms/${id}/chats`;
   const { typingUsers, notifyTyping, clearTypingUser } = useTyping({
@@ -320,6 +354,7 @@ const DirectMessage = () => {
           setSize={setSize}
           myId={myData.id}
           actions={actions}
+          firstUnreadId={firstUnreadId}
           intro={
             <ConversationIntro
               image={avatarUrl(userData, 144)}
@@ -344,6 +379,7 @@ const DirectMessage = () => {
           onChangeChat={onChangeChatWithTyping}
           placeholder={isSelf ? '나에게 메모 남기기' : `${userData.nickname}님에게 메시지 보내기`}
           data={mentionTargets}
+          onEditLast={onEditLast}
           onAttachFiles={upload}
           uploading={uploading}
           uploadProgress={progress}

@@ -106,3 +106,8 @@ export interface ISavedItem {
   Chat: (IChat & { Channel: IChannel }) | null;
   DM: IDM | null;
 }
+
+// 내가 참여한 스레드 (원본 메시지 + 마지막 답글)
+export interface IThread extends IChat {
+  lastReply: IChat;
+}

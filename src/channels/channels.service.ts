@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, MoreThan, Not, Repository } from 'typeorm';
+import { In, IsNull, MoreThan, Not, Repository } from 'typeorm';
 import { Channels } from '../entities/Channels';
 import { ChannelMembers } from '../entities/ChannelMembers';
 import { ChannelChats } from '../entities/ChannelChats';
@@ -16,6 +16,9 @@ import { WorkspacesService } from '../workspaces/workspaces.service';
 import { EventsGateway } from '../events/events.gateway';
 import { MentionsService } from '../mentions/mentions.service';
 import { toFileContent, toFileMeta } from '../common/upload';
+
+// 스레드 모아 보기에 보여줄 최대 개수
+const THREAD_LIMIT = 30;
 
 @Injectable()
 export class ChannelsService {
@@ -613,5 +616,45 @@ export class ChannelsService {
       name: channel.name,
     });
     await this.channelsRepository.delete(channel.id);
+  }
+
+  // 내가 참여한 스레드 (원본을 썼거나 답글을 단 것) 중 답글이 있는 것, 최근 답글 순
+  async getMyThreads(url: string, myId: number) {
+    const workspace = await this.workspacesService.findWorkspaceByUrl(url);
+    await this.workspacesService.assertMember(workspace.id, myId);
+    const rows: { id: number; lastReplyId: number; lastReplyAt: Date }[] =
+      await this.channelChatsRepository.query(
+        `SELECT p.id AS id, MAX(r.id) AS lastReplyId, MAX(r.createdAt) AS lastReplyAt
+           FROM channelchats p
+           JOIN channels ch ON ch.id = p.ChannelId
+           JOIN channelmembers cm ON cm.ChannelId = ch.id AND cm.UserId = ?
+           JOIN channelchats r ON r.ParentId = p.id
+          WHERE ch.WorkspaceId = ? AND p.ParentId IS NULL
+            AND (p.UserId = ? OR EXISTS (
+                  SELECT 1 FROM channelchats mine WHERE mine.ParentId = p.id AND mine.UserId = ?))
+          GROUP BY p.id
+          ORDER BY lastReplyAt DESC
+          LIMIT ${THREAD_LIMIT}`,
+        [myId, workspace.id, myId, myId],
+      );
+    if (!rows.length) {
+      return [];
+    }
+    const parents = await this.chatQuery()
+      .where('chats.id IN (:...ids)', { ids: rows.map((r) => Number(r.id)) })
+      .getMany();
+    const lastReplies = await this.channelChatsRepository.find({
+      where: { id: In(rows.map((r) => Number(r.lastReplyId))) },
+      relations: ['User'],
+    });
+    return rows
+      .map((row) => {
+        const parent = parents.find((p) => p.id === Number(row.id));
+        const lastReply = lastReplies.find(
+          (r) => r.id === Number(row.lastReplyId),
+        );
+        return parent && lastReply ? { ...parent, lastReply } : null;
+      })
+      .filter(Boolean);
   }
 }
