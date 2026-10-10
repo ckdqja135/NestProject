@@ -9,7 +9,7 @@ import {
 } from '@components/ChatBox/styles';
 import { IUser } from '@typings/db';
 import autosize from 'autosize';
-import gravatar from 'gravatar';
+import { avatarUrl } from '@utils/avatar';
 import React, { FC, useCallback, useEffect, useRef } from 'react';
 import { Mention, SuggestionDataItem } from 'react-mentions';
 
@@ -93,7 +93,7 @@ const ChatBox: FC<Props> = ({
       }
       return (
         <EachMention focus={focus}>
-          <img src={gravatar.url(data[index].email, { s: '20px', d: 'retro' })} alt={data[index].nickname} />
+          <img src={avatarUrl(data[index], 20)} alt={data[index].nickname} />
           <span>{highlightedDisplay}</span>
         </EachMention>
       );

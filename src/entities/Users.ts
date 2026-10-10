@@ -40,6 +40,10 @@ export class Users {
   @Column('varchar', { name: 'nickname', length: 30 })
   nickname: string;
 
+  // 아바타 스타일 (Gravatar 기본 이미지 종류). 이미지 파일을 서버에 올리지 않는다.
+  @Column('varchar', { name: 'avatarStyle', length: 20, nullable: true })
+  avatarStyle: string | null;
+
   @IsString()
   @IsNotEmpty()
   @ApiProperty({

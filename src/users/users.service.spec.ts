@@ -1,3 +1,4 @@
+import bcrypt from 'bcrypt';
 import { ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -8,7 +9,7 @@ import { UsersService } from './users.service';
 
 describe('UsersService', () => {
   let service: UsersService;
-  const usersRepository = { findOne: jest.fn() };
+  const usersRepository = { findOne: jest.fn(), update: jest.fn() };
   const save = jest.fn();
   const ownerUpdate = {
     update: jest.fn(() => ownerUpdate),
@@ -31,6 +32,16 @@ describe('UsersService', () => {
     createQueryRunner: jest.fn(() => queryRunner),
     getRepository: jest.fn(() => ({
       findOne: jest.fn().mockResolvedValue({ url: 'shlack' }),
+      createQueryBuilder: () => {
+        const qb = {
+          innerJoin: () => qb,
+          select: () => qb,
+          getMany: jest
+            .fn()
+            .mockResolvedValue([{ url: 'shlack' }, { url: 'team' }]),
+        };
+        return qb;
+      },
     })),
   };
   const eventsGateway = { emitToWorkspace: jest.fn() };
@@ -99,5 +110,56 @@ describe('UsersService', () => {
     );
     expect(queryRunner.rollbackTransaction).toHaveBeenCalled();
     expect(queryRunner.release).toHaveBeenCalled();
+  });
+
+  describe('프로필', () => {
+    it('닉네임/아바타를 바꾸고 내가 속한 워크스페이스마다 알린다', async () => {
+      usersRepository.findOne.mockResolvedValue({ id: 7, nickname: '새이름' });
+      await service.updateProfile(7, {
+        nickname: '  새이름 ',
+        avatarStyle: 'identicon',
+      });
+      expect(usersRepository.update).toHaveBeenCalledWith(7, {
+        nickname: '새이름',
+        avatarStyle: 'identicon',
+      });
+      expect(eventsGateway.emitToWorkspace).toHaveBeenCalledWith(
+        'team',
+        'membersChanged',
+      );
+      expect(eventsGateway.emitToWorkspace).toHaveBeenCalledWith(
+        'shlack',
+        'profileUpdated',
+        { id: 7, nickname: '새이름' },
+      );
+    });
+
+    it('공백뿐인 닉네임은 거부한다', async () => {
+      await expect(
+        service.updateProfile(7, { nickname: '   ' }),
+      ).rejects.toThrow('닉네임을 입력해주세요.');
+    });
+
+    it('현재 비밀번호가 틀리면 비밀번호를 바꾸지 않는다', async () => {
+      usersRepository.findOne.mockResolvedValue({
+        id: 7,
+        password: await bcrypt.hash('right', 4),
+      });
+      await expect(
+        service.changePassword(7, 'wrong', 'newpass'),
+      ).rejects.toThrow('현재 비밀번호가 맞지 않습니다.');
+      expect(usersRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('현재 비밀번호가 맞으면 새 비밀번호를 해시해서 저장한다', async () => {
+      usersRepository.findOne.mockResolvedValue({
+        id: 7,
+        password: await bcrypt.hash('right', 4),
+      });
+      await service.changePassword(7, 'right', 'newpass');
+      const saved = usersRepository.update.mock.calls[0][1].password;
+      expect(saved).not.toBe('newpass');
+      expect(await bcrypt.compare('newpass', saved)).toBe(true);
+    });
   });
 });

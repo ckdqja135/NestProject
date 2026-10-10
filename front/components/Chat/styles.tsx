@@ -17,6 +17,12 @@ export const ChatWrapper = styled.div`
     background: #fff8e1;
   }
 
+  /* 검색 결과로 이동했을 때 잠깐 강조 */
+  &.highlight {
+    background: #fff3c4;
+    transition: background 0.3s;
+  }
+
   & .chat-img {
     display: flex;
     width: 36px;
@@ -35,10 +41,42 @@ export const ChatWrapper = styled.div`
     min-width: 0;
 
     & p,
+    & .message-body,
     & .attachment {
       flex: 0 0 100%;
       margin: 0;
       word-break: break-word;
+    }
+
+    /* 마크다운 */
+    & .md-code {
+      padding: 1px 4px;
+      border: 1px solid #e3e3e3;
+      border-radius: 3px;
+      background: #f6f6f6;
+      color: #c01343;
+      font-family: Monaco, Menlo, Consolas, monospace;
+      font-size: 12px;
+    }
+
+    & .md-pre {
+      margin: 4px 0;
+      padding: 8px 10px;
+      border: 1px solid #e3e3e3;
+      border-radius: 4px;
+      background: #f8f8f8;
+      font-family: Monaco, Menlo, Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre;
+      overflow-x: auto;
+    }
+
+    & .md-quote {
+      margin: 4px 0;
+      padding-left: 10px;
+      border-left: 4px solid #ddd;
+      color: #555;
     }
   }
 

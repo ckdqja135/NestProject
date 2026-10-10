@@ -7,6 +7,7 @@ import ThreadPanel from '@components/ThreadPanel';
 import TypingIndicator from '@components/TypingIndicator';
 import ConversationIntro from '@components/ConversationIntro';
 import useInput from '@hooks/useInput';
+import useJumpToMessage from '@hooks/useJumpToMessage';
 import useSocket from '@hooks/useSocket';
 import GifPicker from '@components/GifPicker';
 import useFileUpload from '@hooks/useFileUpload';
@@ -79,6 +80,12 @@ const Channel = () => {
   const isEmpty = chatData?.[0]?.length === 0;
   const isReachingEnd = isEmpty || (chatData && chatData[chatData.length - 1]?.length < PAGE_SIZE);
   const chatsKey = `/api/workspaces/${workspace}/channels/${channel}/chats`;
+
+  const onOpenThread = useCallback((parentId: number) => {
+    setShowPinned(false);
+    setThreadParentId(parentId);
+  }, []);
+  useJumpToMessage({ pages: chatData, isReachingEnd, setSize, scrollbarRef, onOpenThread });
 
   // 채널을 옮기면 열려 있던 패널을 닫는다
   useEffect(() => {

@@ -15,14 +15,15 @@ import fetcher from '@utils/fetcher';
 import { notifyIfHidden, previewText } from '@utils/notify';
 import { FileMeta, getFile, notifyUnavailable, putFile, UnavailableReason } from '@utils/fileStore';
 import StorageModal from '@components/StorageModal';
+import ProfileModal from '@components/ProfileModal';
 import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
-import gravatar from 'gravatar';
+import { avatarUrl } from '@utils/avatar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router';
 import { Link, Redirect, Route, Switch, useHistory, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
 
 import {
   AddButton,
@@ -56,6 +57,7 @@ const Workspace = () => {
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
   const [showMembersModal, setShowMembersModal] = useState(false);
   const [showStorageModal, setShowStorageModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const history = useHistory();
   const location = useLocation();
   const locationRef = useRef(location.pathname);
@@ -130,17 +132,27 @@ const Workspace = () => {
       revalidateUser();
     };
     const onMembersChanged = () => revalidateMembers();
+    // 누군가 닉네임/프로필 그림을 바꿈: 멤버 목록·DM 상대 정보를 다시 불러온다 (내 정보면 내 정보도)
+    const onProfileUpdated = (user: IUser) => {
+      revalidateMembers();
+      mutate(`/api/workspaces/${workspace}/users/${user.id}`);
+      if (userData && user.id === userData.id) {
+        revalidateUser();
+      }
+    };
     socket?.on('channelsChanged', onChannelsChanged);
     socket?.on('workspacesChanged', onWorkspacesChanged);
     socket?.on('removedFromWorkspace', onRemoved);
     socket?.on('membersChanged', onMembersChanged);
+    socket?.on('profileUpdated', onProfileUpdated);
     return () => {
+      socket?.off('profileUpdated', onProfileUpdated);
       socket?.off('channelsChanged', onChannelsChanged);
       socket?.off('workspacesChanged', onWorkspacesChanged);
       socket?.off('removedFromWorkspace', onRemoved);
       socket?.off('membersChanged', onMembersChanged);
     };
-  }, [socket, revalidateChannels, revalidateUser, revalidateMembers]);
+  }, [socket, workspace, userData, revalidateChannels, revalidateUser, revalidateMembers]);
 
   // 서버가 중계한 파일을 이 기기의 브라우저 저장소에 보관한다 (서버에는 저장되지 않음)
   useEffect(() => {
@@ -244,11 +256,7 @@ const Workspace = () => {
                 cursor: 'pointer',
               }}
             >
-              <ProfileImg
-                src={gravatar.url(userData.email, { s: '28px', d: 'retro' })}
-                alt=""
-                style={{ position: 'static' }}
-              />
+              <ProfileImg src={avatarUrl(userData, 28)} alt="" style={{ position: 'static' }} />
             </button>
             {showUserMenu && (
               <Menu
@@ -259,7 +267,7 @@ const Workspace = () => {
               >
                 <WorkspaceModal>
                   <header>
-                    <img className="ws-icon" src={gravatar.url(userData.email, { s: '72px', d: 'retro' })} alt="" />
+                    <img className="avatar" src={avatarUrl(userData, 72)} alt="" />
                     <div>
                       <strong>{userData.nickname}</strong>
                       <small>{userData.email}</small>
@@ -267,6 +275,18 @@ const Workspace = () => {
                     </div>
                   </header>
                   <ul role="menu">
+                    <li>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          setShowProfileModal(true);
+                        }}
+                      >
+                        프로필 설정
+                      </button>
+                    </li>
                     <li>
                       <button
                         type="button"
@@ -378,6 +398,14 @@ const Workspace = () => {
       </WorkspaceWrapper>
       <CreateWorkspaceModal show={showCreateWorkspaceModal} onCloseModal={onCloseModal} />
       <StorageModal show={showStorageModal} onCloseModal={() => setShowStorageModal(false)} />
+      {userData && (
+        <ProfileModal
+          show={showProfileModal}
+          me={userData}
+          onCloseModal={() => setShowProfileModal(false)}
+          onUpdated={() => revalidateUser()}
+        />
+      )}
       {currentWorkspace && userData && (
         <MembersModal
           show={showMembersModal}

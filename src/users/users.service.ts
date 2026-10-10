@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import bcrypt from 'bcrypt';
@@ -67,5 +71,64 @@ export class UsersService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  // 닉네임/아바타 변경. 내가 속한 워크스페이스 사람들의 멤버 목록에도 바로 반영한다.
+  async updateProfile(
+    myId: number,
+    changes: { nickname?: string; avatarStyle?: string },
+  ) {
+    const update: Partial<Users> = {};
+    if (changes.nickname !== undefined) {
+      update.nickname = changes.nickname.trim();
+      if (!update.nickname) {
+        throw new BadRequestException('닉네임을 입력해주세요.');
+      }
+    }
+    if (changes.avatarStyle !== undefined) {
+      update.avatarStyle = changes.avatarStyle;
+    }
+    if (Object.keys(update).length) {
+      await this.usersRepository.update(myId, update);
+    }
+    const user = await this.usersRepository.findOne({
+      where: { id: myId },
+      select: ['id', 'email', 'nickname', 'avatarStyle'],
+    });
+    const workspaces = await this.dataSource
+      .getRepository(Workspaces)
+      .createQueryBuilder('workspace')
+      .innerJoin(
+        'workspace.WorkspaceMembers',
+        'members',
+        'members.UserId = :myId',
+        {
+          myId,
+        },
+      )
+      .select(['workspace.url'])
+      .getMany();
+    workspaces.forEach((workspace) => {
+      this.eventsGateway.emitToWorkspace(workspace.url, 'membersChanged');
+      this.eventsGateway.emitToWorkspace(workspace.url, 'profileUpdated', user);
+    });
+    return user;
+  }
+
+  async changePassword(
+    myId: number,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    const user = await this.usersRepository.findOne({
+      where: { id: myId },
+      select: ['id', 'password'],
+    });
+    if (!user || !(await bcrypt.compare(currentPassword, user.password))) {
+      throw new BadRequestException('현재 비밀번호가 맞지 않습니다.');
+    }
+    await this.usersRepository.update(myId, {
+      password: await bcrypt.hash(newPassword, 12),
+    });
   }
 }

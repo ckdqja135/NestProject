@@ -2,6 +2,7 @@ export interface IUser {
   id: number;
   nickname: string;
   email: string;
+  avatarStyle?: string | null; // Gravatar 기본 이미지 종류
   Workspaces: IWorkspace[];
 }
 

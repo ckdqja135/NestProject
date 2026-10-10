@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Patch,
   Post,
   Get,
   Req,
@@ -10,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JoinRequestDto } from './dto/join.request.dto';
+import { ChangePasswordDto, UpdateProfileDto } from './dto/update-profile.dto';
 import { UsersService } from './users.service';
 import { UserDto } from '../common/dto/user.dto';
 import { User } from '../common/decorators/user.decorator';
@@ -72,5 +74,24 @@ export class UsersController {
         res.send('ok');
       });
     });
+  }
+
+  @UseGuards(LoggedInGuard)
+  @ApiOperation({ summary: '내 프로필 수정 (닉네임, 아바타 스타일)' })
+  @Patch('me')
+  updateProfile(@User() user, @Body() body: UpdateProfileDto) {
+    return this.usersService.updateProfile(user.id, body);
+  }
+
+  @UseGuards(LoggedInGuard)
+  @ApiOperation({ summary: '비밀번호 변경' })
+  @Post('me/password')
+  async changePassword(@User() user, @Body() body: ChangePasswordDto) {
+    await this.usersService.changePassword(
+      user.id,
+      body.currentPassword,
+      body.newPassword,
+    );
+    return 'ok';
   }
 }

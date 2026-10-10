@@ -4,7 +4,7 @@ import { IChannel, IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
 import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
-import gravatar from 'gravatar';
+import { avatarUrl } from '@utils/avatar';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 import { toast } from 'react-toastify';
@@ -87,7 +87,7 @@ const InviteChannelModal: FC<Props> = ({ show, onCloseModal }) => {
         )}
         {candidates.map((member) => (
           <MemberRow key={member.id}>
-            <img src={gravatar.url(member.email, { s: '32px', d: 'retro' })} alt="" />
+            <img src={avatarUrl(member, 32)} alt="" />
             <div>
               <b>{member.nickname}</b>
               <small>{member.email}</small>

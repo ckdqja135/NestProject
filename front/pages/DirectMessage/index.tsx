@@ -2,6 +2,7 @@ import { ChatActions } from '@components/Chat';
 import ChatBox from '@components/ChatBox';
 import ChatList from '@components/ChatList';
 import useInput from '@hooks/useInput';
+import useJumpToMessage from '@hooks/useJumpToMessage';
 import useSocket from '@hooks/useSocket';
 import GifPicker from '@components/GifPicker';
 import useFileUpload from '@hooks/useFileUpload';
@@ -19,7 +20,7 @@ import { toGifContent } from '@utils/gif';
 import makeSection from '@utils/makeSection';
 import prependChat from '@utils/prependChat';
 import axios from 'axios';
-import gravatar from 'gravatar';
+import { avatarUrl } from '@utils/avatar';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Scrollbars } from 'react-custom-scrollbars-2';
 import { useParams } from 'react-router';
@@ -53,6 +54,7 @@ const DirectMessage = () => {
 
   const isEmpty = chatData?.[0]?.length === 0;
   const isReachingEnd = isEmpty || (chatData && chatData[chatData.length - 1]?.length < PAGE_SIZE);
+  useJumpToMessage({ pages: chatData, isReachingEnd, setSize, scrollbarRef });
   const chatsKey = `/api/workspaces/${workspace}/dms/${id}/chats`;
   const { typingUsers, notifyTyping, clearTypingUser } = useTyping({
     socket,
@@ -251,7 +253,7 @@ const DirectMessage = () => {
   return (
     <Container onDrop={onDrop} onDragOver={onDragOver} onDragLeave={onDragLeave}>
       <Header>
-        <img src={gravatar.url(userData.email, { s: '64px', d: 'retro' })} alt="" />
+        <img src={avatarUrl(userData, 64)} alt="" />
         <div>
           <strong>
             {userData.nickname}
@@ -272,7 +274,7 @@ const DirectMessage = () => {
         actions={actions}
         intro={
           <ConversationIntro
-            image={gravatar.url(userData.email, { s: '144px', d: 'retro' })}
+            image={avatarUrl(userData, 144)}
             title={isSelf ? `${userData.nickname} (나)` : userData.nickname}
             description={
               isSelf ? (

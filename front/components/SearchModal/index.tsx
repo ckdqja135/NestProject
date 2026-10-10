@@ -69,7 +69,9 @@ const SearchModal: FC<Props> = ({ workspace, myId }) => {
   const onClickChat = useCallback(
     (chat: IChat) => {
       onClose();
-      history.push(`/workspace/${workspace}/channel/${chat.Channel.name}`);
+      // 스레드 답글이면 원본 메시지로 이동한 뒤 스레드를 열어 답글을 보여준다
+      const query = chat.ParentId ? `message=${chat.ParentId}&reply=${chat.id}` : `message=${chat.id}`;
+      history.push(`/workspace/${workspace}/channel/${chat.Channel.name}?${query}`);
     },
     [history, workspace, onClose],
   );
@@ -78,7 +80,7 @@ const SearchModal: FC<Props> = ({ workspace, myId }) => {
     (dm: IDM) => {
       onClose();
       const otherId = dm.SenderId === myId ? dm.ReceiverId : dm.SenderId;
-      history.push(`/workspace/${workspace}/dm/${otherId}`);
+      history.push(`/workspace/${workspace}/dm/${otherId}?message=${dm.id}`);
     },
     [history, workspace, myId, onClose],
   );

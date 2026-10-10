@@ -23,7 +23,7 @@ export class LocalSerializer extends PassportSerializer {
     try {
       const user = await this.usersRepository.findOne({
         where: { id: +userId },
-        select: ['id', 'email', 'nickname'],
+        select: ['id', 'email', 'nickname', 'avatarStyle'],
       });
       if (!user) {
         // 세션에 남아있는 사용자가 삭제된 경우 로그아웃 상태로 처리

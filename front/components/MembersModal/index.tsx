@@ -5,7 +5,7 @@ import { IUser, IWorkspace } from '@typings/db';
 import fetcher from '@utils/fetcher';
 import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
-import gravatar from 'gravatar';
+import { avatarUrl } from '@utils/avatar';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import useSWR from 'swr';
@@ -102,7 +102,7 @@ const MembersModal: FC<Props> = ({ show, onCloseModal, workspace, me, onInvite }
           return (
             <MemberRow key={member.id}>
               <span className="avatar">
-                <img src={gravatar.url(member.email, { s: '64px', d: 'retro' })} alt="" />
+                <img src={avatarUrl(member, 64)} alt="" />
                 <i className={onlineList.includes(member.id) ? 'online' : undefined} />
               </span>
               <div>

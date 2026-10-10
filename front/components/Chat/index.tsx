@@ -11,14 +11,15 @@ import {
 import { IChat, IDM, IUser } from '@typings/db';
 import { isTempId } from '@utils/chatPages';
 import { parseGifContent } from '@utils/gif';
+import { renderMarkdown } from '@utils/markdown';
 import { parseFileContent } from '@utils/fileStore';
 import FileAttachment from '@components/FileAttachment';
 import dayjs from 'dayjs';
-import gravatar from 'gravatar';
+import { avatarUrl } from '@utils/avatar';
 import React, { FC, useMemo, memo, useState, useCallback } from 'react';
 import { useParams } from 'react-router';
-import { Link } from 'react-router-dom';
-import regexifyString from 'regexify-string';
+import useSWR from 'swr';
+import fetcher from '@utils/fetcher';
 
 export const EMOJIS = ['👍', '❤️', '😂', '🎉', '😮', '👀'];
 
@@ -41,7 +42,18 @@ const isLegacyUpload = (content: string) => content.startsWith('uploads\\') || c
 
 const Chat: FC<Props> = memo(({ data, myId, actions }) => {
   const { workspace } = useParams<{ workspace: string; channel: string }>();
-  const user: IUser = 'Sender' in data ? data.Sender : data.User;
+  const sender: IUser = 'Sender' in data ? data.Sender : data.User;
+  // 메시지에 담긴 보낸 사람 정보는 보낼 당시 것이라, 닉네임/프로필 그림은 최신 멤버 목록 값을 쓴다
+  // (멤버 목록은 워크스페이스 레이아웃이 불러오고 profileUpdated 때 갱신하므로 여기서는 캐시만 읽는다)
+  const { data: members } = useSWR<IUser[]>(workspace ? `/api/workspaces/${workspace}/members` : null, fetcher, {
+    revalidateOnMount: false,
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+  });
+  const user = useMemo(() => {
+    const latest = sender && members?.find((m) => m.id === sender.id);
+    return latest ? { ...sender, nickname: latest.nickname, avatarStyle: latest.avatarStyle } : sender;
+  }, [sender, members]);
   const channelChat = 'Sender' in data ? null : (data as IChat);
   const isMine = myId !== undefined && user?.id === myId;
   const [editing, setEditing] = useState(false);
@@ -51,7 +63,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
 
   const gifUrl = useMemo(() => parseGifContent(data.content), [data.content]);
   const fileMeta = useMemo(() => parseFileContent(data.content), [data.content]);
-  const result = useMemo<(string | JSX.Element)[] | JSX.Element>(
+  const result = useMemo<React.ReactNode>(
     () =>
       gifUrl ? (
         <img src={gifUrl} alt="GIF" style={{ maxHeight: 200, maxWidth: '100%', borderRadius: 4 }} />
@@ -60,21 +72,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
       ) : isLegacyUpload(data.content) ? (
         <span style={{ color: '#616061' }}>[이전 방식으로 서버에 올린 첨부파일 - 더 이상 볼 수 없습니다]</span>
       ) : (
-        regexifyString({
-          pattern: /@\[(.+?)]\((\d+?)\)|\n/g,
-          decorator(match, index) {
-            const arr: string[] | null = match.match(/@\[(.+?)]\((\d+?)\)/)!;
-            if (arr) {
-              return (
-                <Link key={match + index} to={`/workspace/${workspace}/dm/${arr[2]}`}>
-                  @{arr[1]}
-                </Link>
-              );
-            }
-            return <br key={index} />;
-          },
-          input: data.content,
-        })
+        renderMarkdown(data.content, workspace)
       ),
     [workspace, data.content, gifUrl, fileMeta, data.createdAt],
   );
@@ -149,9 +147,13 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
   const canPin = canAct && !!channelChat && !!actions?.onTogglePin;
 
   return (
-    <ChatWrapper className={channelChat?.pinned ? 'pinned' : undefined} onMouseLeave={() => setShowPicker(false)}>
+    <ChatWrapper
+      className={channelChat?.pinned ? 'pinned' : undefined}
+      data-chat-id={data.id}
+      onMouseLeave={() => setShowPicker(false)}
+    >
       <div className="chat-img">
-        <img src={gravatar.url(user.email, { s: '36px', d: 'retro' })} alt={user.nickname} />
+        <img src={avatarUrl(user, 36)} alt={user.nickname} />
       </div>
       <div className="chat-text">
         {channelChat?.pinned && <PinnedLabel>📌 고정됨</PinnedLabel>}
@@ -179,11 +181,9 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
               </button>
             </div>
           </EditBox>
-        ) : fileMeta ? (
-          // 파일 카드/그림은 블록 요소라 <p> 안에 넣을 수 없다
-          <div className="attachment">{result}</div>
         ) : (
-          <p>{result}</p>
+          // 코드 블록/인용/파일 카드는 블록 요소라 <p> 대신 <div> 로 감싼다
+          <div className={fileMeta ? 'attachment' : 'message-body'}>{result}</div>
         )}
         {reactionGroups.length > 0 && (
           <ReactionList>
