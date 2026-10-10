@@ -187,9 +187,31 @@ const Workspace = () => {
         {userData && workspace && <MentionsButton workspace={workspace} />}
         {userData && (
           <RightMenu>
-            <span onClick={onClickUserProfile}>
-              <ProfileImg src={gravatar.url(userData.email, { s: '28px', d: 'retro' })} alt={userData.nickname} />
-            </span>
+            <button
+              type="button"
+              onClick={onClickUserProfile}
+              aria-label="내 프로필 메뉴"
+              aria-haspopup="menu"
+              aria-expanded={showUserMenu}
+              // 이미지가 아니라 버튼이 자리를 차지해야 키보드/스크린리더에서도 누를 수 있다
+              style={{
+                position: 'absolute',
+                top: 5,
+                right: 16,
+                width: 28,
+                height: 28,
+                border: 'none',
+                background: 'none',
+                padding: 0,
+                cursor: 'pointer',
+              }}
+            >
+              <ProfileImg
+                src={gravatar.url(userData.email, { s: '28px', d: 'retro' })}
+                alt=""
+                style={{ position: 'static' }}
+              />
+            </button>
             {showUserMenu && (
               <Menu
                 style={{ right: 8, top: 42, minWidth: 0 }}
@@ -241,8 +263,13 @@ const Workspace = () => {
             +
           </AddButton>
         </Workspaces>
-        <Channels>
-          <WorkspaceName onClick={toggleWorkspaceModal}>
+        <Channels data-testid="sidebar">
+          <WorkspaceName
+            onClick={toggleWorkspaceModal}
+            data-testid="workspace-name"
+            aria-haspopup="menu"
+            aria-expanded={showWorkspaceModal}
+          >
             {userData?.Workspaces.find((v) => v.url === workspace)?.name}
           </WorkspaceName>
           <MenuScroll>

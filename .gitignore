@@ -120,3 +120,8 @@ lerna-debug.log*
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/

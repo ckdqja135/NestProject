@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: 타입 체크 · 단위/e2e 테스트 · 브라우저 E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      mariadb:
+        image: mariadb:11
+        env:
+          MARIADB_ROOT_PASSWORD: ci-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+    env:
+      CI: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            front/package-lock.json
+
+      - name: 의존성 설치
+        run: |
+          npm ci
+          npm ci --prefix front
+
+      - name: .env 생성
+        run: |
+          cat > .env <<'ENV'
+          SECRET=ci-secret
+          DB_HOST=127.0.0.1
+          DB_PORT=3306
+          DB_USER=root
+          DB_PW=ci-password
+          DB_NAME=shlack
+          ENV
+
+      - name: 백엔드 타입 체크
+        run: npx tsc --noEmit -p tsconfig.json
+
+      - name: 단위 테스트
+        run: npm test
+
+      - name: 빌드 (백엔드 + 프론트)
+        run: npm run e2e:build
+
+      - name: e2e 테스트 (Jest, 실제 DB)
+        run: |
+          npm run db:setup
+          npm run test:e2e
+
+      - name: Playwright 브라우저 설치
+        run: npx playwright install --with-deps chromium
+
+      - name: 브라우저 E2E 테스트 (Playwright)
+        run: npm run test:ui
+
+      - name: 실패 시 Playwright 리포트 업로드
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  docker:
+    name: Docker 이미지 빌드 · compose 설정 검증
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: compose 설정 검증
+        run: |
+          printf 'SECRET=ci\nDB_PW=ci-password\n' > .env
+          docker compose config --quiet
+
+      - name: 이미지 빌드
+        run: docker build -t shlack:ci .

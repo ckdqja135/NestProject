@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { Users } from '../entities/Users';
+import { EventsGateway } from '../events/events.gateway';
 import { UsersService } from './users.service';
 
 describe('UsersService', () => {
@@ -17,7 +18,13 @@ describe('UsersService', () => {
     release: jest.fn(),
     manager: { getRepository: jest.fn(() => ({ save })) },
   };
-  const dataSource = { createQueryRunner: jest.fn(() => queryRunner) };
+  const dataSource = {
+    createQueryRunner: jest.fn(() => queryRunner),
+    getRepository: jest.fn(() => ({
+      findOne: jest.fn().mockResolvedValue({ url: 'shlack' }),
+    })),
+  };
+  const eventsGateway = { emitToWorkspace: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -26,6 +33,7 @@ describe('UsersService', () => {
         UsersService,
         { provide: getRepositoryToken(Users), useValue: usersRepository },
         { provide: DataSource, useValue: dataSource },
+        { provide: EventsGateway, useValue: eventsGateway },
       ],
     }).compile();
 
@@ -59,6 +67,10 @@ describe('UsersService', () => {
     expect(save).toHaveBeenNthCalledWith(3, { UserId: 7, ChannelId: 1 });
     expect(queryRunner.commitTransaction).toHaveBeenCalled();
     expect(queryRunner.release).toHaveBeenCalled();
+    expect(eventsGateway.emitToWorkspace).toHaveBeenCalledWith(
+      'shlack',
+      'membersChanged',
+    );
   });
 
   it('저장 중 에러가 나면 롤백하고 에러를 던진다', async () => {

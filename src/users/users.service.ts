@@ -5,6 +5,8 @@ import bcrypt from 'bcrypt';
 import { Users } from '../entities/Users';
 import { ChannelMembers } from '../entities/ChannelMembers';
 import { WorkspaceMembers } from '../entities/WorkspaceMembers';
+import { Workspaces } from '../entities/Workspaces';
+import { EventsGateway } from '../events/events.gateway';
 
 @Injectable()
 export class UsersService {
@@ -12,6 +14,7 @@ export class UsersService {
     @InjectRepository(Users)
     private usersRepository: Repository<Users>,
     private dataSource: DataSource,
+    private eventsGateway: EventsGateway,
   ) {}
 
   async join(email: string, nickname: string, password: string) {
@@ -40,6 +43,16 @@ export class UsersService {
         ChannelId: 1,
       });
       await queryRunner.commitTransaction();
+      // 기본 워크스페이스에 접속 중인 사람들의 멤버 목록(DM 목록)에 새 멤버를 바로 반영
+      const defaultWorkspace = await this.dataSource
+        .getRepository(Workspaces)
+        .findOne({ where: { id: 1 }, select: ['url'] });
+      if (defaultWorkspace) {
+        this.eventsGateway.emitToWorkspace(
+          defaultWorkspace.url,
+          'membersChanged',
+        );
+      }
       return true;
     } catch (error) {
       await queryRunner.rollbackTransaction();
