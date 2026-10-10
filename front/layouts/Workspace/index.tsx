@@ -13,7 +13,8 @@ import DirectMessage from '@pages/DirectMessage';
 import { IChannel, IChat, IDM, IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
 import { notifyIfHidden, previewText } from '@utils/notify';
-import { FileMeta, putFile } from '@utils/fileStore';
+import { FileMeta, getFile, notifyUnavailable, putFile, UnavailableReason } from '@utils/fileStore';
+import StorageModal from '@components/StorageModal';
 import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
 import gravatar from 'gravatar';
@@ -54,6 +55,7 @@ const Workspace = () => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
   const [showMembersModal, setShowMembersModal] = useState(false);
+  const [showStorageModal, setShowStorageModal] = useState(false);
   const history = useHistory();
   const location = useLocation();
   const locationRef = useRef(location.pathname);
@@ -147,11 +149,33 @@ const Workspace = () => {
         console.error('파일을 기기에 저장하지 못했습니다.', error),
       );
     };
+    // 다른 사람이 내가 보낸 파일을 받지 못했다며 다시 보내 달라고 요청: 내 기기 저장소에서 꺼내 중계 서버로 보낸다
+    const onFileRequested = async ({ fileId, requesterId }: { fileId: string; requesterId: number }) => {
+      const stored = await getFile(fileId).catch(() => undefined);
+      if (!stored) {
+        socket?.emit('fileMissing', { fileId, requesterId });
+        return;
+      }
+      const formData = new FormData();
+      formData.append('file', new File([stored.blob], stored.name, { type: stored.type }));
+      formData.append('fileId', fileId);
+      formData.append('requesterId', String(requesterId));
+      axios.post(`/api/workspaces/${workspace}/files/relay`, formData).catch((error) => {
+        console.error('파일을 다시 보내지 못했습니다.', error);
+        socket?.emit('fileMissing', { fileId, requesterId });
+      });
+    };
+    const onFileUnavailable = ({ fileId, reason }: { fileId: string; reason: UnavailableReason }) =>
+      notifyUnavailable(fileId, reason);
     socket?.on('fileData', onFileData);
+    socket?.on('fileRequested', onFileRequested);
+    socket?.on('fileUnavailable', onFileUnavailable);
     return () => {
       socket?.off('fileData', onFileData);
+      socket?.off('fileRequested', onFileRequested);
+      socket?.off('fileUnavailable', onFileUnavailable);
     };
-  }, [socket]);
+  }, [socket, workspace]);
 
   // 멘션/DM 알림: 탭을 보고 있지 않으면 브라우저 알림, 보고 있지만 다른 대화면 토스트(멘션)
   useEffect(() => {
@@ -243,6 +267,19 @@ const Workspace = () => {
                     </div>
                   </header>
                   <ul role="menu">
+                    <li>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          setShowStorageModal(true);
+                        }}
+                      >
+                        이 기기의 파일
+                      </button>
+                    </li>
+                    <li className="divider" role="separator" />
                     <li>
                       <button type="button" role="menuitem" className="danger" onClick={onLogOut}>
                         로그아웃
@@ -340,6 +377,7 @@ const Workspace = () => {
         </Chats>
       </WorkspaceWrapper>
       <CreateWorkspaceModal show={showCreateWorkspaceModal} onCloseModal={onCloseModal} />
+      <StorageModal show={showStorageModal} onCloseModal={() => setShowStorageModal(false)} />
       {currentWorkspace && userData && (
         <MembersModal
           show={showMembersModal}

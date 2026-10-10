@@ -327,7 +327,10 @@ const Channel = () => {
   const onUploaded = useCallback(() => {
     localStorage.setItem(`${workspace}-${channel}`, new Date().getTime().toString());
   }, [workspace, channel]);
-  const { upload, uploading } = useFileUpload(`/api/workspaces/${workspace}/channels/${channel}/files`, onUploaded);
+  const { upload, uploading, progress } = useFileUpload(
+    `/api/workspaces/${workspace}/channels/${channel}/files`,
+    onUploaded,
+  );
 
   const onDrop = useCallback(
     (e) => {
@@ -420,6 +423,7 @@ const Channel = () => {
           data={channelMembersData}
           onAttachFiles={upload}
           uploading={uploading}
+          uploadProgress={progress}
           toolbarExtra={<GifPicker onSelect={onSelectGif} />}
         />
         <InviteChannelModal

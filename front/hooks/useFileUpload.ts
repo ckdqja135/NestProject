@@ -19,6 +19,7 @@ const uuid = () =>
 // 서버는 파일을 저장하지 않고 접속 중인 상대에게 중계만 한다.
 const useFileUpload = (url: string, onSuccess?: () => void) => {
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   const upload = useCallback(
     async (files: File[]) => {
@@ -33,6 +34,7 @@ const useFileUpload = (url: string, onSuccess?: () => void) => {
         return;
       }
       setUploading(true);
+      setProgress(0);
       try {
         const formData = new FormData();
         for (const file of valid) {
@@ -41,7 +43,13 @@ const useFileUpload = (url: string, onSuccess?: () => void) => {
           formData.append('file', file);
           formData.append('ids', id);
         }
-        await axios.post(url, formData);
+        await axios.post(url, formData, {
+          onUploadProgress: (event) => {
+            if (event.total) {
+              setProgress(Math.round((event.loaded / event.total) * 100));
+            }
+          },
+        });
         onSuccess?.();
       } catch (error: any) {
         const message = error?.response?.status === 413 ? '20MB 이하 파일만 보낼 수 있습니다.' : getErrorMessage(error);
@@ -53,7 +61,7 @@ const useFileUpload = (url: string, onSuccess?: () => void) => {
     [url, onSuccess],
   );
 
-  return { upload, uploading };
+  return { upload, uploading, progress };
 };
 
 export default useFileUpload;

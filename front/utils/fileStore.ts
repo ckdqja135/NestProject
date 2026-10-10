@@ -101,3 +101,75 @@ export const downloadFile = (file: StoredFile) => {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
+
+// ---- 목록/삭제 (기기 저장 공간 관리) ----
+export async function listFiles(): Promise<StoredFile[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction(STORE, 'readonly').objectStore(STORE).getAll();
+    request.onsuccess = () => resolve((request.result as StoredFile[]).sort((a, b) => b.savedAt - a.savedAt));
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// 사용자가 일부러 지운 파일은 자동으로 다시 받아오지 않는다 (직접 '다시 받기' 를 누르면 받음)
+const DELETED_KEY = 'shlack-deleted-files';
+const readDeleted = (): string[] => {
+  try {
+    return JSON.parse(localStorage.getItem(DELETED_KEY) || '[]');
+  } catch {
+    return [];
+  }
+};
+export const isDeletedByUser = (id: string) => readDeleted().includes(id);
+export const clearDeletedMark = (id: string) => {
+  try {
+    localStorage.setItem(DELETED_KEY, JSON.stringify(readDeleted().filter((x) => x !== id)));
+  } catch {
+    // 저장소를 못 쓰는 환경이면 무시
+  }
+};
+
+export async function deleteFiles(ids: string[]) {
+  if (!ids.length) {
+    return;
+  }
+  const db = await openDB();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    ids.forEach((id) => tx.objectStore(STORE).delete(id));
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+  try {
+    // 최근 1000개까지만 기억
+    localStorage.setItem(DELETED_KEY, JSON.stringify([...ids, ...readDeleted()].slice(0, 1000)));
+  } catch {
+    // 저장소를 못 쓰는 환경이면 무시
+  }
+  ids.forEach((id) => listeners.get(id)?.forEach((listener) => listener()));
+}
+
+// ---- 받지 못한 파일 다시 받기 상태 ----
+export type UnavailableReason = 'offline' | 'missing' | 'not-found';
+const unavailableListeners = new Map<string, Set<(reason: UnavailableReason) => void>>();
+export const subscribeUnavailable = (id: string, listener: (reason: UnavailableReason) => void) => {
+  if (!unavailableListeners.has(id)) {
+    unavailableListeners.set(id, new Set());
+  }
+  unavailableListeners.get(id)!.add(listener);
+  return () => {
+    unavailableListeners.get(id)?.delete(listener);
+  };
+};
+export const notifyUnavailable = (id: string, reason: UnavailableReason) =>
+  unavailableListeners.get(id)?.forEach((listener) => listener(reason));
+
+// 브라우저가 이 사이트에 허용한 저장 공간
+export const estimateStorage = async () => {
+  if (typeof navigator !== 'undefined' && navigator.storage?.estimate) {
+    const { usage = 0, quota = 0 } = await navigator.storage.estimate();
+    return { usage, quota };
+  }
+  return null;
+};

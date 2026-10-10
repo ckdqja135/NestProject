@@ -1,10 +1,35 @@
 import styled from '@emotion/styled';
+import ImageViewer from '@components/ImageViewer';
 import useLocalFile from '@hooks/useLocalFile';
-import { downloadFile, FileMeta, formatSize, isImageType } from '@utils/fileStore';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import useSocket from '@hooks/useSocket';
+import {
+  clearDeletedMark,
+  downloadFile,
+  FileMeta,
+  formatSize,
+  isDeletedByUser,
+  isImageType,
+  subscribeUnavailable,
+  UnavailableReason,
+} from '@utils/fileStore';
+import { useParams } from 'react-router';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 
 // 보낸 지 이 시간이 지나도 이 기기에 없으면 '받지 못한 파일' 로 본다 (보낼 때 오프라인이었음)
 const RECEIVE_GRACE_MS = 15_000;
+// 보낸 사람에게 다시 요청한 뒤 이 시간 안에 오지 않으면 실패로 본다
+const REQUEST_TIMEOUT_MS = 20_000;
+// 이번 접속 동안 자동으로 다시 요청한 파일 (같은 파일을 반복 요청하지 않도록)
+const autoRequested = new Set<string>();
+
+type Phase = 'idle' | 'requesting' | UnavailableReason | 'timeout';
+
+const UNAVAILABLE_TEXT: Record<string, string> = {
+  offline: '보낸 사람이 지금 접속해 있지 않아 받을 수 없습니다. 보낸 사람이 접속해 있을 때 다시 시도하세요.',
+  missing: '보낸 사람의 기기에도 이 파일이 없어 받을 수 없습니다.',
+  'not-found': '파일을 찾을 수 없습니다.',
+  timeout: '보낸 사람에게서 응답이 없습니다. 잠시 후 다시 시도하세요.',
+};
 
 const Card = styled.div`
   display: flex;
@@ -103,8 +128,12 @@ interface Props {
 
 // 채팅의 파일: 이 기기 저장소에서 읽어 이미지는 바로 보여주고, 그 외 파일은 '기기에 저장' 으로 내려받는다
 const FileAttachment: FC<Props> = ({ meta, sentAt }) => {
+  const { workspace } = useParams<{ workspace: string }>();
+  const [socket] = useSocket(workspace);
   const { file, loaded } = useLocalFile(meta.id);
   const [now, setNow] = useState(Date.now());
+  const [phase, setPhase] = useState<Phase>('idle');
+  const [viewing, setViewing] = useState(false);
   const objectUrl = useMemo(
     () => (file && isImageType(meta.type) ? URL.createObjectURL(file.blob) : null),
     [file, meta.type],
@@ -129,10 +158,46 @@ const FileAttachment: FC<Props> = ({ meta, sentAt }) => {
     return () => clearTimeout(timer);
   }, [waiting]);
 
+  // 받지 못한 파일을 접속 중인 보낸 사람에게 다시 요청한다 (서버는 중계만)
+  const requestAgain = useCallback(() => {
+    if (!socket) {
+      return;
+    }
+    clearDeletedMark(meta.id);
+    setPhase('requesting');
+    socket.emit('fileRequest', { fileId: meta.id });
+  }, [socket, meta.id]);
+
+  useEffect(() => subscribeUnavailable(meta.id, (reason) => setPhase(reason)), [meta.id]);
+
+  // 파일이 도착하면 다시 받기 상태를 초기화 (나중에 지우면 '다시 받기' 를 다시 보여줄 수 있도록)
+  useEffect(() => {
+    if (file) {
+      setPhase('idle');
+    }
+  }, [file]);
+
+  useEffect(() => {
+    if (phase !== 'requesting' || file) {
+      return;
+    }
+    const timer = setTimeout(() => setPhase('timeout'), REQUEST_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [phase, file]);
+
+  const missing = loaded && !file && !waiting;
+  // 일부러 지운 파일이 아니면 한 번은 자동으로 다시 요청
+  useEffect(() => {
+    if (missing && socket && !autoRequested.has(meta.id) && !isDeletedByUser(meta.id)) {
+      autoRequested.add(meta.id);
+      requestAgain();
+    }
+  }, [missing, socket, meta.id, requestAgain]);
+
   if (file && objectUrl) {
     return (
       <ImageBox>
-        <img src={objectUrl} alt={meta.name} onClick={() => window.open(objectUrl, '_blank')} />
+        <img src={objectUrl} alt={meta.name} onClick={() => setViewing(true)} />
         <figcaption>
           <span>
             {meta.name} · {formatSize(meta.size)}
@@ -141,6 +206,15 @@ const FileAttachment: FC<Props> = ({ meta, sentAt }) => {
             기기에 저장
           </button>
         </figcaption>
+        {viewing && (
+          <ImageViewer
+            src={objectUrl}
+            name={meta.name}
+            caption={formatSize(meta.size)}
+            onDownload={() => downloadFile(file)}
+            onClose={() => setViewing(false)}
+          />
+        )}
       </ImageBox>
     );
   }
@@ -162,6 +236,19 @@ const FileAttachment: FC<Props> = ({ meta, sentAt }) => {
     );
   }
 
+  let status = '받는 중...';
+  if (missing) {
+    if (phase === 'requesting') {
+      status = '보낸 사람에게서 가져오는 중...';
+    } else if (phase !== 'idle') {
+      status = UNAVAILABLE_TEXT[phase];
+    } else if (isDeletedByUser(meta.id)) {
+      status = '이 기기에서 지운 파일입니다.';
+    } else {
+      status = '이 기기에 없는 파일입니다.';
+    }
+  }
+
   return (
     <Card className="missing">
       <span className="icon" aria-hidden="true">
@@ -170,10 +257,14 @@ const FileAttachment: FC<Props> = ({ meta, sentAt }) => {
       <span className="info">
         <b title={meta.name}>{meta.name}</b>
         <small>
-          {formatSize(meta.size)} ·{' '}
-          {!loaded || waiting ? '받는 중...' : '이 기기에서 받지 못한 파일입니다 (보낼 때 접속해 있지 않았음)'}
+          {formatSize(meta.size)} · {status}
         </small>
       </span>
+      {missing && phase !== 'requesting' && (
+        <button type="button" onClick={requestAgain}>
+          다시 받기
+        </button>
+      )}
     </Card>
   );
 };

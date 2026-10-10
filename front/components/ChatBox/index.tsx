@@ -22,6 +22,7 @@ interface Props {
   inputId?: string;
   onAttachFiles?: (files: File[]) => void; // 있으면 파일 첨부 버튼과 붙여넣기 전송을 켠다
   uploading?: boolean;
+  uploadProgress?: number;
   toolbarExtra?: React.ReactNode; // 첨부 버튼 옆에 추가할 도구 (예: GIF 검색)
 }
 const ChatBox: FC<Props> = ({
@@ -33,6 +34,7 @@ const ChatBox: FC<Props> = ({
   inputId = 'editor-chat',
   onAttachFiles,
   uploading,
+  uploadProgress,
   toolbarExtra,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -128,7 +130,7 @@ const ChatBox: FC<Props> = ({
                 aria-label="파일 첨부"
                 title="파일 첨부 (이미지, 문서 등 20MB 이하)"
               >
-                {uploading ? '보내는 중...' : '＋ 파일'}
+                {uploading ? `보내는 중 ${uploadProgress ?? 0}%` : '＋ 파일'}
               </AttachButton>
               <input ref={fileInputRef} type="file" multiple hidden onChange={onChangeFile} />
             </>

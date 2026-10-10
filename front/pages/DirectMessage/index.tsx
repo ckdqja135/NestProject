@@ -215,7 +215,7 @@ const DirectMessage = () => {
     localStorage.setItem(`${workspace}-${id}`, new Date().getTime().toString());
     mutateChat();
   }, [workspace, id, mutateChat]);
-  const { upload, uploading } = useFileUpload(`/api/workspaces/${workspace}/dms/${id}/files`, onUploaded);
+  const { upload, uploading, progress } = useFileUpload(`/api/workspaces/${workspace}/dms/${id}/files`, onUploaded);
 
   const onDrop = useCallback(
     (e) => {
@@ -296,6 +296,7 @@ const DirectMessage = () => {
         data={mentionTargets}
         onAttachFiles={upload}
         uploading={uploading}
+        uploadProgress={progress}
         toolbarExtra={<GifPicker onSelect={onSelectGif} />}
       />
       {dragOver && <DragOver>여기에 놓아서 파일 보내기</DragOver>}

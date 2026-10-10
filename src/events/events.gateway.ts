@@ -12,7 +12,10 @@ import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Namespace, Server, Socket } from 'socket.io';
+import { ChannelChats } from '../entities/ChannelChats';
 import { ChannelMembers } from '../entities/ChannelMembers';
+import { DMs } from '../entities/DMs';
+import { findFileMessage } from '../files/find-file-message';
 import { WorkspaceMembers } from '../entities/WorkspaceMembers';
 import { onlineMap } from './onlineMap';
 
@@ -37,6 +40,10 @@ export class EventsGateway
     private workspaceMembersRepository: Repository<WorkspaceMembers>,
     @InjectRepository(ChannelMembers)
     private channelMembersRepository: Repository<ChannelMembers>,
+    @InjectRepository(ChannelChats)
+    private channelChatsRepository: Repository<ChannelChats>,
+    @InjectRepository(DMs)
+    private dmsRepository: Repository<DMs>,
   ) {}
 
   afterInit(server: Server | Namespace) {
@@ -105,6 +112,62 @@ export class EventsGateway
         socket.nsp.to(targets).emit('typing', payload);
       }
     }
+  }
+
+  // 받지 못한 파일 다시 받기: 접속 중인 보낸 사람의 탭에 파일을 다시 보내 달라고 요청한다.
+  // 파일 내용은 보낸 사람 브라우저 → 서버(중계만) → 요청한 사람 으로 전달되고 서버에는 남지 않는다.
+  @SubscribeMessage('fileRequest')
+  async handleFileRequest(
+    @MessageBody() data: { fileId: string },
+    @ConnectedSocket() socket: Socket,
+  ) {
+    const user = getSessionUser(socket);
+    const url = socket.nsp.name.replace(/^\/ws-/, '');
+    if (!user || !data?.fileId) {
+      return;
+    }
+    const unavailable = (reason: 'not-found' | 'offline') =>
+      socket.emit('fileUnavailable', { fileId: data.fileId, reason });
+    const message = await findFileMessage(
+      {
+        channelChats: this.channelChatsRepository,
+        dms: this.dmsRepository,
+        channelMembers: this.channelMembersRepository,
+      },
+      url,
+      data.fileId,
+    );
+    if (!message || !(await message.canAccess(user.id))) {
+      return unavailable('not-found');
+    }
+    // 보낸 사람의 다른 탭 중 하나에만 요청 (같은 브라우저 탭들은 저장소를 공유하므로 중복 전송 방지)
+    const senderSocket = this.socketsOf(socket.nsp.name, message.senderId).find(
+      (s) => s.id !== socket.id,
+    );
+    if (!senderSocket) {
+      return unavailable('offline');
+    }
+    senderSocket.emit('fileRequested', {
+      fileId: data.fileId,
+      requesterId: user.id,
+    });
+  }
+
+  // 보낸 사람 기기에도 파일이 없을 때 요청한 사람에게 알린다
+  @SubscribeMessage('fileMissing')
+  handleFileMissing(
+    @MessageBody() data: { fileId: string; requesterId: number },
+    @ConnectedSocket() socket: Socket,
+  ) {
+    if (!getSessionUser(socket) || !data?.fileId) {
+      return;
+    }
+    this.emitToUser(
+      socket.nsp.name.replace(/^\/ws-/, ''),
+      Number(data.requesterId),
+      'fileUnavailable',
+      { fileId: data.fileId, reason: 'missing' },
+    );
   }
 
   // 특정 사용자가 이 네임스페이스에 연결한 소켓들
