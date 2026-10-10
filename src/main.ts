@@ -10,6 +10,8 @@ import session from 'express-session';
 import path from 'path';
 import fs from 'fs';
 import { SessionIoAdapter } from './events/session-io.adapter';
+import { createSessionStore } from './session-store';
+import { serveFrontend } from './serve-frontend';
 
 declare const module: any;
 
@@ -37,6 +39,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
   const sessionMiddleware = session({
+    store: await createSessionStore(),
     resave: false,
     saveUninitialized: false,
     secret: process.env.SECRET,
@@ -56,6 +59,9 @@ async function bootstrap() {
       passport.session(),
     ]),
   );
+
+  // 운영 모드에서는 프론트 빌드 결과(front/dist)도 이 서버가 서빙한다
+  serveFrontend(app);
 
   const port = process.env.PORT || 3002;
   await app.listen(port);

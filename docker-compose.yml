@@ -1,0 +1,57 @@
+# 실행: cp .env.example .env (값 채우기) → docker compose up -d --build → http://localhost:3002
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_PW:?.env 에 DB_PW 를 설정하세요}
+      MARIADB_DATABASE: ${DB_NAME:-shlack}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_general_ci
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'healthcheck.sh', '--connect', '--innodb_initialized']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: root
+      DB_NAME: ${DB_NAME:-shlack}
+      REDIS_URL: redis://redis:6379
+    ports:
+      - '${APP_PORT:-3002}:3002'
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  db-data:
+  redis-data:
+  uploads:

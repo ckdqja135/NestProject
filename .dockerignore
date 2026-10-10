@@ -1,0 +1,15 @@
+.git
+.idea
+.env
+.env.*
+!.env.example
+node_modules
+front/node_modules
+dist
+front/dist
+uploads
+coverage
+ch2
+output
+test.js
+*.log

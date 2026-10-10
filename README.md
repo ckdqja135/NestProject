@@ -3,6 +3,20 @@
 NestJS + TypeORM(MariaDB) + Socket.IO 백엔드와 React 프론트엔드(`front/`)로 구성된 Slack 클론입니다.
 API 명세는 [API.md](./API.md) 참고, Swagger 는 서버 실행 후 http://localhost:3002/api 에서 볼 수 있습니다.
 
+## 빠른 실행 (Docker Compose)
+
+MariaDB, Redis, 앱(프론트 포함)을 한 번에 띄웁니다. Docker 가 설치되어 있어야 합니다.
+
+```bash
+cp .env.example .env      # SECRET, DB_PW 를 채우세요
+docker compose up -d --build
+```
+
+http://localhost:3002 접속. 처음 시작할 때 스키마와 기본 워크스페이스(`shlack`)가 자동으로 만들어지고,
+DB·Redis·업로드 파일은 볼륨에 보존됩니다. 포트를 바꾸려면 `.env` 에 `APP_PORT=8080` 처럼 지정하세요.
+
+아래는 Docker 없이 직접 실행하는 방법입니다.
+
 ## 1. 환경 변수 (`.env`)
 
 `.env` 는 비밀번호가 들어가므로 git 에 올리지 않습니다. 예시 파일을 복사해서 값을 채우세요.
@@ -16,6 +30,7 @@ cp .env.example .env
 | `SECRET` | 세션 쿠키 서명용 비밀값 |
 | `DB_USER`, `DB_PW`, `DB_NAME` | MariaDB 접속 정보 (DB 이름 기본 `shlack`) |
 | `DB_HOST`, `DB_PORT`, `PORT` | 선택. 기본값 localhost / 3306 / 3002 |
+| `REDIS_URL` | 선택. 세션 저장소 (예: `redis://localhost:6379`). 없으면 메모리에 저장되어 서버 재시작 시 로그아웃 |
 | `GIPHY_API_KEY` | 선택. GIF 검색용 키 (https://developers.giphy.com 에서 무료 발급) |
 
 ## 2. DB 준비 (최초 1회)
