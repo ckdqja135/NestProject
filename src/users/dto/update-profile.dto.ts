@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsIn,
   IsNotEmpty,
   IsOptional,
@@ -35,6 +36,28 @@ export class UpdateProfileDto {
     description: '아바타 스타일',
   })
   public avatarStyle?: string;
+
+  // 상태 메시지: 빈 문자열이나 null 이면 지운다
+  @IsOptional()
+  @IsString()
+  @MaxLength(16)
+  @ApiProperty({ example: '🗓️', required: false, description: '상태 이모지' })
+  public statusEmoji?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  @ApiProperty({
+    example: '회의 중',
+    required: false,
+    description: '상태 메시지',
+  })
+  public statusText?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  @ApiProperty({ required: false, description: '자리 비움으로 표시' })
+  public away?: boolean;
 }
 
 export class ChangePasswordDto {

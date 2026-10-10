@@ -331,6 +331,23 @@ const Channel = () => {
       .catch(showError);
   }, [workspace, channel, mutateChannels, history]);
 
+  // 채널 알림 끄기/켜기: 안 읽은 표시를 숨기고 멘션만 알린다
+  const onToggleMute = useCallback(() => {
+    if (!channelData) {
+      return;
+    }
+    const muted = !channelData.muted;
+    const muteUrl = `/api/workspaces/${workspace}/channels/${channel}/mute`;
+    (muted ? axios.put(muteUrl) : axios.delete(muteUrl))
+      .then(() => {
+        mutateChannels((prev) => prev?.map((c) => (c.id === channelData.id ? { ...c, muted } : c)), false);
+        toast.info(muted ? `#${channel} 알림을 껐습니다. 멘션은 계속 알려드려요.` : `#${channel} 알림을 켰습니다.`, {
+          position: 'bottom-center',
+        });
+      })
+      .catch(showError);
+  }, [workspace, channel, channelData, mutateChannels]);
+
   const onUploaded = useCallback(() => {
     localStorage.setItem(`${workspace}-${channel}`, new Date().getTime().toString());
   }, [workspace, channel]);
@@ -383,6 +400,15 @@ const Channel = () => {
               title="고정된 메시지"
             >
               📌 고정
+            </HeaderButton>
+            <HeaderButton
+              type="button"
+              className={channelData?.muted ? 'active' : undefined}
+              onClick={onToggleMute}
+              title={channelData?.muted ? '알림 켜기' : '알림 끄기 (멘션은 계속 알림)'}
+              aria-pressed={!!channelData?.muted}
+            >
+              {channelData?.muted ? '🔕 알림 꺼짐' : '🔔 알림'}
             </HeaderButton>
             {channel !== '일반' && (
               <HeaderButton type="button" onClick={onLeaveChannel} title="채널 나가기">

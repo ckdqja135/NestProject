@@ -176,9 +176,14 @@ export class WorkspacesService {
     await this.assertMember(workspace.id, myId);
     const user = await this.usersRepository
       .createQueryBuilder('user')
-      .innerJoin('user.WorkspaceMembers', 'members', 'members.WorkspaceId = :workspaceId', {
-        workspaceId: workspace.id,
-      })
+      .innerJoin(
+        'user.WorkspaceMembers',
+        'members',
+        'members.WorkspaceId = :workspaceId',
+        {
+          workspaceId: workspace.id,
+        },
+      )
       .where('user.id = :id', { id })
       .getOne();
     if (!user) {

@@ -3,6 +3,9 @@ export interface IUser {
   nickname: string;
   email: string;
   avatarStyle?: string | null; // Gravatar 기본 이미지 종류
+  statusEmoji?: string | null; // 상태 메시지 (예: 🗓️ 회의 중)
+  statusText?: string | null;
+  away?: boolean; // 자리 비움으로 표시
   Workspaces: IWorkspace[];
 }
 
@@ -14,6 +17,7 @@ export interface IChannel {
   id: number;
   name: string;
   private: boolean; // 비공개 채널 여부 (초대받은 사람만 참여)
+  muted?: boolean; // 내가 이 채널 알림을 껐는지
   WorkspaceId: number;
 }
 

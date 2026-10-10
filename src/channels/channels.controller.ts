@@ -7,6 +7,7 @@ import {
   Param,
   ParseIntPipe,
   Patch,
+  Put,
   Post,
   Query,
   UploadedFiles,
@@ -309,6 +310,28 @@ export class ChannelsController {
     @User() user: Users,
   ) {
     await this.channelsService.leaveChannel(url, name, user.id);
+    return 'ok';
+  }
+
+  @ApiOperation({ summary: '채널 알림 끄기 (나에게만)' })
+  @Put(':name/mute')
+  async muteChannel(
+    @Param('url') url: string,
+    @Param('name') name: string,
+    @User() user: Users,
+  ) {
+    await this.channelsService.setChannelMuted(url, name, user.id, true);
+    return 'ok';
+  }
+
+  @ApiOperation({ summary: '채널 알림 켜기' })
+  @Delete(':name/mute')
+  async unmuteChannel(
+    @Param('url') url: string,
+    @Param('name') name: string,
+    @User() user: Users,
+  ) {
+    await this.channelsService.setChannelMuted(url, name, user.id, false);
     return 'ok';
   }
 }

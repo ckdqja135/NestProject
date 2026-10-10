@@ -134,6 +134,25 @@ describe('UsersService', () => {
       );
     });
 
+    it('상태 메시지를 저장하고, 빈 값이면 지운다', async () => {
+      usersRepository.findOne.mockResolvedValue({ id: 7 });
+      await service.updateProfile(7, {
+        statusEmoji: '🗓️',
+        statusText: ' 회의 중 ',
+        away: true,
+      });
+      expect(usersRepository.update).toHaveBeenCalledWith(7, {
+        statusEmoji: '🗓️',
+        statusText: '회의 중',
+        away: true,
+      });
+      await service.updateProfile(7, { statusEmoji: null, statusText: '' });
+      expect(usersRepository.update).toHaveBeenLastCalledWith(7, {
+        statusEmoji: null,
+        statusText: null,
+      });
+    });
+
     it('공백뿐인 닉네임은 거부한다', async () => {
       await expect(
         service.updateProfile(7, { nickname: '   ' }),

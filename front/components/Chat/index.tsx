@@ -52,7 +52,15 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
   });
   const user = useMemo(() => {
     const latest = sender && members?.find((m) => m.id === sender.id);
-    return latest ? { ...sender, nickname: latest.nickname, avatarStyle: latest.avatarStyle } : sender;
+    return latest
+      ? {
+          ...sender,
+          nickname: latest.nickname,
+          avatarStyle: latest.avatarStyle,
+          statusEmoji: latest.statusEmoji,
+          statusText: latest.statusText,
+        }
+      : sender;
   }, [sender, members]);
   const channelChat = 'Sender' in data ? null : (data as IChat);
   const isMine = myId !== undefined && user?.id === myId;
@@ -159,6 +167,11 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
         {channelChat?.pinned && <PinnedLabel>📌 고정됨</PinnedLabel>}
         <div className="chat-user">
           <b>{user.nickname}</b>
+          {user.statusEmoji && (
+            <span className="status" title={user.statusText || undefined}>
+              {user.statusEmoji}
+            </span>
+          )}
           <span>{dayjs(data.createdAt).format('h:mm A')}</span>
           {data.editedAt && <span className="edited">(수정됨)</span>}
         </div>

@@ -59,6 +59,21 @@ export const Channels = styled.nav`
     &.selected {
       color: white;
     }
+
+    /* 알림을 끈 채널은 흐리게 */
+    &.muted-channel:not(.selected) {
+      opacity: 0.6;
+    }
+  }
+
+  & .muted-icon {
+    margin-left: 4px;
+    font-size: 11px;
+  }
+
+  & .status-emoji {
+    margin-left: 4px;
+    font-size: 13px;
   }
 
   & .bold {
@@ -178,6 +193,14 @@ export const WorkspaceModal = styled.div`
 
     & small.online {
       color: #007a5a;
+    }
+
+    & small.away {
+      color: #616061;
+    }
+
+    & small.status {
+      color: #1d1c1d;
     }
   }
 

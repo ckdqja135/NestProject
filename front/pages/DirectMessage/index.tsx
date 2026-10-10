@@ -259,8 +259,14 @@ const DirectMessage = () => {
             {userData.nickname}
             {isSelf && <span className="me"> (나)</span>}
           </strong>
-          <small className={isOnline ? 'online' : undefined}>
-            {isSelf ? '나에게 보내는 메모' : isOnline ? '● 온라인' : '○ 오프라인'}
+          <small className={isOnline && !userData.away ? 'online' : undefined}>
+            {isSelf ? '나에게 보내는 메모' : isOnline ? (userData.away ? '○ 자리 비움' : '● 온라인') : '○ 오프라인'}
+            {(userData.statusEmoji || userData.statusText) && (
+              <span className="status">
+                {' · '}
+                {userData.statusEmoji} {userData.statusText}
+              </span>
+            )}
           </small>
         </div>
       </Header>

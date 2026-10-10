@@ -9,8 +9,36 @@ export const notificationPermission = (): NotificationPermission | 'unsupported'
 export const requestNotificationPermission = () =>
   canNotify() ? Notification.requestPermission() : Promise.resolve('denied' as NotificationPermission);
 
+// 브라우저 권한과 별개로 슐랙 안에서 알림을 잠시 끌 수 있다 (이 기기에만 저장)
+const PAUSE_KEY = 'shlack-notifications-paused';
+
+export const notificationsPaused = () => {
+  try {
+    return localStorage.getItem(PAUSE_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+
+export const setNotificationsPaused = (paused: boolean) => {
+  try {
+    if (paused) {
+      localStorage.setItem(PAUSE_KEY, '1');
+    } else {
+      localStorage.removeItem(PAUSE_KEY);
+    }
+  } catch {
+    // 저장소를 쓸 수 없으면 이번 화면에서만 적용되지 않는다
+  }
+};
+
 export const notifyIfHidden = (title: string, body: string, onClick?: () => void) => {
-  if (!canNotify() || Notification.permission !== 'granted' || document.visibilityState === 'visible') {
+  if (
+    !canNotify() ||
+    Notification.permission !== 'granted' ||
+    document.visibilityState === 'visible' ||
+    notificationsPaused()
+  ) {
     return;
   }
   const notification = new Notification(title, { body, tag: `${title}-${body}`.slice(0, 64) });

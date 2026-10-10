@@ -50,4 +50,8 @@ export const Header = styled.header`
   & small.online {
     color: #007a5a;
   }
+
+  & small .status {
+    color: #616061;
+  }
 `;

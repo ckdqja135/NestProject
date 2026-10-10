@@ -12,10 +12,19 @@ import Channel from '@pages/Channel';
 import DirectMessage from '@pages/DirectMessage';
 import { IChannel, IChat, IDM, IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
-import { notifyIfHidden, previewText } from '@utils/notify';
+import {
+  notificationPermission,
+  notificationsPaused,
+  notifyIfHidden,
+  previewText,
+  requestNotificationPermission,
+  setNotificationsPaused,
+} from '@utils/notify';
+import useUnreadTitle from '@hooks/useUnreadTitle';
 import { FileMeta, getFile, notifyUnavailable, putFile, UnavailableReason } from '@utils/fileStore';
 import StorageModal from '@components/StorageModal';
 import ProfileModal from '@components/ProfileModal';
+import StatusModal from '@components/StatusModal';
 import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
 import { avatarUrl } from '@utils/avatar';
@@ -58,6 +67,9 @@ const Workspace = () => {
   const [showMembersModal, setShowMembersModal] = useState(false);
   const [showStorageModal, setShowStorageModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [paused, setPaused] = useState(notificationsPaused);
+  useUnreadTitle();
   const history = useHistory();
   const location = useLocation();
   const locationRef = useRef(location.pathname);
@@ -194,7 +206,9 @@ const Workspace = () => {
     const onMention = ({ chat }: { chat: IChat }) => {
       const channelPath = `/workspace/${workspace}/channel/${chat.Channel.name}`;
       const title = `${chat.User.nickname}님이 #${chat.Channel.name}에서 멘션했습니다`;
-      const go = () => history.push(channelPath);
+      // 알림을 누르면 그 메시지로 이동 (스레드 답글이면 스레드를 열어서)
+      const query = chat.ParentId ? `message=${chat.ParentId}&reply=${chat.id}` : `message=${chat.id}`;
+      const go = () => history.push(`${channelPath}?${query}`);
       if (document.visibilityState !== 'visible') {
         notifyIfHidden(title, previewText(chat.content), go);
       } else if (locationRef.current !== channelPath) {
@@ -206,7 +220,7 @@ const Workspace = () => {
         return;
       }
       notifyIfHidden(`${dm.Sender.nickname}님의 메시지`, previewText(dm.content), () =>
-        history.push(`/workspace/${workspace}/dm/${dm.SenderId}`),
+        history.push(`/workspace/${workspace}/dm/${dm.SenderId}?message=${dm.id}`),
       );
     };
     socket?.on('mention', onMention);
@@ -216,6 +230,48 @@ const Workspace = () => {
       socket?.off('dm', onDM);
     };
   }, [socket, workspace, history, userData]);
+
+  const onToggleAway = useCallback(() => {
+    if (!userData) {
+      return;
+    }
+    setShowUserMenu(false);
+    axios
+      .patch('/api/users/me', { away: !userData.away })
+      .then(() => revalidateUser())
+      .catch((error) => toast.error(getErrorMessage(error), { position: 'bottom-center' }));
+  }, [userData, revalidateUser]);
+
+  // 데스크톱 알림: 권한이 없으면 권한을 요청하고, 있으면 슐랙 안에서 일시 중지/다시 켜기
+  const permission = notificationPermission();
+  const onToggleNotifications = useCallback(() => {
+    setShowUserMenu(false);
+    if (permission === 'default') {
+      requestNotificationPermission().then((result) => {
+        if (result === 'granted') {
+          setNotificationsPaused(false);
+          setPaused(false);
+          toast.success('데스크톱 알림을 켰습니다.', { position: 'bottom-center' });
+        }
+      });
+      return;
+    }
+    if (permission !== 'granted') {
+      toast.info('브라우저 설정에서 이 사이트의 알림을 허용해 주세요.', { position: 'bottom-center' });
+      return;
+    }
+    setNotificationsPaused(!paused);
+    setPaused(!paused);
+    toast.info(paused ? '데스크톱 알림을 다시 켰습니다.' : '데스크톱 알림을 일시 중지했습니다.', {
+      position: 'bottom-center',
+    });
+  }, [permission, paused]);
+  const notificationMenuLabel =
+    permission === 'granted'
+      ? paused
+        ? '🔔 데스크톱 알림 다시 켜기'
+        : '🔕 데스크톱 알림 일시 중지'
+      : '🔔 데스크톱 알림 켜기';
 
   const currentWorkspace = userData ? userData.Workspaces.find((v) => v.url === workspace) : undefined;
 
@@ -271,10 +327,42 @@ const Workspace = () => {
                     <div>
                       <strong>{userData.nickname}</strong>
                       <small>{userData.email}</small>
-                      <small className="online">● 온라인</small>
+                      {userData.away ? (
+                        <small className="away">○ 자리 비움</small>
+                      ) : (
+                        <small className="online">● 온라인</small>
+                      )}
+                      {(userData.statusEmoji || userData.statusText) && (
+                        <small className="status" title={userData.statusText || undefined}>
+                          {userData.statusEmoji} {userData.statusText}
+                        </small>
+                      )}
                     </div>
                   </header>
                   <ul role="menu">
+                    <li>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          setShowStatusModal(true);
+                        }}
+                      >
+                        {userData.statusEmoji || userData.statusText ? '상태 바꾸기' : '상태 설정'}
+                      </button>
+                    </li>
+                    <li>
+                      <button type="button" role="menuitem" onClick={onToggleAway}>
+                        {userData.away ? '온라인으로 표시' : '자리 비움으로 표시'}
+                      </button>
+                    </li>
+                    <li>
+                      <button type="button" role="menuitem" onClick={onToggleNotifications}>
+                        {notificationMenuLabel}
+                      </button>
+                    </li>
+                    <li className="divider" role="separator" />
                     <li>
                       <button
                         type="button"
@@ -398,6 +486,14 @@ const Workspace = () => {
       </WorkspaceWrapper>
       <CreateWorkspaceModal show={showCreateWorkspaceModal} onCloseModal={onCloseModal} />
       <StorageModal show={showStorageModal} onCloseModal={() => setShowStorageModal(false)} />
+      {userData && (
+        <StatusModal
+          show={showStatusModal}
+          me={userData}
+          onCloseModal={() => setShowStatusModal(false)}
+          onUpdated={() => revalidateUser()}
+        />
+      )}
       {userData && (
         <ProfileModal
           show={showProfileModal}

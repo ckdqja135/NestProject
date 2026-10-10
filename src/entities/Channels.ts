@@ -43,7 +43,6 @@ export class Channels {
   })
   ChannelMembers: ChannelMembers[];
 
-
   @ManyToOne(() => Workspaces, (workspaces) => workspaces.Channels, {
     onDelete: 'SET NULL',
     onUpdate: 'CASCADE',

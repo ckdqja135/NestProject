@@ -25,6 +25,10 @@ export class ChannelMembers {
   @Column('int', { primary: true, name: 'UserId' })
   UserId: number;
 
+  // 채널 알림 끄기 (안 읽은 표시를 숨기고, 멘션만 알린다)
+  @Column('boolean', { name: 'muted', default: false })
+  muted: boolean;
+
   @ManyToOne(() => Channels, (channels) => channels.ChannelMembers, {
     onDelete: 'CASCADE',
     onUpdate: 'CASCADE',

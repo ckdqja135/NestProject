@@ -77,7 +77,7 @@ export class UsersController {
   }
 
   @UseGuards(LoggedInGuard)
-  @ApiOperation({ summary: '내 프로필 수정 (닉네임, 아바타 스타일)' })
+  @ApiOperation({ summary: '내 프로필 수정 (닉네임, 아바타 스타일, 상태)' })
   @Patch('me')
   updateProfile(@User() user, @Body() body: UpdateProfileDto) {
     return this.usersService.updateProfile(user.id, body);

@@ -59,11 +59,12 @@ export class ChannelsService {
     return channel;
   }
 
+  // 내가 참여 중인 채널 목록 (내 알림 끄기 여부 muted 포함)
   async getWorkspaceChannels(url: string, myId: number) {
     const workspace = await this.workspacesService.findWorkspaceByUrl(url);
-    return this.channelsRepository
+    const channels = await this.channelsRepository
       .createQueryBuilder('channels')
-      .innerJoin(
+      .innerJoinAndSelect(
         'channels.ChannelMembers',
         'channelMembers',
         'channelMembers.UserId = :myId',
@@ -74,6 +75,10 @@ export class ChannelsService {
       })
       .orderBy('channels.id', 'ASC')
       .getMany();
+    return channels.map(({ ChannelMembers, ...channel }) => ({
+      ...channel,
+      muted: !!ChannelMembers?.[0]?.muted,
+    }));
   }
 
   async getWorkspaceChannel(url: string, name: string, myId: number) {
@@ -466,5 +471,20 @@ export class ChannelsService {
       ChannelId: channel.id,
       UserId: myId,
     });
+  }
+
+  // 채널 알림 끄기/켜기 (나에게만 적용). 내 다른 탭의 채널 목록도 갱신한다.
+  async setChannelMuted(
+    url: string,
+    name: string,
+    myId: number,
+    muted: boolean,
+  ) {
+    const channel = await this.findChannel(url, name, myId);
+    await this.channelMembersRepository.update(
+      { ChannelId: channel.id, UserId: myId },
+      { muted },
+    );
+    this.eventsGateway.emitToUser(url, myId, 'channelsChanged');
   }
 }

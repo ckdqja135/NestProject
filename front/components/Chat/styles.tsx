@@ -93,6 +93,11 @@ export const ChatWrapper = styled.div`
       font-size: 12px;
     }
 
+    & > .status {
+      margin-right: 5px;
+      font-size: 14px;
+    }
+
     & > .edited {
       margin-left: 4px;
       color: #888;

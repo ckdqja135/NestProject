@@ -1,6 +1,7 @@
 import useSocket from '@hooks/useSocket';
 import { IDM, IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
+import { setUnread } from '@utils/unreadStore';
 import React, { useEffect, useRef, VFC } from 'react';
 import { useParams } from 'react-router';
 import { NavLink, useLocation } from 'react-router-dom';
@@ -33,6 +34,11 @@ const EachDM: VFC<Props> = ({ member, isOnline }) => {
     }
   }, [mutate, isViewing]);
 
+  useEffect(() => {
+    setUnread(`dm:${member.id}`, count || 0);
+  }, [member.id, count]);
+  useEffect(() => () => setUnread(`dm:${member.id}`, 0), [member.id]);
+
   // 새 DM 이 오면 안 읽은 수를 실시간으로 올린다
   useEffect(() => {
     const onDM = (data: IDM) => {
@@ -56,12 +62,16 @@ const EachDM: VFC<Props> = ({ member, isOnline }) => {
     };
   }, [socket, member.id, userData?.id, mutate]);
 
+  // 자리 비움이면 접속 중이어도 온라인 표시를 하지 않는다
+  const active = isOnline && !member.away;
+
   return (
     <NavLink key={member.id} activeClassName="selected" to={`/workspace/${workspace}/dm/${member.id}`}>
       <i
         className={`c-icon p-channel_sidebar__presence_icon p-channel_sidebar__presence_icon--dim_enabled c-presence ${
-          isOnline ? 'c-presence--active c-icon--presence-online' : 'c-icon--presence-offline'
+          active ? 'c-presence--active c-icon--presence-online' : 'c-icon--presence-offline'
         }`}
+        title={active ? '온라인' : isOnline ? '자리 비움' : '오프라인'}
         aria-hidden="true"
         data-qa="presence_indicator"
         data-qa-presence-self="false"
@@ -70,6 +80,11 @@ const EachDM: VFC<Props> = ({ member, isOnline }) => {
       />
       <span className={count && count > 0 ? 'bold' : undefined}>{member.nickname}</span>
       {member.id === userData?.id && <span> (나)</span>}
+      {member.statusEmoji && (
+        <span className="status-emoji" title={member.statusText || undefined}>
+          {member.statusEmoji}
+        </span>
+      )}
       {(count && count > 0 && <span className="count">{count}</span>) || null}
     </NavLink>
   );

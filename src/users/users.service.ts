@@ -73,10 +73,16 @@ export class UsersService {
     }
   }
 
-  // 닉네임/아바타 변경. 내가 속한 워크스페이스 사람들의 멤버 목록에도 바로 반영한다.
+  // 닉네임/아바타/상태 변경. 내가 속한 워크스페이스 사람들의 멤버 목록에도 바로 반영한다.
   async updateProfile(
     myId: number,
-    changes: { nickname?: string; avatarStyle?: string },
+    changes: {
+      nickname?: string;
+      avatarStyle?: string;
+      statusEmoji?: string | null;
+      statusText?: string | null;
+      away?: boolean;
+    },
   ) {
     const update: Partial<Users> = {};
     if (changes.nickname !== undefined) {
@@ -88,12 +94,29 @@ export class UsersService {
     if (changes.avatarStyle !== undefined) {
       update.avatarStyle = changes.avatarStyle;
     }
+    if (changes.statusEmoji !== undefined) {
+      update.statusEmoji = changes.statusEmoji?.trim() || null;
+    }
+    if (changes.statusText !== undefined) {
+      update.statusText = changes.statusText?.trim() || null;
+    }
+    if (changes.away !== undefined) {
+      update.away = changes.away;
+    }
     if (Object.keys(update).length) {
       await this.usersRepository.update(myId, update);
     }
     const user = await this.usersRepository.findOne({
       where: { id: myId },
-      select: ['id', 'email', 'nickname', 'avatarStyle'],
+      select: [
+        'id',
+        'email',
+        'nickname',
+        'avatarStyle',
+        'statusEmoji',
+        'statusText',
+        'away',
+      ],
     });
     const workspaces = await this.dataSource
       .getRepository(Workspaces)

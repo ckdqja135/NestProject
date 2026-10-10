@@ -44,6 +44,17 @@ export class Users {
   @Column('varchar', { name: 'avatarStyle', length: 20, nullable: true })
   avatarStyle: string | null;
 
+  // 상태 메시지 (예: 🗓️ 회의 중)
+  @Column('varchar', { name: 'statusEmoji', length: 16, nullable: true })
+  statusEmoji: string | null;
+
+  @Column('varchar', { name: 'statusText', length: 100, nullable: true })
+  statusText: string | null;
+
+  // 자리 비움으로 표시 (접속 중이어도 온라인 표시를 흐리게)
+  @Column('boolean', { name: 'away', default: false })
+  away: boolean;
+
   @IsString()
   @IsNotEmpty()
   @ApiProperty({

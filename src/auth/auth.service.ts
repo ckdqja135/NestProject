@@ -13,7 +13,16 @@ export class AuthService {
   async validateUser(email: string, password: string) {
     const user = await this.usersRepository.findOne({
       where: { email },
-      select: ['id', 'email', 'password', 'nickname', 'avatarStyle'],
+      select: [
+        'id',
+        'email',
+        'password',
+        'nickname',
+        'avatarStyle',
+        'statusEmoji',
+        'statusText',
+        'away',
+      ],
     });
     if (!user) {
       return null;

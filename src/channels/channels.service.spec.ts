@@ -43,6 +43,7 @@ describe('ChannelsService', () => {
   const channelsRepository = { findOne: jest.fn(), save: jest.fn() };
   const channelMembersRepository = {
     delete: jest.fn(),
+    update: jest.fn(),
     findOne: jest.fn(),
     find: jest.fn(),
     save: jest.fn(),
@@ -74,6 +75,7 @@ describe('ChannelsService', () => {
   const eventsGateway = {
     server: { to: jest.fn(() => ({ emit })) },
     refreshUserChannels: jest.fn(),
+    emitToUser: jest.fn(),
   };
   const channel = { id: 3, name: '일반', WorkspaceId: 1 };
 
@@ -300,6 +302,22 @@ describe('ChannelsService', () => {
         ChannelId: 4,
         UserId: 1,
       });
+    });
+  });
+
+  describe('채널 알림 끄기', () => {
+    it('내 채널 멤버 정보에만 muted 를 저장하고 내 탭들에 목록 갱신을 알린다', async () => {
+      channelsRepository.findOne.mockResolvedValue({ id: 4, name: '자유' });
+      await service.setChannelMuted('shlack', '자유', 1, true);
+      expect(channelMembersRepository.update).toHaveBeenCalledWith(
+        { ChannelId: 4, UserId: 1 },
+        { muted: true },
+      );
+      expect(eventsGateway.emitToUser).toHaveBeenCalledWith(
+        'shlack',
+        1,
+        'channelsChanged',
+      );
     });
   });
 
