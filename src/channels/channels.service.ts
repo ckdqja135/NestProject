@@ -59,6 +59,39 @@ export class ChannelsService {
     return channel;
   }
 
+  // 보관된 채널은 읽기만 할 수 있다
+  private async findWritableChannel(url: string, name: string, myId: number) {
+    const channel = await this.findChannel(url, name, myId);
+    if (channel.archived) {
+      throw new ForbiddenException('보관된 채널에는 쓸 수 없습니다.');
+    }
+    return channel;
+  }
+
+  // 채널 이름 변경/보관/삭제는 채널을 만든 사람과 워크스페이스 소유자만 할 수 있다
+  private async findManageableChannel(url: string, name: string, myId: number) {
+    const channel = await this.findChannel(url, name, myId);
+    const workspace = await this.workspacesService.findWorkspaceByUrl(url);
+    if (channel.OwnerId !== myId && workspace.OwnerId !== myId) {
+      throw new ForbiddenException(
+        '채널을 만든 사람이나 워크스페이스 소유자만 할 수 있습니다.',
+      );
+    }
+    if (channel.name === '일반') {
+      throw new BadRequestException(
+        '기본 채널(일반)은 이름을 바꾸거나 보관/삭제할 수 없습니다.',
+      );
+    }
+    return channel;
+  }
+
+  private assertChannelName(name: string) {
+    if (name === 'browse') {
+      // GET channels/browse(채널 둘러보기) 경로와 겹치므로 사용할 수 없다
+      throw new BadRequestException('사용할 수 없는 채널 이름입니다.');
+    }
+  }
+
   // 내가 참여 중인 채널 목록 (내 알림 끄기 여부 muted 포함)
   async getWorkspaceChannels(url: string, myId: number) {
     const workspace = await this.workspacesService.findWorkspaceByUrl(url);
@@ -93,10 +126,7 @@ export class ChannelsService {
   ) {
     const workspace = await this.workspacesService.findWorkspaceByUrl(url);
     await this.workspacesService.assertMember(workspace.id, myId);
-    if (name === 'browse') {
-      // GET channels/browse(채널 둘러보기) 경로와 겹치므로 사용할 수 없다
-      throw new BadRequestException('사용할 수 없는 채널 이름입니다.');
-    }
+    this.assertChannelName(name);
     const exists = await this.channelsRepository.findOne({
       where: { WorkspaceId: workspace.id, name },
     });
@@ -107,6 +137,7 @@ export class ChannelsService {
       name,
       WorkspaceId: workspace.id,
       private: isPrivate,
+      OwnerId: myId,
     });
     await this.channelMembersRepository.save({
       UserId: myId,
@@ -152,6 +183,9 @@ export class ChannelsService {
     if (!channel || channel.private) {
       throw new NotFoundException('존재하지 않는 채널입니다.');
     }
+    if (channel.archived) {
+      throw new ForbiddenException('보관된 채널에는 참여할 수 없습니다.');
+    }
     const already = await this.channelMembersRepository.findOne({
       where: { ChannelId: channel.id, UserId: myId },
     });
@@ -184,7 +218,7 @@ export class ChannelsService {
     email: string,
     myId: number,
   ) {
-    const channel = await this.findChannel(url, name, myId);
+    const channel = await this.findWritableChannel(url, name, myId);
     const user = await this.usersRepository
       .createQueryBuilder('user')
       .innerJoin(
@@ -307,7 +341,7 @@ export class ChannelsService {
   }
 
   async postChat(url: string, name: string, content: string, myId: number) {
-    const channel = await this.findChannel(url, name, myId);
+    const channel = await this.findWritableChannel(url, name, myId);
     return this.saveAndBroadcast(url, channel, content, myId);
   }
 
@@ -319,7 +353,7 @@ export class ChannelsService {
     clientIds: string[],
     myId: number,
   ) {
-    const channel = await this.findChannel(url, name, myId);
+    const channel = await this.findWritableChannel(url, name, myId);
     const chats = [];
     for (const [index, file] of files.entries()) {
       const meta = toFileMeta(file, clientIds[index]);
@@ -341,7 +375,7 @@ export class ChannelsService {
     content: string,
     myId: number,
   ) {
-    const channel = await this.findChannel(url, name, myId);
+    const channel = await this.findWritableChannel(url, name, myId);
     const chat = await this.findChatInChannel(channel, chatId);
     if (chat.UserId !== myId) {
       throw new ForbiddenException('내가 보낸 메시지만 수정할 수 있습니다.');
@@ -356,7 +390,7 @@ export class ChannelsService {
   }
 
   async deleteChat(url: string, name: string, chatId: number, myId: number) {
-    const channel = await this.findChannel(url, name, myId);
+    const channel = await this.findWritableChannel(url, name, myId);
     const chat = await this.findChatInChannel(channel, chatId);
     if (chat.UserId !== myId) {
       throw new ForbiddenException('내가 보낸 메시지만 삭제할 수 있습니다.');
@@ -395,7 +429,7 @@ export class ChannelsService {
     content: string,
     myId: number,
   ) {
-    const channel = await this.findChannel(url, name, myId);
+    const channel = await this.findWritableChannel(url, name, myId);
     const parent = await this.findChatInChannel(channel, chatId);
     if (parent.ParentId) {
       throw new BadRequestException('답글에는 다시 답글을 달 수 없습니다.');
@@ -410,7 +444,7 @@ export class ChannelsService {
     emoji: string,
     myId: number,
   ) {
-    const channel = await this.findChannel(url, name, myId);
+    const channel = await this.findWritableChannel(url, name, myId);
     const chat = await this.findChatInChannel(channel, chatId);
     const existing = await this.reactionsRepository.findOne({
       where: { ChatId: chat.id, UserId: myId, emoji },
@@ -445,7 +479,7 @@ export class ChannelsService {
     pinned: boolean,
     myId: number,
   ) {
-    const channel = await this.findChannel(url, name, myId);
+    const channel = await this.findWritableChannel(url, name, myId);
     const chat = await this.findChatInChannel(channel, chatId);
     await this.channelChatsRepository.update(chat.id, { pinned });
     const updated = await this.findChatWithRelations(chat.id);
@@ -486,5 +520,98 @@ export class ChannelsService {
       { muted },
     );
     this.eventsGateway.emitToUser(url, myId, 'channelsChanged');
+  }
+
+  // 채널 정보 변경: 주제는 채널 멤버 누구나, 이름은 관리자만
+  async updateChannel(
+    url: string,
+    name: string,
+    changes: { name?: string; topic?: string | null },
+    myId: number,
+  ) {
+    let channel = await this.findChannel(url, name, myId);
+    const update: Partial<Channels> = {};
+    if (changes.name !== undefined && changes.name !== channel.name) {
+      channel = await this.findManageableChannel(url, name, myId);
+      const newName = changes.name.trim();
+      this.assertChannelName(newName);
+      const exists = await this.channelsRepository.findOne({
+        where: { WorkspaceId: channel.WorkspaceId, name: newName },
+      });
+      if (exists) {
+        throw new ForbiddenException('이미 존재하는 채널 이름입니다.');
+      }
+      update.name = newName;
+    }
+    if (changes.topic !== undefined) {
+      update.topic = changes.topic?.trim() || null;
+    }
+    if (Object.keys(update).length) {
+      await this.channelsRepository.update(channel.id, update);
+    }
+    return this.notifyChannelUpdated(url, channel, name);
+  }
+
+  async setArchived(
+    url: string,
+    name: string,
+    archived: boolean,
+    myId: number,
+  ) {
+    const channel = await this.findManageableChannel(url, name, myId);
+    await this.channelsRepository.update(channel.id, { archived });
+    return this.notifyChannelUpdated(url, channel, name);
+  }
+
+  // 채널 멤버들의 화면에 바뀐 채널 정보를 알린다 (이름이 바뀌면 보고 있던 주소도 옮긴다)
+  private async notifyChannelUpdated(
+    url: string,
+    channel: Channels,
+    oldName: string,
+  ) {
+    const updated = await this.channelsRepository.findOne({
+      where: { id: channel.id },
+    });
+    await this.emitToChannelMembers(url, channel.id, 'channelUpdated', {
+      ...updated,
+      oldName,
+    });
+    return updated;
+  }
+
+  // 채널 멤버 각자에게 보낸다 (소켓 방 동기화 전이라도 받도록)
+  private async emitToChannelMembers(
+    url: string,
+    channelId: number,
+    event: string,
+    data,
+  ) {
+    const members = await this.channelMembersRepository.find({
+      where: { ChannelId: channelId },
+      select: ['UserId'],
+    });
+    members.forEach(({ UserId }) =>
+      this.eventsGateway.emitToUser(url, UserId, event, data),
+    );
+  }
+
+  // 채널 삭제: 메시지(답글·리액션·저장 항목 포함)와 멘션을 함께 지운다
+  async deleteChannel(url: string, name: string, myId: number) {
+    const channel = await this.findManageableChannel(url, name, myId);
+    const chats = await this.channelChatsRepository.find({
+      where: { ChannelId: channel.id },
+      select: ['id'],
+    });
+    const chatIds = chats.map((c) => c.id);
+    await this.mentionsService.removeForChats(url, chatIds);
+    if (chatIds.length) {
+      await this.channelChatsRepository.delete(chatIds);
+    }
+    // 멤버 정보가 지워지기 전에 알린다
+    await this.emitToChannelMembers(url, channel.id, 'channelDeleted', {
+      id: channel.id,
+      name: channel.name,
+    });
+    await this.channelsRepository.delete(channel.id);
   }
 }

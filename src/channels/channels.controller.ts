@@ -30,6 +30,7 @@ import { ReactionDto } from '../common/dto/reaction.dto';
 import { MAX_FILES, normalizeIds, relayUploadOptions } from '../common/upload';
 import { Users } from '../entities/Users';
 import { ChannelsService } from './channels.service';
+import { UpdateChannelDto } from './dto/update-channel.dto';
 import { CreateChannelDto } from './dto/create-channel.dto';
 
 // 한 번에 가져오는 채팅 수 제한 (1~100)
@@ -332,6 +333,51 @@ export class ChannelsController {
     @User() user: Users,
   ) {
     await this.channelsService.setChannelMuted(url, name, user.id, false);
+    return 'ok';
+  }
+
+  @ApiOperation({
+    summary:
+      '채널 정보 변경 (주제: 멤버 누구나, 이름: 만든 사람·워크스페이스 소유자)',
+  })
+  @Patch(':name')
+  updateChannel(
+    @Param('url') url: string,
+    @Param('name') name: string,
+    @Body() body: UpdateChannelDto,
+    @User() user: Users,
+  ) {
+    return this.channelsService.updateChannel(url, name, body, user.id);
+  }
+
+  @ApiOperation({ summary: '채널 보관 (읽기 전용)' })
+  @Put(':name/archive')
+  archive(
+    @Param('url') url: string,
+    @Param('name') name: string,
+    @User() user: Users,
+  ) {
+    return this.channelsService.setArchived(url, name, true, user.id);
+  }
+
+  @ApiOperation({ summary: '채널 보관 해제' })
+  @Delete(':name/archive')
+  unarchive(
+    @Param('url') url: string,
+    @Param('name') name: string,
+    @User() user: Users,
+  ) {
+    return this.channelsService.setArchived(url, name, false, user.id);
+  }
+
+  @ApiOperation({ summary: '채널 삭제 (메시지도 모두 삭제)' })
+  @Delete(':name')
+  async deleteChannel(
+    @Param('url') url: string,
+    @Param('name') name: string,
+    @User() user: Users,
+  ) {
+    await this.channelsService.deleteChannel(url, name, user.id);
     return 'ok';
   }
 }

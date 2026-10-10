@@ -11,7 +11,7 @@ import SearchModal from '@components/SearchModal';
 import useSocket from '@hooks/useSocket';
 import Channel from '@pages/Channel';
 import DirectMessage from '@pages/DirectMessage';
-import { IChannel, IChat, IDM, IUser } from '@typings/db';
+import { IChannel, IChat, IDM, IUser, IWorkspace } from '@typings/db';
 import fetcher from '@utils/fetcher';
 import {
   notificationPermission,
@@ -26,6 +26,8 @@ import { FileMeta, getFile, notifyUnavailable, putFile, UnavailableReason } from
 import StorageModal from '@components/StorageModal';
 import ProfileModal from '@components/ProfileModal';
 import StatusModal from '@components/StatusModal';
+import WorkspaceSettingsModal from '@components/WorkspaceSettingsModal';
+import { moveChannelKeys, moveWorkspaceKeys } from '@utils/storageKeys';
 import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
 import { avatarUrl } from '@utils/avatar';
@@ -69,6 +71,7 @@ const Workspace = () => {
   const [showStorageModal, setShowStorageModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showWorkspaceSettings, setShowWorkspaceSettings] = useState(false);
   const [paused, setPaused] = useState(notificationsPaused);
   useUnreadTitle();
   const history = useHistory();
@@ -133,6 +136,31 @@ const Workspace = () => {
     }
   }, [socket, userData, channelData]);
 
+  // 워크스페이스 주소가 바뀌면: 캐시의 주소를 먼저 바꾼 뒤(모르는 주소로 보고 첫 워크스페이스로 보내지 않게) 새 주소로 옮긴다
+  // 옮기는 동안에는 '모르는 워크스페이스 → 첫 워크스페이스로' 이동을 하지 않는다
+  const movingWorkspaceRef = useRef<string[]>([]);
+  const moveToWorkspaceUrl = useCallback(
+    (oldUrl: string, newUrl: string) => {
+      moveWorkspaceKeys(oldUrl, newUrl);
+      movingWorkspaceRef.current = [oldUrl, newUrl];
+      if (locationRef.current.startsWith(`/workspace/${oldUrl}/`)) {
+        history.replace(locationRef.current.replace(`/workspace/${oldUrl}/`, `/workspace/${newUrl}/`));
+      }
+      return revalidateUser(
+        (prev) =>
+          prev
+            ? { ...prev, Workspaces: prev.Workspaces.map((w) => (w.url === oldUrl ? { ...w, url: newUrl } : w)) }
+            : prev,
+        false,
+      )
+        .then(() => revalidateUser())
+        .finally(() => {
+          movingWorkspaceRef.current = [];
+        });
+    },
+    [revalidateUser, history],
+  );
+
   // 서버가 알려주는 멤버십 변경: 채널 초대, 워크스페이스 초대, 워크스페이스에서 내보내짐
   useEffect(() => {
     const onChannelsChanged = () => revalidateChannels();
@@ -153,6 +181,42 @@ const Workspace = () => {
         revalidateUser();
       }
     };
+    // 채널 이름/주제/보관 상태가 바뀜: 목록을 다시 받고, 보고 있던 채널 이름이 바뀌었으면 새 주소로 옮긴다
+    const onChannelUpdated = (channel: IChannel & { oldName: string }) => {
+      if (workspace && channel.oldName !== channel.name) {
+        moveChannelKeys(workspace, channel.oldName, channel.name);
+      }
+      revalidateChannels().then(() => {
+        const oldPath = `/workspace/${workspace}/channel/${channel.oldName}`;
+        if (channel.oldName !== channel.name && locationRef.current === oldPath) {
+          history.replace(`/workspace/${workspace}/channel/${channel.name}`);
+        }
+      });
+    };
+    const onChannelDeleted = (channel: { id: number; name: string }) => {
+      revalidateChannels().then(() => {
+        if (locationRef.current === `/workspace/${workspace}/channel/${channel.name}`) {
+          toast.info(`#${channel.name} 채널이 삭제되었습니다.`, { position: 'bottom-center' });
+          history.push(`/workspace/${workspace}/channel/일반`);
+        }
+      });
+    };
+    // 워크스페이스 이름/주소/소유자가 바뀜: 주소가 바뀌었으면 새 주소로 옮긴다
+    const onWorkspaceUpdated = (data: IWorkspace & { oldUrl: string }) => {
+      if (data.url !== data.oldUrl) {
+        const viewing = locationRef.current.startsWith(`/workspace/${data.oldUrl}/`);
+        moveToWorkspaceUrl(data.oldUrl, data.url).then(() => {
+          if (viewing) {
+            toast.info(`워크스페이스 주소가 /workspace/${data.url} 로 바뀌었습니다.`, { position: 'bottom-center' });
+          }
+        });
+      } else {
+        revalidateUser();
+      }
+    };
+    socket?.on('channelUpdated', onChannelUpdated);
+    socket?.on('channelDeleted', onChannelDeleted);
+    socket?.on('workspaceUpdated', onWorkspaceUpdated);
     socket?.on('channelsChanged', onChannelsChanged);
     socket?.on('workspacesChanged', onWorkspacesChanged);
     socket?.on('removedFromWorkspace', onRemoved);
@@ -160,12 +224,15 @@ const Workspace = () => {
     socket?.on('profileUpdated', onProfileUpdated);
     return () => {
       socket?.off('profileUpdated', onProfileUpdated);
+      socket?.off('channelUpdated', onChannelUpdated);
+      socket?.off('channelDeleted', onChannelDeleted);
+      socket?.off('workspaceUpdated', onWorkspaceUpdated);
       socket?.off('channelsChanged', onChannelsChanged);
       socket?.off('workspacesChanged', onWorkspacesChanged);
       socket?.off('removedFromWorkspace', onRemoved);
       socket?.off('membersChanged', onMembersChanged);
     };
-  }, [socket, workspace, userData, revalidateChannels, revalidateUser, revalidateMembers]);
+  }, [socket, workspace, userData, revalidateChannels, revalidateUser, revalidateMembers, history, moveToWorkspaceUrl]);
 
   // 서버가 중계한 파일을 이 기기의 브라우저 저장소에 보관한다 (서버에는 저장되지 않음)
   useEffect(() => {
@@ -280,7 +347,7 @@ const Workspace = () => {
     return <Redirect to="/login" />;
   }
   // 속하지 않은(내보내졌거나 없는) 워크스페이스 주소면 내 첫 워크스페이스로 보낸다
-  if (userData && !currentWorkspace) {
+  if (userData && !currentWorkspace && !(workspace && movingWorkspaceRef.current.includes(workspace))) {
     const first = userData.Workspaces[0];
     if (first) {
       return <Redirect to={`/workspace/${first.url}/channel/일반`} />;
@@ -456,6 +523,20 @@ const Workspace = () => {
                       멤버 보기 · 관리
                     </button>
                   </li>
+                  {currentWorkspace && userData && currentWorkspace.OwnerId === userData.id && (
+                    <li>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setShowWorkspaceModal(false);
+                          setShowWorkspaceSettings(true);
+                        }}
+                      >
+                        워크스페이스 설정
+                      </button>
+                    </li>
+                  )}
                   <li>
                     <button type="button" role="menuitem" onClick={onClickInviteWorkspace}>
                       워크스페이스에 사용자 초대
@@ -488,6 +569,15 @@ const Workspace = () => {
       </WorkspaceWrapper>
       <CreateWorkspaceModal show={showCreateWorkspaceModal} onCloseModal={onCloseModal} />
       <StorageModal show={showStorageModal} onCloseModal={() => setShowStorageModal(false)} />
+      {currentWorkspace && userData && currentWorkspace.OwnerId === userData.id && (
+        <WorkspaceSettingsModal
+          show={showWorkspaceSettings}
+          workspace={currentWorkspace}
+          myId={userData.id}
+          onCloseModal={() => setShowWorkspaceSettings(false)}
+          onUrlChanged={moveToWorkspaceUrl}
+        />
+      )}
       {userData && (
         <StatusModal
           show={showStatusModal}

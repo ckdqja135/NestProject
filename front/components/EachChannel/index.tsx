@@ -67,7 +67,7 @@ const EachChannel: VFC<Props> = ({ channel, mentionCount = 0 }) => {
     <NavLink
       key={channel.name}
       activeClassName="selected"
-      className={channel.muted ? 'muted-channel' : undefined}
+      className={channel.muted || channel.archived ? 'muted-channel' : undefined}
       to={`/workspace/${workspace}/channel/${channel.name}`}
     >
       <span className={!channel.muted && count !== undefined && count > 0 ? 'bold' : undefined}>
@@ -76,6 +76,11 @@ const EachChannel: VFC<Props> = ({ channel, mentionCount = 0 }) => {
       {!isViewing && workspace && loadDraft(draftKey(workspace, `channel:${channel.name}`)) && (
         <span className="draft-icon" title="쓰다 만 메시지가 있습니다" aria-label="임시 저장된 메시지">
           ✏️
+        </span>
+      )}
+      {channel.archived && (
+        <span className="muted-icon" title="보관된 채널" aria-label="보관된 채널">
+          🗄
         </span>
       )}
       {channel.muted && (

@@ -171,6 +171,85 @@ export class WorkspacesService {
     this.eventsGateway.emitToWorkspace(url, 'membersChanged');
   }
 
+  private async findOwnedWorkspace(url: string, myId: number) {
+    const workspace = await this.findWorkspaceByUrl(url);
+    if (workspace.OwnerId !== myId) {
+      throw new ForbiddenException('워크스페이스 소유자만 할 수 있습니다.');
+    }
+    return workspace;
+  }
+
+  // 워크스페이스 이름/주소 변경 (소유자만)
+  async updateWorkspace(
+    url: string,
+    changes: { name?: string; url?: string },
+    myId: number,
+  ) {
+    const workspace = await this.findOwnedWorkspace(url, myId);
+    const update: Partial<Workspaces> = {};
+    const name = changes.name?.trim();
+    if (name && name !== workspace.name) {
+      const exists = await this.workspacesRepository.findOne({
+        where: { name },
+        withDeleted: true,
+      });
+      if (exists) {
+        throw new ForbiddenException('이미 사용중인 워크스페이스 이름입니다.');
+      }
+      update.name = name;
+    }
+    if (changes.url && changes.url !== workspace.url) {
+      const exists = await this.workspacesRepository.findOne({
+        where: { url: changes.url },
+        withDeleted: true,
+      });
+      if (exists) {
+        throw new ForbiddenException('이미 사용중인 워크스페이스 url 입니다.');
+      }
+      update.url = changes.url;
+    }
+    if (Object.keys(update).length) {
+      await this.workspacesRepository.update(workspace.id, update);
+    }
+    const updated = await this.workspacesRepository.findOne({
+      where: { id: workspace.id },
+    });
+    await this.notifyWorkspaceUpdated(url, updated);
+    return updated;
+  }
+
+  // 소유권 넘기기 (소유자만, 워크스페이스 멤버에게)
+  async transferOwnership(url: string, targetId: number, myId: number) {
+    const workspace = await this.findOwnedWorkspace(url, myId);
+    if (targetId === myId) {
+      throw new BadRequestException('이미 소유자입니다.');
+    }
+    await this.assertMember(workspace.id, targetId);
+    await this.workspacesRepository.update(workspace.id, { OwnerId: targetId });
+    const updated = await this.workspacesRepository.findOne({
+      where: { id: workspace.id },
+    });
+    await this.notifyWorkspaceUpdated(url, updated);
+    this.eventsGateway.emitToWorkspace(url, 'membersChanged');
+    return updated;
+  }
+
+  // 접속 중인 멤버들에게 알린다. 주소가 바뀌면 옛 주소로 접속한 화면이 새 주소로 옮겨 간다.
+  private async notifyWorkspaceUpdated(oldUrl: string, workspace: Workspaces) {
+    this.eventsGateway.emitToWorkspace(oldUrl, 'workspaceUpdated', {
+      ...workspace,
+      oldUrl,
+    });
+    // 다른 워크스페이스를 보고 있는 멤버의 워크스페이스 목록도 갱신
+    const members = await this.workspaceMembersRepository.find({
+      where: { WorkspaceId: workspace.id },
+      select: ['UserId'],
+    });
+    members.forEach(({ UserId }) =>
+      this.eventsGateway.notifyWorkspacesChanged(UserId),
+    );
+  }
+
   async getWorkspaceMember(url: string, id: number, myId: number) {
     const workspace = await this.findWorkspaceByUrl(url);
     await this.assertMember(workspace.id, myId);

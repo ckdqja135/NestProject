@@ -12,7 +12,9 @@ import useSocket from '@hooks/useSocket';
 import GifPicker from '@components/GifPicker';
 import useFileUpload from '@hooks/useFileUpload';
 import useTyping from '@hooks/useTyping';
-import { Header, Container, DragOver, HeaderButton, Layout } from '@pages/Channel/styles';
+import { ArchivedNotice, Header, Container, DragOver, HeaderButton, Layout } from '@pages/Channel/styles';
+import ChannelSettingsModal from '@components/ChannelSettingsModal';
+import { moveChannelKeys } from '@utils/storageKeys';
 import { IChannel, IChat, IDM, IReaction, IUser } from '@typings/db';
 import { createTempId, cursorPageKey, removeChatFromPages, updateChatInPages } from '@utils/chatPages';
 import fetcher from '@utils/fetcher';
@@ -71,6 +73,7 @@ const Channel = () => {
   const [showInviteChannelModal, setShowInviteChannelModal] = useState(false);
   const [threadParentId, setThreadParentId] = useState<number | null>(null);
   const [showPinned, setShowPinned] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const scrollbarRef = useRef<Scrollbars>(null);
   const [dragOver, setDragOver] = useState(false);
   const { typingUsers, notifyTyping, clearTypingUser } = useTyping({
@@ -333,6 +336,15 @@ const Channel = () => {
       .catch(showError);
   }, [workspace, channel, mutateChannels, history]);
 
+  // 이름을 바꾸면 이 기기의 읽은 시각/임시 저장 글을 옮기고 새 주소로 이동한다
+  const onRenamed = useCallback(
+    (newName: string) => {
+      moveChannelKeys(workspace, channel, newName);
+      mutateChannels().then(() => history.replace(`/workspace/${workspace}/channel/${newName}`));
+    },
+    [workspace, channel, mutateChannels, history],
+  );
+
   // 채널 알림 끄기/켜기: 안 읽은 표시를 숨기고 멘션만 알린다
   const onToggleMute = useCallback(() => {
     if (!channelData) {
@@ -379,6 +391,10 @@ const Channel = () => {
     }
   }, []);
 
+  // 채널 이름 변경·보관·삭제 권한: 채널을 만든 사람 또는 워크스페이스 소유자
+  const currentWorkspace = userData?.Workspaces?.find((w) => w.url === workspace);
+  const canManage = !!userData && (channelData?.OwnerId === userData.id || currentWorkspace?.OwnerId === userData.id);
+
   if (channelsData && !channelData) {
     return <Redirect to={`/workspace/${workspace}/channel/일반`} />;
   }
@@ -390,11 +406,20 @@ const Channel = () => {
     <Layout>
       <Container onDrop={onDrop} onDragOver={onDragOver} onDragLeave={onDragLeave}>
         <Header>
-          <span title={channelData?.private ? '비공개 채널' : '공개 채널'}>
+          <span className="name" title={channelData?.private ? '비공개 채널' : '공개 채널'}>
             {channelData?.private ? '🔒 ' : '#'}
             {channel}
           </span>
+          {channelData?.archived && <span className="archived">🗄 보관됨</span>}
+          {channelData?.topic && (
+            <button type="button" className="topic" title={channelData.topic} onClick={() => setShowSettings(true)}>
+              {channelData.topic}
+            </button>
+          )}
           <div style={{ display: 'flex', flex: 1, justifyContent: 'flex-end', alignItems: 'center', gap: 4 }}>
+            <HeaderButton type="button" onClick={() => setShowSettings(true)} title="채널 설정">
+              ⚙ 설정
+            </HeaderButton>
             <HeaderButton
               type="button"
               className={showPinned ? 'active' : undefined}
@@ -450,18 +475,40 @@ const Channel = () => {
           }
         />
         <TypingIndicator names={typingUsers} />
-        <ChatBox
-          onSubmitForm={onSubmitForm}
-          chat={chat}
-          onChangeChat={onChangeChatWithTyping}
-          placeholder={`${channelData?.private ? '🔒' : '#'}${channel}에 메시지 보내기`}
-          data={channelMembersData}
-          allowBroadcast
-          onAttachFiles={upload}
-          uploading={uploading}
-          uploadProgress={progress}
-          toolbarExtra={<GifPicker onSelect={onSelectGif} />}
-        />
+        {channelData?.archived ? (
+          <ArchivedNotice role="status">
+            🗄 보관된 채널입니다. 메시지를 읽을 수만 있어요.
+            {canManage && (
+              <button type="button" onClick={() => setShowSettings(true)}>
+                채널 설정
+              </button>
+            )}
+          </ArchivedNotice>
+        ) : (
+          <ChatBox
+            onSubmitForm={onSubmitForm}
+            chat={chat}
+            onChangeChat={onChangeChatWithTyping}
+            placeholder={`${channelData?.private ? '🔒' : '#'}${channel}에 메시지 보내기`}
+            data={channelMembersData}
+            allowBroadcast
+            onAttachFiles={upload}
+            uploading={uploading}
+            uploadProgress={progress}
+            toolbarExtra={<GifPicker onSelect={onSelectGif} />}
+          />
+        )}
+        {channelData && workspace && (
+          <ChannelSettingsModal
+            show={showSettings}
+            workspace={workspace}
+            channel={channelData}
+            canManage={canManage}
+            onCloseModal={() => setShowSettings(false)}
+            onRenamed={onRenamed}
+            onDeleted={() => history.push(`/workspace/${workspace}/channel/일반`)}
+          />
+        )}
         <InviteChannelModal
           show={showInviteChannelModal}
           onCloseModal={onCloseModal}

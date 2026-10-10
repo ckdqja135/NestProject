@@ -40,7 +40,12 @@ const createQueryBuilderMock = () => {
 describe('ChannelsService', () => {
   let service: ChannelsService;
   let qb: ReturnType<typeof createQueryBuilderMock>;
-  const channelsRepository = { findOne: jest.fn(), save: jest.fn() };
+  const channelsRepository = {
+    findOne: jest.fn(),
+    save: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+  };
   const channelMembersRepository = {
     delete: jest.fn(),
     update: jest.fn(),
@@ -305,6 +310,77 @@ describe('ChannelsService', () => {
     });
   });
 
+  describe('채널 관리', () => {
+    const free = { id: 4, name: '자유', WorkspaceId: 1, OwnerId: 2 };
+
+    it('보관된 채널에는 메시지를 쓸 수 없다', async () => {
+      channelsRepository.findOne.mockResolvedValue({ ...free, archived: true });
+      await expect(
+        service.postChat('shlack', '자유', '안녕', 1),
+      ).rejects.toThrow('보관된 채널에는 쓸 수 없습니다.');
+      expect(channelChatsRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('채널을 만든 사람도 워크스페이스 소유자도 아니면 이름을 바꿀 수 없다', async () => {
+      channelsRepository.findOne.mockResolvedValue(free);
+      workspacesService.findWorkspaceByUrl.mockResolvedValue({
+        id: 1,
+        OwnerId: 9,
+      });
+      await expect(
+        service.updateChannel('shlack', '자유', { name: '새이름' }, 1),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(channelsRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('주제는 채널 멤버 누구나 바꿀 수 있고 채널 멤버들에게 알린다', async () => {
+      channelsRepository.findOne.mockResolvedValue(free);
+      channelMembersRepository.find.mockResolvedValue([
+        { UserId: 1 },
+        { UserId: 2 },
+      ]);
+      await service.updateChannel('shlack', '자유', { topic: ' 공지 ' }, 1);
+      expect(channelsRepository.update).toHaveBeenCalledWith(4, {
+        topic: '공지',
+      });
+      expect(eventsGateway.emitToUser).toHaveBeenCalledWith(
+        'shlack',
+        2,
+        'channelUpdated',
+        expect.objectContaining({ oldName: '자유' }),
+      );
+    });
+
+    it('일반 채널은 워크스페이스 소유자라도 보관할 수 없다', async () => {
+      workspacesService.findWorkspaceByUrl.mockResolvedValue({
+        id: 1,
+        OwnerId: 1,
+      });
+      await expect(
+        service.setArchived('shlack', '일반', true, 1),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('채널을 지우면 메시지와 멘션도 지운다', async () => {
+      channelsRepository.findOne.mockResolvedValue({ ...free, OwnerId: 1 });
+      channelChatsRepository.find.mockResolvedValue([{ id: 7 }, { id: 8 }]);
+      channelMembersRepository.find.mockResolvedValue([{ UserId: 1 }]);
+      await service.deleteChannel('shlack', '자유', 1);
+      expect(mentionsService.removeForChats).toHaveBeenCalledWith(
+        'shlack',
+        [7, 8],
+      );
+      expect(channelChatsRepository.delete).toHaveBeenCalledWith([7, 8]);
+      expect(eventsGateway.emitToUser).toHaveBeenCalledWith(
+        'shlack',
+        1,
+        'channelDeleted',
+        { id: 4, name: '자유' },
+      );
+      expect(channelsRepository.delete).toHaveBeenCalledWith(4);
+    });
+  });
+
   describe('채널 알림 끄기', () => {
     it('내 채널 멤버 정보에만 muted 를 저장하고 내 탭들에 목록 갱신을 알린다', async () => {
       channelsRepository.findOne.mockResolvedValue({ id: 4, name: '자유' });
@@ -353,6 +429,7 @@ describe('ChannelsService', () => {
         name: '비밀',
         WorkspaceId: 1,
         private: true,
+        OwnerId: 1,
       });
       expect(channelMembersRepository.save).toHaveBeenCalledWith({
         UserId: 1,

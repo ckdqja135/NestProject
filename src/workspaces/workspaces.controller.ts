@@ -5,7 +5,9 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
+  Put,
   UseGuards,
 } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -14,6 +16,10 @@ import { User } from '../common/decorators/user.decorator';
 import { InviteMemberDto } from '../common/dto/invite-member.dto';
 import { Users } from '../entities/Users';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
+import {
+  TransferOwnerDto,
+  UpdateWorkspaceDto,
+} from './dto/update-workspace.dto';
 import { WorkspacesService } from './workspaces.service';
 
 @ApiTags('WORKSPACE')
@@ -85,5 +91,25 @@ export class WorkspacesController {
     @User() user: Users,
   ) {
     return this.workspacesService.getWorkspaceMember(url, id, user.id);
+  }
+
+  @ApiOperation({ summary: '워크스페이스 이름/url 변경 (소유자만)' })
+  @Patch(':url')
+  updateWorkspace(
+    @Param('url') url: string,
+    @Body() body: UpdateWorkspaceDto,
+    @User() user: Users,
+  ) {
+    return this.workspacesService.updateWorkspace(url, body, user.id);
+  }
+
+  @ApiOperation({ summary: '워크스페이스 소유권 넘기기 (소유자만)' })
+  @Put(':url/owner')
+  transferOwnership(
+    @Param('url') url: string,
+    @Body() body: TransferOwnerDto,
+    @User() user: Users,
+  ) {
+    return this.workspacesService.transferOwnership(url, body.userId, user.id);
   }
 }

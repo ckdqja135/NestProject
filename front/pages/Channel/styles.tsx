@@ -19,6 +19,64 @@ export const Header = styled.header`
   padding: 20px 16px 20px 20px;
   font-weight: bold;
   align-items: center;
+  min-width: 0;
+
+  & > .name {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  /* 채널 주제: 누르면 채널 설정이 열린다 */
+  & > .topic {
+    min-width: 0;
+    margin-left: 12px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #616061;
+    font-size: 13px;
+    font-weight: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:hover {
+      color: #1d1c1d;
+    }
+  }
+
+  & > .archived {
+    flex: 0 0 auto;
+    margin-left: 8px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: #f2f2f2;
+    color: #616061;
+    font-size: 12px;
+    font-weight: normal;
+  }
+`;
+
+// 보관된 채널: 입력창 대신 안내
+export const ArchivedNotice = styled.div`
+  margin: 0 20px 20px;
+  padding: 14px 16px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #f8f8f8;
+  color: #616061;
+  font-size: 14px;
+  text-align: center;
+
+  & button {
+    margin-left: 8px;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    background: white;
+    padding: 3px 10px;
+    cursor: pointer;
+  }
 `;
 
 export const DragOver = styled.div`

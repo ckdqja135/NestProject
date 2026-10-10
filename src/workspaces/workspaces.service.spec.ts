@@ -16,8 +16,16 @@ import { WorkspacesService } from './workspaces.service';
 
 describe('WorkspacesService', () => {
   let service: WorkspacesService;
-  const workspacesRepository = { findOne: jest.fn(), find: jest.fn() };
-  const workspaceMembersRepository = { findOne: jest.fn(), delete: jest.fn() };
+  const workspacesRepository = {
+    findOne: jest.fn(),
+    find: jest.fn(),
+    update: jest.fn(),
+  };
+  const workspaceMembersRepository = {
+    findOne: jest.fn(),
+    find: jest.fn(),
+    delete: jest.fn(),
+  };
   const channelsRepository = { find: jest.fn() };
   const channelMembersRepository = { delete: jest.fn() };
   const eventsGateway = {
@@ -69,6 +77,58 @@ describe('WorkspacesService', () => {
     await expect(service.assertMember(1, 2)).rejects.toBeInstanceOf(
       ForbiddenException,
     );
+  });
+
+  describe('워크스페이스 설정', () => {
+    const workspace = { id: 1, name: '슐랙', url: 'shlack', OwnerId: 1 };
+
+    it('소유자가 아니면 바꿀 수 없다', async () => {
+      workspacesRepository.findOne.mockResolvedValue(workspace);
+      await expect(
+        service.updateWorkspace('shlack', { name: '새이름' }, 2),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(workspacesRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('이미 쓰는 url 로는 바꿀 수 없다', async () => {
+      workspacesRepository.findOne
+        .mockResolvedValueOnce(workspace)
+        .mockResolvedValueOnce({ id: 2, url: 'taken' });
+      await expect(
+        service.updateWorkspace('shlack', { url: 'taken' }, 1),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('url 을 바꾸면 옛 주소로 접속한 멤버들에게 알린다', async () => {
+      const updated = { ...workspace, url: 'new-url' };
+      workspacesRepository.findOne
+        .mockResolvedValueOnce(workspace)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(updated);
+      workspaceMembersRepository.find.mockResolvedValue([
+        { UserId: 1 },
+        { UserId: 2 },
+      ]);
+      await service.updateWorkspace('shlack', { url: 'new-url' }, 1);
+      expect(workspacesRepository.update).toHaveBeenCalledWith(1, {
+        url: 'new-url',
+      });
+      expect(eventsGateway.emitToWorkspace).toHaveBeenCalledWith(
+        'shlack',
+        'workspaceUpdated',
+        { ...updated, oldUrl: 'shlack' },
+      );
+      expect(eventsGateway.notifyWorkspacesChanged).toHaveBeenCalledTimes(2);
+    });
+
+    it('소유권은 워크스페이스 멤버에게만 넘길 수 있다', async () => {
+      workspacesRepository.findOne.mockResolvedValue(workspace);
+      workspaceMembersRepository.findOne.mockResolvedValue(null);
+      await expect(
+        service.transferOwnership('shlack', 3, 1),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(workspacesRepository.update).not.toHaveBeenCalled();
+    });
   });
 
   describe('kickMember', () => {

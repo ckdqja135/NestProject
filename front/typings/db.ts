@@ -18,6 +18,9 @@ export interface IChannel {
   name: string;
   private: boolean; // 비공개 채널 여부 (초대받은 사람만 참여)
   muted?: boolean; // 내가 이 채널 알림을 껐는지
+  topic?: string | null; // 채널 주제
+  archived?: boolean; // 보관된 채널 (읽기 전용)
+  OwnerId?: number | null; // 채널을 만든 사람
   WorkspaceId: number;
 }
 
