@@ -2,15 +2,6 @@
 
 지금까지 만든 기능은 README 의 "주요 기능"을 참고하세요. 여기에는 아직 하지 않은 일과 알려진 한계만 적습니다.
 
-## 운영·확장
-
-- [ ] **서버를 여러 대로 늘릴 때**
-  - 예약 전송·리마인더 스케줄러가 서버마다 돌아서 같은 메시지를 두 번 보낼 수 있음 → DB 잠금(`SELECT ... FOR UPDATE SKIP LOCKED`)이나 한 서버만 스케줄러 실행
-  - 요청 수 제한(throttler)과 접속 중 목록(onlineMap)이 서버 메모리에 있음 → Redis 저장소로 옮기기 (socket.io Redis adapter 포함)
-- [ ] **외부 CDN 의존**: 아이콘·기본 스타일을 `a.slack-edge.com` CSS 에서 가져옴 → 필요한 스타일만 프로젝트 안으로 옮기기
-- [ ] **CI**: Playwright E2E 와 GitHub Actions 를 지운 상태 → 단위 테스트·마이그레이션 검사만이라도 다시 돌리기
-- [ ] **ESLint 설정**: 실행하면 plugin 중복 오류가 남 (`front/.eslintrc` 의 plugins 설정 정리)
-
 ## 기능
 
 - [ ] 메시지 수정 내역 보기
@@ -31,6 +22,7 @@
 ## 정리
 
 - [ ] 쓰지 않는 패키지 `regexify-string` 제거 (front)
+- [ ] **ESLint 설정**: 실행하면 plugin 중복 오류가 남 (`front/.eslintrc` 의 plugins 설정 정리)
 
 ## 직접 확인하지 못한 것
 
