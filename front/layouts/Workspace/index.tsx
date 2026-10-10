@@ -263,13 +263,8 @@ const Workspace = () => {
             +
           </AddButton>
         </Workspaces>
-        <Channels data-testid="sidebar">
-          <WorkspaceName
-            onClick={toggleWorkspaceModal}
-            data-testid="workspace-name"
-            aria-haspopup="menu"
-            aria-expanded={showWorkspaceModal}
-          >
+        <Channels>
+          <WorkspaceName onClick={toggleWorkspaceModal} aria-haspopup="menu" aria-expanded={showWorkspaceModal}>
             {userData?.Workspaces.find((v) => v.url === workspace)?.name}
           </WorkspaceName>
           <MenuScroll>

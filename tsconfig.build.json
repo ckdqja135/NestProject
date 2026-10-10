@@ -8,10 +8,6 @@
     "front",
     "ch2",
     "output",
-    "dataSource.ts",
-    "e2e",
-    "playwright.config.ts",
-    "playwright-report",
-    "test-results"
+    "dataSource.ts"
   ]
 }

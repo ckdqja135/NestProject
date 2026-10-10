@@ -70,12 +70,7 @@ http://localhost:3090 접속 → 회원가입 → 로그인하면 기본 워크�
 ```bash
 npm test                 # 단위 테스트 (Jest)
 npm run test:e2e         # API e2e 테스트 (Jest, .env 의 DB 사용)
-npm run e2e:build        # 브라우저 E2E 전에 백엔드/프론트 빌드
-npm run test:ui          # 브라우저 E2E (Playwright, 전용 DB shlack_e2e 를 자동 생성)
 ```
-
-처음 한 번은 `npx playwright install chromium` 으로 브라우저를 설치하세요.
-GitHub 에 push 하면 GitHub Actions 가 위 테스트 전체와 Docker 이미지 빌드를 자동으로 실행합니다.
 
 ## 주요 기능
 

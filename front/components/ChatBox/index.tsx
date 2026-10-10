@@ -131,15 +131,7 @@ const ChatBox: FC<Props> = ({
               >
                 {uploading ? '업로드 중...' : '＋ 이미지/GIF'}
               </AttachButton>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept={ACCEPT_IMAGES}
-                multiple
-                hidden
-                onChange={onChangeFile}
-                data-testid={`${inputId}-file`}
-              />
+              <input ref={fileInputRef} type="file" accept={ACCEPT_IMAGES} multiple hidden onChange={onChangeFile} />
             </>
           )}
           {toolbarExtra}
