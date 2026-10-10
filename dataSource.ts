@@ -31,6 +31,8 @@ const options: DataSourceOptions & SeederOptions = {
     WorkspaceMembers,
     Workspaces,
   ],
+  // 스키마 변경은 마이그레이션으로 관리한다 (npm run migration:generate → migration:run)
+  migrations: ['src/migrations/*.ts'],
   seeds: ['src/database/seeds/*.ts'],
   charset: 'utf8mb4_general_ci',
   synchronize: false,

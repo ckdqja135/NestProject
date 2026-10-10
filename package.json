@@ -22,9 +22,12 @@
     "typeorm": "ts-node --require tsconfig-paths/register ./node_modules/typeorm/cli.js",
     "db:create": "ts-node ./node_modules/typeorm-extension/bin/cli.cjs db:create -d ./dataSource.ts",
     "db:drop": "ts-node ./node_modules/typeorm-extension/bin/cli.cjs db:drop -d ./dataSource.ts",
-    "schema:sync": "npm run typeorm schema:sync -- -d ./dataSource.ts",
     "seed": "ts-node ./node_modules/typeorm-extension/bin/cli.cjs seed:run -d ./dataSource.ts",
-    "db:setup": "npm run db:create && npm run schema:sync && npm run seed"
+    "db:setup": "npm run db:create && npm run migration:run && npm run seed",
+    "migration:generate": "npm run typeorm -- migration:generate ./src/migrations/Migration -d ./dataSource.ts",
+    "migration:run": "npm run typeorm -- migration:run -d ./dataSource.ts",
+    "migration:revert": "npm run typeorm -- migration:revert -d ./dataSource.ts",
+    "migration:baseline": "npm run typeorm -- migration:run -d ./dataSource.ts --fake"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",

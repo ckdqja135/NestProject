@@ -9,7 +9,7 @@ COPY front/ ./
 RUN npm run build
 
 # 2) 백엔드 빌드 (dist) + 실행 이미지
-# 시작할 때 스키마 동기화/시드를 ts-node 로 실행하므로 devDependencies 도 함께 설치한다.
+# 시작할 때 마이그레이션/시드를 ts-node 로 실행하므로 devDependencies 도 함께 설치한다.
 FROM node:22-bookworm-slim
 WORKDIR /app
 COPY package.json package-lock.json ./

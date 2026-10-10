@@ -10,13 +10,22 @@ describe('UsersService', () => {
   let service: UsersService;
   const usersRepository = { findOne: jest.fn() };
   const save = jest.fn();
+  const ownerUpdate = {
+    update: jest.fn(() => ownerUpdate),
+    set: jest.fn(() => ownerUpdate),
+    where: jest.fn(() => ownerUpdate),
+    execute: jest.fn(),
+  };
   const queryRunner = {
     connect: jest.fn(),
     startTransaction: jest.fn(),
     commitTransaction: jest.fn(),
     rollbackTransaction: jest.fn(),
     release: jest.fn(),
-    manager: { getRepository: jest.fn(() => ({ save })) },
+    manager: {
+      getRepository: jest.fn(() => ({ save })),
+      createQueryBuilder: jest.fn(() => ownerUpdate),
+    },
   };
   const dataSource = {
     createQueryRunner: jest.fn(() => queryRunner),
@@ -65,6 +74,14 @@ describe('UsersService', () => {
     });
     expect(save).toHaveBeenNthCalledWith(2, { UserId: 7, WorkspaceId: 1 });
     expect(save).toHaveBeenNthCalledWith(3, { UserId: 7, ChannelId: 1 });
+    // 기본 워크스페이스에 소유자가 없을 때만 첫 가입자를 소유자로
+    expect(ownerUpdate.set).toHaveBeenCalledWith({ OwnerId: 7 });
+    expect(ownerUpdate.where).toHaveBeenCalledWith(
+      'id = :id AND OwnerId IS NULL',
+      {
+        id: 1,
+      },
+    );
     expect(queryRunner.commitTransaction).toHaveBeenCalled();
     expect(queryRunner.release).toHaveBeenCalled();
     expect(eventsGateway.emitToWorkspace).toHaveBeenCalledWith(

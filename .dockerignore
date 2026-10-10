@@ -9,7 +9,4 @@ dist
 front/dist
 uploads
 coverage
-ch2
-output
-test.js
 *.log

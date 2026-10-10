@@ -42,6 +42,13 @@ export class UsersService {
         UserId: returned.id,
         ChannelId: 1,
       });
+      // 시드로 만든 기본 워크스페이스는 소유자가 없으므로 첫 가입자를 소유자로 지정한다
+      await queryRunner.manager
+        .createQueryBuilder()
+        .update(Workspaces)
+        .set({ OwnerId: returned.id })
+        .where('id = :id AND OwnerId IS NULL', { id: 1 })
+        .execute();
       await queryRunner.commitTransaction();
       // 기본 워크스페이스에 접속 중인 사람들의 멤버 목록(DM 목록)에 새 멤버를 바로 반영
       const defaultWorkspace = await this.dataSource

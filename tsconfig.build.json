@@ -6,8 +6,6 @@
     "dist",
     "**/*spec.ts",
     "front",
-    "ch2",
-    "output",
     "dataSource.ts"
   ]
 }

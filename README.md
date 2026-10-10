@@ -12,7 +12,7 @@ cp .env.example .env      # SECRET, DB_PW 를 채우세요
 docker compose up -d --build
 ```
 
-http://localhost:3002 접속. 처음 시작할 때 스키마와 기본 워크스페이스(`shlack`)가 자동으로 만들어지고,
+http://localhost:3002 접속. 시작할 때 마이그레이션과 기본 워크스페이스(`shlack`) 생성이 자동으로 실행되고,
 DB·Redis 데이터는 볼륨에 보존됩니다. 주고받은 파일은 서버에 저장되지 않습니다. 포트를 바꾸려면 `.env` 에 `APP_PORT=8080` 처럼 지정하세요.
 
 아래는 Docker 없이 직접 실행하는 방법입니다.
@@ -40,16 +40,31 @@ MariaDB 설치 및 root 비밀번호 설정 (macOS/Homebrew):
 ```bash
 brew install mariadb
 brew services start mariadb
-mariadb -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '123456';"
+mariadb -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '<원하는 비밀번호>';"   # .env 의 DB_PW 와 같게
 ```
 
 
 ```bash
 npm install
-npm run db:setup   # DB 생성 → 스키마 동기화 → 기본 워크스페이스(shlack)/채널(일반) 시드
+npm run db:setup   # DB 생성 → 마이그레이션 → 기본 워크스페이스(shlack)/채널(일반) 시드
 ```
 
-개별 실행: `npm run db:create`, `npm run schema:sync`, `npm run seed`
+개별 실행: `npm run db:create`, `npm run migration:run`, `npm run seed`
+
+처음 가입한 사람이 기본 워크스페이스(`shlack`)의 소유자가 됩니다.
+
+### 스키마 변경 (마이그레이션)
+
+엔티티를 고친 뒤 마이그레이션을 만들고 적용합니다.
+
+```bash
+npm run migration:generate   # 엔티티와 DB 차이로 src/migrations/<시각>-Migration.ts 생성
+npm run migration:run        # 적용
+npm run migration:revert     # 마지막 마이그레이션 되돌리기
+```
+
+예전에 `schema:sync` 로 만든 DB 는 데이터를 유지한 채 한 번만 `npm run migration:baseline` 을 실행하세요
+(지금 스키마를 초기 마이그레이션이 적용된 상태로 표시합니다).
 
 ## 3. 실행
 
@@ -92,7 +107,7 @@ npm run test:e2e         # API e2e 테스트 (Jest, .env 의 DB 사용)
   - 소켓도 로그인 세션으로 사용자를 확인하고, 참여 중인 채널 방에만 들어간다
   - 채널 API는 채널 멤버만 사용 가능 (비공개 채널은 비멤버에게 404)
 
-> 이미 DB를 만들어 둔 상태에서 업데이트했다면 `npm run schema:sync` 로 새 컬럼/테이블을 반영하세요.
+> 이미 DB를 만들어 둔 상태에서 업데이트했다면 `npm run migration:run` 으로 새 마이그레이션을 반영하세요.
 
 ## 구조
 
