@@ -5,11 +5,13 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Workspaces } from './Workspaces';
 import { Users } from './Users';
+import { DMReactions } from './DMReactions';
 
 @Index('WorkspaceId', ['WorkspaceId'], {})
 @Index('dms_ibfk_2', ['SenderId'], {})
@@ -31,6 +33,9 @@ export class DMs {
   // 내용을 수정한 시각 (고정 등 다른 변경과 구분하기 위해 updatedAt 과 별도로 관리)
   @Column('datetime', { name: 'editedAt', nullable: true })
   editedAt: Date | null;
+
+  @Column('boolean', { name: 'pinned', default: false })
+  pinned: boolean;
 
   @Column('int', { name: 'WorkspaceId', nullable: true })
   WorkspaceId: number | null;
@@ -61,4 +66,7 @@ export class DMs {
   })
   @JoinColumn([{ name: 'ReceiverId', referencedColumnName: 'id' }])
   Receiver: Users;
+
+  @OneToMany(() => DMReactions, (reactions) => reactions.DM)
+  Reactions: DMReactions[];
 }

@@ -25,6 +25,7 @@ import {
 import { LoggedInGuard } from '../auth/logged-in.guard';
 import { User } from '../common/decorators/user.decorator';
 import { PostChatDto } from '../common/dto/post-chat.dto';
+import { ReactionDto } from '../common/dto/reaction.dto';
 import { MAX_FILES, normalizeIds, relayUploadOptions } from '../common/upload';
 import { Users } from '../entities/Users';
 import { DmsService } from './dms.service';
@@ -141,5 +142,49 @@ export class DmsController {
       id,
       user.id,
     );
+  }
+
+  @ApiOperation({ summary: 'DM 이모지 리액션 토글' })
+  @Post(':id/chats/:dmId/reactions')
+  toggleReaction(
+    @Param('url') url: string,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('dmId', ParseIntPipe) dmId: number,
+    @Body() body: ReactionDto,
+    @User() user: Users,
+  ) {
+    return this.dmsService.toggleReaction(url, id, dmId, body.emoji, user.id);
+  }
+
+  @ApiOperation({ summary: 'DM 고정' })
+  @Post(':id/chats/:dmId/pin')
+  pin(
+    @Param('url') url: string,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('dmId', ParseIntPipe) dmId: number,
+    @User() user: Users,
+  ) {
+    return this.dmsService.setPinned(url, id, dmId, true, user.id);
+  }
+
+  @ApiOperation({ summary: 'DM 고정 해제' })
+  @Delete(':id/chats/:dmId/pin')
+  unpin(
+    @Param('url') url: string,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('dmId', ParseIntPipe) dmId: number,
+    @User() user: Users,
+  ) {
+    return this.dmsService.setPinned(url, id, dmId, false, user.id);
+  }
+
+  @ApiOperation({ summary: '고정된 DM 목록' })
+  @Get(':id/pinned')
+  getPinned(
+    @Param('url') url: string,
+    @Param('id', ParseIntPipe) id: number,
+    @User() user: Users,
+  ) {
+    return this.dmsService.getPinnedDMs(url, id, user.id);
   }
 }

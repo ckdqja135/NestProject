@@ -142,6 +142,21 @@ export const MentionItem = styled.button`
     & b {
       color: #1d1c1d;
     }
+
+    /* 저장한 메시지 목록의 저장 취소 버튼 */
+    & .remove {
+      float: right;
+      border: none;
+      background: transparent;
+      color: #888;
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+
+      &:hover {
+        color: #e01e5a;
+      }
+    }
   }
 
   & .content {

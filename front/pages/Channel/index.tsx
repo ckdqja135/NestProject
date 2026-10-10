@@ -6,7 +6,7 @@ import PinnedPanel from '@components/PinnedPanel';
 import ThreadPanel from '@components/ThreadPanel';
 import TypingIndicator from '@components/TypingIndicator';
 import ConversationIntro from '@components/ConversationIntro';
-import useInput from '@hooks/useInput';
+import useDraft, { draftKey } from '@hooks/useDraft';
 import useJumpToMessage from '@hooks/useJumpToMessage';
 import useSocket from '@hooks/useSocket';
 import GifPicker from '@components/GifPicker';
@@ -65,7 +65,9 @@ const Channel = () => {
     userData ? `/api/workspaces/${workspace}/channels/${channel}/members` : null,
     fetcher,
   );
-  const [chat, onChangeChat, setChat] = useInput('');
+  // 쓰다 만 메시지는 대화별로 임시 저장된다
+  const [chat, setChat] = useDraft(draftKey(workspace, `channel:${channel}`));
+  const onChangeChat = useCallback((e: { target: { value: string } }) => setChat(e.target.value), [setChat]);
   const [showInviteChannelModal, setShowInviteChannelModal] = useState(false);
   const [threadParentId, setThreadParentId] = useState<number | null>(null);
   const [showPinned, setShowPinned] = useState(false);
@@ -294,14 +296,14 @@ const Channel = () => {
       onDelete: (target: IDM | IChat) => {
         axios.delete(`${chatsKey}/${target.id}`).catch(showError);
       },
-      onReact: (target: IChat, emoji: string) => {
+      onReact: (target: IDM | IChat, emoji: string) => {
         axios.post(`${chatsKey}/${target.id}/reactions`, { emoji }).catch(showError);
       },
       onReply: (target: IChat) => {
         setShowPinned(false);
         setThreadParentId(target.id);
       },
-      onTogglePin: (target: IChat) => {
+      onTogglePin: (target: IDM | IChat) => {
         const request = target.pinned
           ? axios.delete(`${chatsKey}/${target.id}/pin`)
           : axios.post(`${chatsKey}/${target.id}/pin`);
@@ -454,6 +456,7 @@ const Channel = () => {
           onChangeChat={onChangeChatWithTyping}
           placeholder={`${channelData?.private ? '🔒' : '#'}${channel}에 메시지 보내기`}
           data={channelMembersData}
+          allowBroadcast
           onAttachFiles={upload}
           uploading={uploading}
           uploadProgress={progress}
@@ -481,8 +484,8 @@ const Channel = () => {
       )}
       {showPinned && userData && (
         <PinnedPanel
-          workspace={workspace}
-          channel={channel}
+          pinnedUrl={`/api/workspaces/${workspace}/channels/${channel}/pinned`}
+          revalidateOn={['messageUpdated', 'messageDeleted', 'reactionUpdated']}
           myId={userData.id}
           socket={socket}
           actions={actions}

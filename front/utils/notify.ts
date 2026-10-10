@@ -58,6 +58,6 @@ export const previewText = (content: string) => {
   if (file) {
     return `[파일] ${file.name}`;
   }
-  const text = content.replace(/@\[(.+?)]\((\d+?)\)/g, '@$1');
+  const text = content.replace(/@\[(.+?)]\((\d+?|channel|here)\)/g, '@$1');
   return text.length > 80 ? `${text.slice(0, 80)}…` : text;
 };

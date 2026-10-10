@@ -1,7 +1,7 @@
 import { ChatActions } from '@components/Chat';
 import ChatBox from '@components/ChatBox';
 import ChatList from '@components/ChatList';
-import useInput from '@hooks/useInput';
+import useDraft, { draftKey } from '@hooks/useDraft';
 import useJumpToMessage from '@hooks/useJumpToMessage';
 import useSocket from '@hooks/useSocket';
 import GifPicker from '@components/GifPicker';
@@ -10,9 +10,10 @@ import useTyping from '@hooks/useTyping';
 import TypingIndicator from '@components/TypingIndicator';
 import ConversationIntro from '@components/ConversationIntro';
 import useOnlineList from '@hooks/useOnlineList';
-import { DragOver } from '@pages/Channel/styles';
+import { DragOver, HeaderButton, Layout } from '@pages/Channel/styles';
+import PinnedPanel from '@components/PinnedPanel';
 import { Header, Container } from '@pages/DirectMessage/styles';
-import { IChat, IDM } from '@typings/db';
+import { IChat, IDM, IReaction } from '@typings/db';
 import { createTempId, cursorPageKey, removeChatFromPages, updateChatInPages } from '@utils/chatPages';
 import getErrorMessage from '@utils/getErrorMessage';
 import fetcher from '@utils/fetcher';
@@ -48,9 +49,17 @@ const DirectMessage = () => {
       }
     },
   });
-  const [chat, onChangeChat, setChat] = useInput('');
+  // 쓰다 만 메시지는 대화별로 임시 저장된다
+  const [chat, setChat] = useDraft(draftKey(workspace, `dm:${id}`));
+  const onChangeChat = useCallback((e: { target: { value: string } }) => setChat(e.target.value), [setChat]);
   const scrollbarRef = useRef<Scrollbars>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [showPinned, setShowPinned] = useState(false);
+
+  // 다른 대화로 옮기면 고정 메시지 패널을 닫는다
+  useEffect(() => {
+    setShowPinned(false);
+  }, [workspace, id]);
 
   const isEmpty = chatData?.[0]?.length === 0;
   const isReachingEnd = isEmpty || (chatData && chatData[chatData.length - 1]?.length < PAGE_SIZE);
@@ -181,18 +190,29 @@ const DirectMessage = () => {
     [isThisConversation, mutateChat],
   );
 
+  const onDMReactionUpdated = useCallback(
+    (data: { id: number; SenderId: number; ReceiverId: number; Reactions: IReaction[] }) => {
+      if (isThisConversation(data)) {
+        mutateChat((pages) => updateChatInPages(pages, data.id, (dm) => ({ ...dm, Reactions: data.Reactions })), false);
+      }
+    },
+    [isThisConversation, mutateChat],
+  );
+
   useEffect(() => {
     socket?.on('dm', onMessage);
     socket?.on('dmUpdated', onDMUpdated);
     socket?.on('dmDeleted', onDMDeleted);
+    socket?.on('dmReactionUpdated', onDMReactionUpdated);
     return () => {
       socket?.off('dm', onMessage);
       socket?.off('dmUpdated', onDMUpdated);
       socket?.off('dmDeleted', onDMDeleted);
+      socket?.off('dmReactionUpdated', onDMReactionUpdated);
     };
-  }, [socket, onMessage, onDMUpdated, onDMDeleted]);
+  }, [socket, onMessage, onDMUpdated, onDMDeleted, onDMReactionUpdated]);
 
-  // DM 은 수정/삭제만 지원 (화면 갱신은 소켓 이벤트로 처리)
+  // DM 메시지 액션: 수정/삭제(보낸 사람), 리액션/고정(둘 다). 화면 갱신은 소켓 이벤트로 처리
   const actions: ChatActions = useMemo(
     () => ({
       onEdit: (target: IDM | IChat, content: string) =>
@@ -204,6 +224,17 @@ const DirectMessage = () => {
         axios
           .delete(`${chatsKey}/${target.id}`)
           .catch((error) => toast.error(getErrorMessage(error), { position: 'bottom-center' }));
+      },
+      onReact: (target: IDM | IChat, emoji: string) => {
+        axios
+          .post(`${chatsKey}/${target.id}/reactions`, { emoji })
+          .catch((error) => toast.error(getErrorMessage(error), { position: 'bottom-center' }));
+      },
+      onTogglePin: (target: IDM | IChat) => {
+        const request = target.pinned
+          ? axios.delete(`${chatsKey}/${target.id}/pin`)
+          : axios.post(`${chatsKey}/${target.id}/pin`);
+        request.catch((error) => toast.error(getErrorMessage(error), { position: 'bottom-center' }));
       },
     }),
     [chatsKey],
@@ -251,64 +282,86 @@ const DirectMessage = () => {
   const mentionTargets = isSelf ? [myData] : [userData, myData];
 
   return (
-    <Container onDrop={onDrop} onDragOver={onDragOver} onDragLeave={onDragLeave}>
-      <Header>
-        <img src={avatarUrl(userData, 64)} alt="" />
-        <div>
-          <strong>
-            {userData.nickname}
-            {isSelf && <span className="me"> (나)</span>}
-          </strong>
-          <small className={isOnline && !userData.away ? 'online' : undefined}>
-            {isSelf ? '나에게 보내는 메모' : isOnline ? (userData.away ? '○ 자리 비움' : '● 온라인') : '○ 오프라인'}
-            {(userData.statusEmoji || userData.statusText) && (
-              <span className="status">
-                {' · '}
-                {userData.statusEmoji} {userData.statusText}
-              </span>
-            )}
-          </small>
-        </div>
-      </Header>
-      <ChatList
-        scrollbarRef={scrollbarRef}
-        isReachingEnd={isReachingEnd}
-        isEmpty={isEmpty}
-        chatSections={chatSections}
-        setSize={setSize}
-        myId={myData.id}
-        actions={actions}
-        intro={
-          <ConversationIntro
-            image={avatarUrl(userData, 144)}
-            title={isSelf ? `${userData.nickname} (나)` : userData.nickname}
-            description={
-              isSelf ? (
-                '나에게 보내는 메모 공간입니다. 할 일, 링크, 메모를 남겨두세요.'
-              ) : (
-                <>
-                  <b>{userData.nickname}</b>님과 나눈 다이렉트 메시지의 시작입니다. 여기서 나눈 대화는 두 사람만 볼 수
-                  있습니다.
-                </>
-              )
-            }
-          />
-        }
-      />
-      <TypingIndicator names={typingUsers} />
-      <ChatBox
-        onSubmitForm={onSubmitForm}
-        chat={chat}
-        onChangeChat={onChangeChatWithTyping}
-        placeholder={isSelf ? '나에게 메모 남기기' : `${userData.nickname}님에게 메시지 보내기`}
-        data={mentionTargets}
-        onAttachFiles={upload}
-        uploading={uploading}
-        uploadProgress={progress}
-        toolbarExtra={<GifPicker onSelect={onSelectGif} />}
-      />
-      {dragOver && <DragOver>여기에 놓아서 파일 보내기</DragOver>}
-    </Container>
+    <Layout>
+      <Container onDrop={onDrop} onDragOver={onDragOver} onDragLeave={onDragLeave}>
+        <Header>
+          <img src={avatarUrl(userData, 64)} alt="" />
+          <div>
+            <strong>
+              {userData.nickname}
+              {isSelf && <span className="me"> (나)</span>}
+            </strong>
+            <small className={isOnline && !userData.away ? 'online' : undefined}>
+              {isSelf ? '나에게 보내는 메모' : isOnline ? (userData.away ? '○ 자리 비움' : '● 온라인') : '○ 오프라인'}
+              {(userData.statusEmoji || userData.statusText) && (
+                <span className="status">
+                  {' · '}
+                  {userData.statusEmoji} {userData.statusText}
+                </span>
+              )}
+            </small>
+          </div>
+          <div style={{ marginLeft: 'auto' }}>
+            <HeaderButton
+              type="button"
+              className={showPinned ? 'active' : undefined}
+              onClick={() => setShowPinned((prev) => !prev)}
+              title="고정된 메시지"
+            >
+              📌 고정
+            </HeaderButton>
+          </div>
+        </Header>
+        <ChatList
+          scrollbarRef={scrollbarRef}
+          isReachingEnd={isReachingEnd}
+          isEmpty={isEmpty}
+          chatSections={chatSections}
+          setSize={setSize}
+          myId={myData.id}
+          actions={actions}
+          intro={
+            <ConversationIntro
+              image={avatarUrl(userData, 144)}
+              title={isSelf ? `${userData.nickname} (나)` : userData.nickname}
+              description={
+                isSelf ? (
+                  '나에게 보내는 메모 공간입니다. 할 일, 링크, 메모를 남겨두세요.'
+                ) : (
+                  <>
+                    <b>{userData.nickname}</b>님과 나눈 다이렉트 메시지의 시작입니다. 여기서 나눈 대화는 두 사람만 볼 수
+                    있습니다.
+                  </>
+                )
+              }
+            />
+          }
+        />
+        <TypingIndicator names={typingUsers} />
+        <ChatBox
+          onSubmitForm={onSubmitForm}
+          chat={chat}
+          onChangeChat={onChangeChatWithTyping}
+          placeholder={isSelf ? '나에게 메모 남기기' : `${userData.nickname}님에게 메시지 보내기`}
+          data={mentionTargets}
+          onAttachFiles={upload}
+          uploading={uploading}
+          uploadProgress={progress}
+          toolbarExtra={<GifPicker onSelect={onSelectGif} />}
+        />
+        {dragOver && <DragOver>여기에 놓아서 파일 보내기</DragOver>}
+      </Container>
+      {showPinned && (
+        <PinnedPanel
+          pinnedUrl={`/api/workspaces/${workspace}/dms/${id}/pinned`}
+          revalidateOn={['dmUpdated', 'dmDeleted', 'dmReactionUpdated']}
+          myId={myData.id}
+          socket={socket}
+          actions={actions}
+          onClose={() => setShowPinned(false)}
+        />
+      )}
+    </Layout>
   );
 };
 

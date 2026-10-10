@@ -2,6 +2,7 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DMs } from '../entities/DMs';
+import { DMReactions } from '../entities/DMReactions';
 import { EventsGateway } from '../events/events.gateway';
 import { onlineMap } from '../events/onlineMap';
 import { WorkspacesService } from '../workspaces/workspaces.service';
@@ -13,6 +14,12 @@ describe('DmsService', () => {
     save: jest.fn(),
     findOne: jest.fn(),
     update: jest.fn(),
+    delete: jest.fn(),
+  };
+  const dmReactionsRepository = {
+    findOne: jest.fn(),
+    find: jest.fn(),
+    save: jest.fn(),
     delete: jest.fn(),
   };
   const workspacesService = {
@@ -28,6 +35,10 @@ describe('DmsService', () => {
       providers: [
         DmsService,
         { provide: getRepositoryToken(DMs), useValue: dmsRepository },
+        {
+          provide: getRepositoryToken(DMReactions),
+          useValue: dmReactionsRepository,
+        },
         { provide: WorkspacesService, useValue: workspacesService },
         { provide: EventsGateway, useValue: eventsGateway },
       ],
@@ -73,6 +84,53 @@ describe('DmsService', () => {
     await service.createWorkspaceDMChats('shlack', '안녕', 2, 1);
 
     expect(eventsGateway.server.to).not.toHaveBeenCalled();
+  });
+
+  describe('DM 리액션/고정', () => {
+    it('받은 DM 에도 리액션을 달 수 있고 두 사람에게 알린다', async () => {
+      onlineMap['/ws-shlack'] = { socketA: 1, socketB: 2 };
+      dmsRepository.findOne.mockResolvedValue({
+        id: 5,
+        SenderId: 2,
+        ReceiverId: 1,
+      });
+      dmReactionsRepository.findOne.mockResolvedValue(null);
+      dmReactionsRepository.find.mockResolvedValue([
+        { id: 1, DMId: 5, UserId: 1, emoji: '👍' },
+      ]);
+      const result = await service.toggleReaction('shlack', 2, 5, '👍', 1);
+      expect(dmReactionsRepository.save).toHaveBeenCalledWith({
+        DMId: 5,
+        UserId: 1,
+        emoji: '👍',
+      });
+      expect(emit).toHaveBeenCalledWith('dmReactionUpdated', result);
+    });
+
+    it('이미 단 리액션을 다시 누르면 지운다', async () => {
+      dmsRepository.findOne.mockResolvedValue({
+        id: 5,
+        SenderId: 1,
+        ReceiverId: 2,
+      });
+      dmReactionsRepository.findOne.mockResolvedValue({ id: 9 });
+      dmReactionsRepository.find.mockResolvedValue([]);
+      await service.toggleReaction('shlack', 2, 5, '👍', 1);
+      expect(dmReactionsRepository.delete).toHaveBeenCalledWith(9);
+      expect(dmReactionsRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('다른 사람끼리 나눈 DM 은 고정할 수 없다', async () => {
+      dmsRepository.findOne.mockResolvedValue({
+        id: 5,
+        SenderId: 2,
+        ReceiverId: 3,
+      });
+      await expect(
+        service.setPinned('shlack', 2, 5, true, 1),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(dmsRepository.update).not.toHaveBeenCalled();
+    });
   });
 
   describe('DM 수정/삭제', () => {

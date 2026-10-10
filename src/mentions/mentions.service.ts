@@ -5,6 +5,7 @@ import { ChannelChats } from '../entities/ChannelChats';
 import { ChannelMembers } from '../entities/ChannelMembers';
 import { Mentions } from '../entities/Mentions';
 import { EventsGateway } from '../events/events.gateway';
+import { onlineMap } from '../events/onlineMap';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 
 const MENTION_PATTERN = /@\[(.+?)]\((\d+)\)/g;
@@ -17,6 +18,19 @@ export function parseMentionIds(content: string): number[] {
     ids.add(Number(match[2]));
   }
   return [...ids];
+}
+
+// 채널 전체 멘션: @[channel](channel) 은 채널 멤버 모두, @[here](here) 는 지금 접속 중인 채널 멤버
+const SPECIAL_PATTERN = /@\[(channel|here)]\((channel|here)\)/g;
+
+export function parseSpecialMentions(content: string) {
+  const kinds = new Set<'channel' | 'here'>();
+  for (const match of content.matchAll(SPECIAL_PATTERN)) {
+    if (match[1] === match[2]) {
+      kinds.add(match[1] as 'channel' | 'here');
+    }
+  }
+  return { channel: kinds.has('channel'), here: kinds.has('here') };
 }
 
 @Injectable()
@@ -35,14 +49,26 @@ export class MentionsService {
     const mentionedIds = parseMentionIds(chat.content).filter(
       (id) => id !== chat.UserId,
     );
-    if (!mentionedIds.length) {
+    const special = parseSpecialMentions(chat.content);
+    if (!mentionedIds.length && !special.channel && !special.here) {
       return;
     }
     // 채널 멤버가 아닌 사람(비공개 채널 등)에게는 알리지 않는다
-    const members = await this.channelMembersRepository.find({
-      where: { ChannelId: chat.ChannelId, UserId: In(mentionedIds) },
+    const channelMembers = await this.channelMembersRepository.find({
+      where:
+        special.channel || special.here
+          ? { ChannelId: chat.ChannelId }
+          : { ChannelId: chat.ChannelId, UserId: In(mentionedIds) },
       select: ['UserId'],
     });
+    const online = new Set(Object.values(onlineMap[`/ws-${url}`] || {}));
+    const members = channelMembers.filter(
+      ({ UserId }) =>
+        UserId !== chat.UserId &&
+        (mentionedIds.includes(UserId) ||
+          special.channel ||
+          (special.here && online.has(UserId))),
+    );
     for (const { UserId } of members) {
       const mention = await this.mentionsRepository.save({
         category: 'chat' as const,

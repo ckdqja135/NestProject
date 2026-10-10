@@ -10,7 +10,7 @@ import {
 import { IUser } from '@typings/db';
 import autosize from 'autosize';
 import { avatarUrl } from '@utils/avatar';
-import React, { FC, useCallback, useEffect, useRef } from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Mention, SuggestionDataItem } from 'react-mentions';
 
 interface Props {
@@ -24,7 +24,14 @@ interface Props {
   uploading?: boolean;
   uploadProgress?: number;
   toolbarExtra?: React.ReactNode; // 첨부 버튼 옆에 추가할 도구 (예: GIF 검색)
+  allowBroadcast?: boolean; // 채널이면 @channel / @here 멘션을 제안한다
 }
+
+// 채널 전체 멘션 (서버가 채널 멤버 모두 / 접속 중인 멤버에게 알린다)
+const BROADCASTS = [
+  { id: 'channel', display: 'channel', description: '채널 멤버 모두에게 알림' },
+  { id: 'here', display: 'here', description: '지금 접속 중인 멤버에게 알림' },
+];
 const ChatBox: FC<Props> = ({
   onSubmitForm,
   chat,
@@ -36,6 +43,7 @@ const ChatBox: FC<Props> = ({
   uploading,
   uploadProgress,
   toolbarExtra,
+  allowBroadcast,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -88,17 +96,36 @@ const ChatBox: FC<Props> = ({
     focused: boolean,
   ) => React.ReactNode = useCallback(
     (member, search, highlightedDisplay, index, focus) => {
-      if (!data) {
+      const broadcast = BROADCASTS.find((b) => b.id === member.id);
+      if (broadcast) {
+        return (
+          <EachMention focus={focus}>
+            <span className="broadcast">📣</span>
+            <span>{highlightedDisplay}</span>
+            <small>{broadcast.description}</small>
+          </EachMention>
+        );
+      }
+      const user = data?.find((v) => v.id === member.id);
+      if (!user) {
         return null;
       }
       return (
         <EachMention focus={focus}>
-          <img src={avatarUrl(data[index], 20)} alt={data[index].nickname} />
+          <img src={avatarUrl(user, 20)} alt={user.nickname} />
           <span>{highlightedDisplay}</span>
         </EachMention>
       );
     },
     [data],
+  );
+
+  const suggestions = useMemo(
+    () => [
+      ...(data?.map((v) => ({ id: v.id, display: v.nickname })) || []),
+      ...(allowBroadcast ? BROADCASTS.map(({ id, display }) => ({ id, display })) : []),
+    ],
+    [data, allowBroadcast],
   );
 
   return (
@@ -113,12 +140,7 @@ const ChatBox: FC<Props> = ({
           inputRef={textareaRef}
           forceSuggestionsAboveCursor
         >
-          <Mention
-            appendSpaceOnAdd
-            trigger="@"
-            data={data?.map((v) => ({ id: v.id, display: v.nickname })) || []}
-            renderSuggestion={renderUserSuggestion}
-          />
+          <Mention appendSpaceOnAdd trigger="@" data={suggestions} renderSuggestion={renderUserSuggestion} />
         </MentionsTextarea>
         <Toolbox>
           {onAttachFiles && (

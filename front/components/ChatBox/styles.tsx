@@ -71,9 +71,17 @@ export const EachMention = styled.button<{ focus: boolean }>`
   align-items: center;
   color: rgb(28, 29, 28);
   width: 100%;
+  white-space: nowrap;
 
-  & img {
+  & img,
+  & .broadcast {
     margin-right: 5px;
+  }
+
+  & small {
+    margin-left: 8px;
+    opacity: 0.7;
+    white-space: nowrap;
   }
 
   ${({ focus }) =>

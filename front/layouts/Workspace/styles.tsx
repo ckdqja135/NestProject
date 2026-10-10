@@ -66,6 +66,11 @@ export const Channels = styled.nav`
     }
   }
 
+  & .draft-icon {
+    margin-left: 4px;
+    font-size: 11px;
+  }
+
   & .muted-icon {
     margin-left: 4px;
     font-size: 11px;

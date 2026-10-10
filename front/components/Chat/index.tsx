@@ -20,15 +20,17 @@ import React, { FC, useMemo, memo, useState, useCallback } from 'react';
 import { useParams } from 'react-router';
 import useSWR from 'swr';
 import fetcher from '@utils/fetcher';
+import useSaved, { useToggleSaved } from '@hooks/useSaved';
+import { toast } from 'react-toastify';
 
 export const EMOJIS = ['👍', '❤️', '😂', '🎉', '😮', '👀'];
 
 export interface ChatActions {
   onEdit?: (chat: IDM | IChat, content: string) => Promise<unknown>;
   onDelete?: (chat: IDM | IChat) => void;
-  onReact?: (chat: IChat, emoji: string) => void;
+  onReact?: (chat: IDM | IChat, emoji: string) => void;
   onReply?: (chat: IChat) => void;
-  onTogglePin?: (chat: IChat) => void;
+  onTogglePin?: (chat: IDM | IChat) => void;
 }
 
 interface Props {
@@ -41,7 +43,12 @@ interface Props {
 const isLegacyUpload = (content: string) => content.startsWith('uploads\\') || content.startsWith('uploads/');
 
 const Chat: FC<Props> = memo(({ data, myId, actions }) => {
-  const { workspace } = useParams<{ workspace: string; channel: string }>();
+  const { workspace, channel } = useParams<{ workspace: string; channel?: string }>();
+  const isDM = 'Sender' in data;
+  // 저장 여부는 레이아웃의 🔖 버튼이 불러온 목록 캐시만 읽는다
+  const { ids: savedIds } = useSaved(workspace, false);
+  const isSaved = isDM ? savedIds.dms.has(data.id) : savedIds.chats.has(data.id);
+  const toggleSaved = useToggleSaved(workspace);
   const sender: IUser = 'Sender' in data ? data.Sender : data.User;
   // 메시지에 담긴 보낸 사람 정보는 보낼 당시 것이라, 닉네임/프로필 그림은 최신 멤버 목록 값을 쓴다
   // (멤버 목록은 워크스페이스 레이아웃이 불러오고 profileUpdated 때 갱신하므로 여기서는 캐시만 읽는다)
@@ -85,10 +92,10 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
     [workspace, data.content, gifUrl, fileMeta, data.createdAt],
   );
 
-  // 같은 이모지끼리 묶어서 개수와 내가 눌렀는지 표시
+  // 같은 이모지끼리 묶어서 개수와 내가 눌렀는지 표시 (채널 메시지, DM 모두)
   const reactionGroups = useMemo(() => {
     const groups: { emoji: string; count: number; mine: boolean }[] = [];
-    channelChat?.Reactions?.forEach((reaction) => {
+    data.Reactions?.forEach((reaction) => {
       const group = groups.find((g) => g.emoji === reaction.emoji);
       if (group) {
         group.count += 1;
@@ -98,7 +105,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
       }
     });
     return groups;
-  }, [channelChat?.Reactions, myId]);
+  }, [data.Reactions, myId]);
 
   const onStartEdit = useCallback(() => {
     setEditText(data.content);
@@ -134,12 +141,12 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
 
   const onPickEmoji = useCallback(
     (emoji: string) => {
-      if (channelChat && actions?.onReact) {
-        actions.onReact(channelChat, emoji);
+      if (actions?.onReact) {
+        actions.onReact(data, emoji);
       }
       setShowPicker(false);
     },
-    [channelChat, actions],
+    [data, actions],
   );
 
   if (!user) {
@@ -150,13 +157,31 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
   const canAct = !!actions && !isTempId(data.id);
   const canEdit = canAct && isMine && !!actions?.onEdit && !gifUrl && !fileMeta && !isLegacyUpload(data.content);
   const canDelete = canAct && isMine && !!actions?.onDelete;
-  const canReact = canAct && !!channelChat && !!actions?.onReact;
+  const canReact = canAct && !!actions?.onReact;
   const canReply = canAct && !!channelChat && !channelChat.ParentId && !!actions?.onReply;
-  const canPin = canAct && !!channelChat && !!actions?.onTogglePin;
+  const canPin = canAct && !!actions?.onTogglePin;
+  const canSave = canAct && !!workspace;
+  // 메시지 링크는 채널 메시지만 (DM 주소는 보는 사람마다 달라서 공유할 수 없다)
+  const linkChannel = channelChat?.Channel?.name || channel;
+  const canCopyLink = canAct && !!channelChat && !!linkChannel;
+
+  const onCopyLink = () => {
+    if (!channelChat || !linkChannel) {
+      return;
+    }
+    const query = channelChat.ParentId
+      ? `message=${channelChat.ParentId}&reply=${channelChat.id}`
+      : `message=${channelChat.id}`;
+    const url = `${window.location.origin}/workspace/${workspace}/channel/${encodeURIComponent(linkChannel)}?${query}`;
+    navigator.clipboard
+      ?.writeText(url)
+      .then(() => toast.info('메시지 링크를 복사했습니다.', { position: 'bottom-center' }))
+      .catch(() => toast.error('링크를 복사하지 못했습니다.', { position: 'bottom-center' }));
+  };
 
   return (
     <ChatWrapper
-      className={channelChat?.pinned ? 'pinned' : undefined}
+      className={data.pinned ? 'pinned' : undefined}
       data-chat-id={data.id}
       onMouseLeave={() => setShowPicker(false)}
     >
@@ -164,7 +189,13 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
         <img src={avatarUrl(user, 36)} alt={user.nickname} />
       </div>
       <div className="chat-text">
-        {channelChat?.pinned && <PinnedLabel>📌 고정됨</PinnedLabel>}
+        {(data.pinned || isSaved) && (
+          <PinnedLabel>
+            {data.pinned && '📌 고정됨'}
+            {data.pinned && isSaved && ' · '}
+            {isSaved && <span className="saved">🔖 저장됨</span>}
+          </PinnedLabel>
+        )}
         <div className="chat-user">
           <b>{user.nickname}</b>
           {user.statusEmoji && (
@@ -257,11 +288,27 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
           {canPin && (
             <button
               type="button"
-              title={channelChat?.pinned ? '고정 해제' : '고정'}
-              aria-label={channelChat?.pinned ? '고정 해제' : '고정'}
-              onClick={() => actions?.onTogglePin?.(channelChat!)}
+              title={data.pinned ? '고정 해제' : '고정'}
+              aria-label={data.pinned ? '고정 해제' : '고정'}
+              onClick={() => actions?.onTogglePin?.(data)}
             >
               📌
+            </button>
+          )}
+          {canSave && (
+            <button
+              type="button"
+              title={isSaved ? '저장 취소' : '나중에 보기로 저장'}
+              aria-label={isSaved ? '저장 취소' : '저장'}
+              aria-pressed={isSaved}
+              onClick={() => toggleSaved(isDM ? 'dms' : 'chats', data.id, isSaved)}
+            >
+              🔖
+            </button>
+          )}
+          {canCopyLink && (
+            <button type="button" title="메시지 링크 복사" aria-label="메시지 링크 복사" onClick={onCopyLink}>
+              🔗
             </button>
           )}
           {canEdit && (

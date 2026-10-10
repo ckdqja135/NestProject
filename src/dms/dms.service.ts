@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { MoreThan, Repository } from 'typeorm';
 import { DMs } from '../entities/DMs';
+import { DMReactions } from '../entities/DMReactions';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { EventsGateway } from '../events/events.gateway';
 import { onlineMap } from '../events/onlineMap';
@@ -19,6 +20,8 @@ function getKeysByValue(object: Record<string, number>, value: number) {
 export class DmsService {
   constructor(
     @InjectRepository(DMs) private dmsRepository: Repository<DMs>,
+    @InjectRepository(DMReactions)
+    private dmReactionsRepository: Repository<DMReactions>,
     private workspacesService: WorkspacesService,
     private eventsGateway: EventsGateway,
   ) {}
@@ -44,6 +47,7 @@ export class DmsService {
       .createQueryBuilder('dms')
       .innerJoinAndSelect('dms.Sender', 'sender')
       .innerJoinAndSelect('dms.Receiver', 'receiver')
+      .leftJoinAndSelect('dms.Reactions', 'reactions')
       .where('dms.WorkspaceId = :workspaceId', { workspaceId: workspace.id })
       .andWhere(
         '((dms.SenderId = :myId AND dms.ReceiverId = :id) OR (dms.ReceiverId = :myId AND dms.SenderId = :id))',
@@ -109,7 +113,7 @@ export class DmsService {
     });
     const dmWithSender = await this.dmsRepository.findOne({
       where: { id: saved.id },
-      relations: ['Sender', 'Receiver'],
+      relations: ['Sender', 'Receiver', 'Reactions'],
     });
     this.emitToPair(url, id, myId, 'dm', dmWithSender);
     return dmWithSender;
@@ -154,8 +158,13 @@ export class DmsService {
     return dms;
   }
 
-  // 상대(id)와 나눈 DM 중 내가 보낸 메시지(dmId)를 찾는다
-  private async findMyDM(url: string, id: number, dmId: number, myId: number) {
+  // 상대(id)와 나눈 대화의 메시지(dmId)를 찾는다
+  private async findConversationDM(
+    url: string,
+    id: number,
+    dmId: number,
+    myId: number,
+  ) {
     const workspace = await this.findWorkspace(url, id, myId);
     const dm = await this.dmsRepository.findOne({
       where: { id: dmId, WorkspaceId: workspace.id },
@@ -167,6 +176,12 @@ export class DmsService {
     if (!isConversation) {
       throw new NotFoundException('존재하지 않는 메시지입니다.');
     }
+    return dm;
+  }
+
+  // 상대(id)와 나눈 DM 중 내가 보낸 메시지(dmId)를 찾는다
+  private async findMyDM(url: string, id: number, dmId: number, myId: number) {
+    const dm = await this.findConversationDM(url, id, dmId, myId);
     if (dm.SenderId !== myId) {
       throw new ForbiddenException(
         '내가 보낸 메시지만 수정/삭제할 수 있습니다.',
@@ -186,7 +201,7 @@ export class DmsService {
     await this.dmsRepository.update(dm.id, { content, editedAt: new Date() });
     const updated = await this.dmsRepository.findOne({
       where: { id: dm.id },
-      relations: ['Sender', 'Receiver'],
+      relations: ['Sender', 'Receiver', 'Reactions'],
     });
     this.emitToPair(url, id, myId, 'dmUpdated', updated);
     return updated;
@@ -200,5 +215,75 @@ export class DmsService {
       SenderId: dm.SenderId,
       ReceiverId: dm.ReceiverId,
     });
+  }
+
+  // 이모지 리액션 토글 (대화 상대 둘 다 가능)
+  async toggleReaction(
+    url: string,
+    id: number,
+    dmId: number,
+    emoji: string,
+    myId: number,
+  ) {
+    const dm = await this.findConversationDM(url, id, dmId, myId);
+    const existing = await this.dmReactionsRepository.findOne({
+      where: { DMId: dm.id, UserId: myId, emoji },
+    });
+    if (existing) {
+      await this.dmReactionsRepository.delete(existing.id);
+    } else {
+      await this.dmReactionsRepository.save({
+        DMId: dm.id,
+        UserId: myId,
+        emoji,
+      });
+    }
+    const reactions = await this.dmReactionsRepository.find({
+      where: { DMId: dm.id },
+      order: { id: 'ASC' },
+    });
+    const payload = {
+      id: dm.id,
+      SenderId: dm.SenderId,
+      ReceiverId: dm.ReceiverId,
+      Reactions: reactions,
+    };
+    this.emitToPair(url, id, myId, 'dmReactionUpdated', payload);
+    return payload;
+  }
+
+  // 메시지 고정/해제 (대화 상대 둘 다 가능)
+  async setPinned(
+    url: string,
+    id: number,
+    dmId: number,
+    pinned: boolean,
+    myId: number,
+  ) {
+    const dm = await this.findConversationDM(url, id, dmId, myId);
+    await this.dmsRepository.update(dm.id, { pinned });
+    const updated = await this.dmsRepository.findOne({
+      where: { id: dm.id },
+      relations: ['Sender', 'Receiver', 'Reactions'],
+    });
+    this.emitToPair(url, id, myId, 'dmUpdated', updated);
+    return updated;
+  }
+
+  async getPinnedDMs(url: string, id: number, myId: number) {
+    const workspace = await this.findWorkspace(url, id, myId);
+    return this.dmsRepository
+      .createQueryBuilder('dms')
+      .innerJoinAndSelect('dms.Sender', 'sender')
+      .innerJoinAndSelect('dms.Receiver', 'receiver')
+      .leftJoinAndSelect('dms.Reactions', 'reactions')
+      .where('dms.WorkspaceId = :workspaceId', { workspaceId: workspace.id })
+      .andWhere(
+        '((dms.SenderId = :myId AND dms.ReceiverId = :id) OR (dms.ReceiverId = :myId AND dms.SenderId = :id))',
+        { id, myId },
+      )
+      .andWhere('dms.pinned = :pinned', { pinned: true })
+      .orderBy('dms.createdAt', 'DESC')
+      .getMany();
   }
 }

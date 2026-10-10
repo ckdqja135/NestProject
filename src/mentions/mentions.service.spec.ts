@@ -4,7 +4,12 @@ import { ChannelMembers } from '../entities/ChannelMembers';
 import { Mentions } from '../entities/Mentions';
 import { EventsGateway } from '../events/events.gateway';
 import { WorkspacesService } from '../workspaces/workspaces.service';
-import { MentionsService, parseMentionIds } from './mentions.service';
+import { onlineMap } from '../events/onlineMap';
+import {
+  MentionsService,
+  parseMentionIds,
+  parseSpecialMentions,
+} from './mentions.service';
 
 describe('MentionsService', () => {
   let service: MentionsService;
@@ -75,6 +80,51 @@ describe('MentionsService', () => {
         chat,
       },
     );
+  });
+
+  it('@channel 은 채널 멤버 모두, @here 는 접속 중인 채널 멤버에게 알린다', async () => {
+    expect(parseSpecialMentions('@[channel](channel) 공지')).toEqual({
+      channel: true,
+      here: false,
+    });
+    expect(parseSpecialMentions('@[here](channel) 섞인 마크업')).toEqual({
+      channel: false,
+      here: false,
+    });
+    channelMembersRepository.find.mockResolvedValue([
+      { UserId: 1 },
+      { UserId: 2 },
+      { UserId: 3 },
+    ]);
+    mentionsRepository.save.mockResolvedValue({ id: 1 });
+    await service.handleNewChat('shlack', 1, {
+      id: 9,
+      ChannelId: 4,
+      UserId: 1,
+      content: '@[channel](channel) 공지',
+    } as any);
+    expect(
+      mentionsRepository.save.mock.calls.map(([m]) => m.ReceiverId),
+    ).toEqual([2, 3]);
+
+    jest.clearAllMocks();
+    channelMembersRepository.find.mockResolvedValue([
+      { UserId: 1 },
+      { UserId: 2 },
+      { UserId: 3 },
+    ]);
+    mentionsRepository.save.mockResolvedValue({ id: 1 });
+    onlineMap['/ws-shlack'] = { s1: 1, s2: 3 };
+    await service.handleNewChat('shlack', 1, {
+      id: 10,
+      ChannelId: 4,
+      UserId: 1,
+      content: '@[here](here) 지금 있는 분',
+    } as any);
+    delete onlineMap['/ws-shlack'];
+    expect(
+      mentionsRepository.save.mock.calls.map(([m]) => m.ReceiverId),
+    ).toEqual([3]);
   });
 
   it('멘션이 없으면 아무것도 하지 않는다', async () => {

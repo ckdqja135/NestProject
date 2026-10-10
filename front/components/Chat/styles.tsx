@@ -72,6 +72,14 @@ export const ChatWrapper = styled.div`
       overflow-x: auto;
     }
 
+    & .md-mention-all {
+      padding: 0 2px;
+      border-radius: 3px;
+      background: #fff3c4;
+      color: #8a5a00;
+      font-weight: 600;
+    }
+
     & .md-quote {
       margin: 4px 0;
       padding-left: 10px;
@@ -203,6 +211,10 @@ export const PinnedLabel = styled.div`
   font-size: 12px;
   color: #b7791f;
   margin-bottom: 2px;
+
+  & .saved {
+    color: #1264a3;
+  }
 `;
 
 export const EditBox = styled.div`

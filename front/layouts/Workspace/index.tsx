@@ -5,6 +5,7 @@ import DMList from '@components/DMList';
 import InviteWorkspaceModal from '@components/InviteWorkspaceModal';
 import MembersModal from '@components/MembersModal';
 import MentionsButton from '@components/MentionsButton';
+import SavedButton from '@components/SavedButton';
 import Menu from '@components/Menu';
 import SearchModal from '@components/SearchModal';
 import useSocket from '@hooks/useSocket';
@@ -290,6 +291,7 @@ const Workspace = () => {
     <div>
       <Header>
         {userData && <SearchModal workspace={workspace} myId={userData.id} />}
+        {userData && workspace && <SavedButton workspace={workspace} myId={userData.id} />}
         {userData && workspace && <MentionsButton workspace={workspace} />}
         {userData && (
           <RightMenu>

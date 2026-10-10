@@ -40,8 +40,11 @@ const MentionsButton: FC<Props> = ({ workspace }) => {
   const onClickMention = useCallback(
     (mention: IMention) => {
       setOpen(false);
-      // 채널에 들어가면 그 채널의 멘션은 읽음 처리된다
-      history.push(`/workspace/${workspace}/channel/${mention.Chat.Channel.name}`);
+      // 채널에 들어가면 그 채널의 멘션은 읽음 처리된다. 멘션된 메시지 위치로 이동 (스레드 답글이면 스레드를 열어서)
+      const query = mention.Chat.ParentId
+        ? `message=${mention.Chat.ParentId}&reply=${mention.Chat.id}`
+        : `message=${mention.Chat.id}`;
+      history.push(`/workspace/${workspace}/channel/${mention.Chat.Channel.name}?${query}`);
     },
     [history, workspace],
   );

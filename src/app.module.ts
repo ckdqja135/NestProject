@@ -1,4 +1,5 @@
 import { MiddlewareConsumer, Module } from '@nestjs/common';
+import { SavedModule } from './saved/saved.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
@@ -18,6 +19,8 @@ import { ChannelChats } from './entities/ChannelChats';
 import { ChannelMembers } from './entities/ChannelMembers';
 import { Channels } from './entities/Channels';
 import { DMs } from './entities/DMs';
+import { DMReactions } from './entities/DMReactions';
+import { SavedItems } from './entities/SavedItems';
 import { Mentions } from './entities/Mentions';
 import { Reactions } from './entities/Reactions';
 import { Users } from './entities/Users';
@@ -39,8 +42,10 @@ import { Workspaces } from './entities/Workspaces';
         ChannelMembers,
         Channels,
         DMs,
+        DMReactions,
         Mentions,
         Reactions,
+        SavedItems,
         Users,
         WorkspaceMembers,
         Workspaces,
@@ -58,6 +63,7 @@ import { Workspaces } from './entities/Workspaces';
     EventsModule,
     SearchModule,
     GifsModule,
+    SavedModule,
     MentionsModule,
     FilesModule,
   ],

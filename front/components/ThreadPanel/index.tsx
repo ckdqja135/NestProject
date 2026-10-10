@@ -156,6 +156,7 @@ const ThreadPanel: FC<Props> = ({ workspace, channel, parent, me, members, socke
         onChangeChat={onChangeReply}
         placeholder="답글 달기..."
         data={members}
+        allowBroadcast
         toolbarExtra={<GifPicker onSelect={onSelectGif} placement="up-left" />}
       />
     </Panel>

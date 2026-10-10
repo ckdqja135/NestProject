@@ -2,6 +2,7 @@ import useSocket from '@hooks/useSocket';
 import { IDM, IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
 import { setUnread } from '@utils/unreadStore';
+import { draftKey, loadDraft } from '@hooks/useDraft';
 import React, { useEffect, useRef, VFC } from 'react';
 import { useParams } from 'react-router';
 import { NavLink, useLocation } from 'react-router-dom';
@@ -80,6 +81,11 @@ const EachDM: VFC<Props> = ({ member, isOnline }) => {
       />
       <span className={count && count > 0 ? 'bold' : undefined}>{member.nickname}</span>
       {member.id === userData?.id && <span> (나)</span>}
+      {!isViewing && workspace && loadDraft(draftKey(workspace, `dm:${member.id}`)) && (
+        <span className="draft-icon" title="쓰다 만 메시지가 있습니다" aria-label="임시 저장된 메시지">
+          ✏️
+        </span>
+      )}
       {member.statusEmoji && (
         <span className="status-emoji" title={member.statusText || undefined}>
           {member.statusEmoji}

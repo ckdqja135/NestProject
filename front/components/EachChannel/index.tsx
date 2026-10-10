@@ -2,6 +2,7 @@ import useSocket from '@hooks/useSocket';
 import { IChannel, IChat, IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
 import { setUnread } from '@utils/unreadStore';
+import { draftKey, loadDraft } from '@hooks/useDraft';
 import React, { useEffect, useRef, VFC } from 'react';
 import { useParams } from 'react-router';
 import { NavLink, useLocation } from 'react-router-dom';
@@ -72,6 +73,11 @@ const EachChannel: VFC<Props> = ({ channel, mentionCount = 0 }) => {
       <span className={!channel.muted && count !== undefined && count > 0 ? 'bold' : undefined}>
         {channel.private ? '🔒' : '#'} {channel.name}
       </span>
+      {!isViewing && workspace && loadDraft(draftKey(workspace, `channel:${channel.name}`)) && (
+        <span className="draft-icon" title="쓰다 만 메시지가 있습니다" aria-label="임시 저장된 메시지">
+          ✏️
+        </span>
+      )}
       {channel.muted && (
         <span className="muted-icon" title="알림 꺼짐" aria-label="알림 꺼짐">
           🔕

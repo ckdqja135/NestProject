@@ -6,10 +6,32 @@ import { Link } from 'react-router-dom';
 
 const SAFE_URL = /^https?:\/\//i;
 
+// 슐랙 안의 주소(메시지 링크 등)면 새 창 대신 앱 안에서 이동할 경로를 돌려준다
+const internalPath = (url: string) => {
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  if (origin && url.startsWith(`${origin}/workspace/`)) {
+    return url.slice(origin.length);
+  }
+  return null;
+};
+
+const renderLink = (key: string, url: string, children: ReactNode) => {
+  const path = internalPath(url);
+  return path ? (
+    <Link key={key} to={path}>
+      {children}
+    </Link>
+  ) : (
+    <a key={key} href={url} target="_blank" rel="noopener noreferrer">
+      {children}
+    </a>
+  );
+};
+
 // 왼쪽부터 가장 먼저 나오는 인라인 문법을 찾는다
 const INLINE = new RegExp(
   [
-    /@\[(.+?)]\((\d+?)\)/.source, // 1,2: 멘션
+    /@\[(.+?)]\((\d+?|channel|here)\)/.source, // 1,2: 멘션 (@channel, @here 포함)
     /`([^`\n]+)`/.source, // 3: 코드
     /\[([^\]\n]+)]\((https?:\/\/[^\s)]+)\)/.source, // 4,5: 링크
     /\*\*([^\n]+?)\*\*/.source, // 6: 굵게
@@ -36,7 +58,19 @@ function renderInline(text: string, workspace: string, keyPrefix: string): React
       nodes.push(rest.slice(0, m.index) + lead);
     }
     const key = `${keyPrefix}-${i++}`;
-    if (m[1] !== undefined) {
+    if (m[1] !== undefined && (m[2] === 'channel' || m[2] === 'here')) {
+      // 서버와 같은 규칙: 표시 이름과 대상이 같을 때만 채널 전체 멘션 (@[here](channel) 같은 위장은 글자로)
+      if (m[1] !== m[2]) {
+        nodes.push(<span key={key}>@{m[1]}</span>);
+        rest = rest.slice(m.index + m[0].length);
+        continue;
+      }
+      nodes.push(
+        <span key={key} className="md-mention-all" title={m[2] === 'channel' ? '채널 전체' : '접속 중인 사람'}>
+          @{m[2]}
+        </span>,
+      );
+    } else if (m[1] !== undefined) {
       nodes.push(
         <Link key={key} to={`/workspace/${workspace}/dm/${m[2]}`}>
           @{m[1]}
@@ -49,11 +83,7 @@ function renderInline(text: string, workspace: string, keyPrefix: string): React
         </code>,
       );
     } else if (m[4] !== undefined && SAFE_URL.test(m[5])) {
-      nodes.push(
-        <a key={key} href={m[5]} target="_blank" rel="noopener noreferrer">
-          {renderInline(m[4], workspace, key)}
-        </a>,
-      );
+      nodes.push(renderLink(key, m[5], renderInline(m[4], workspace, key)));
     } else if (m[6] !== undefined) {
       nodes.push(<strong key={key}>{renderInline(m[6], workspace, key)}</strong>);
     } else if (m[7] !== undefined) {
@@ -61,11 +91,7 @@ function renderInline(text: string, workspace: string, keyPrefix: string): React
     } else if (m[9] !== undefined || m[11] !== undefined) {
       nodes.push(<em key={key}>{renderInline((m[9] ?? m[11]) as string, workspace, key)}</em>);
     } else if (m[12] !== undefined) {
-      nodes.push(
-        <a key={key} href={m[12]} target="_blank" rel="noopener noreferrer">
-          {m[12]}
-        </a>,
-      );
+      nodes.push(renderLink(key, m[12], /[?&]message=/.test(m[12]) && internalPath(m[12]) ? '🔗 메시지 링크' : m[12]));
     }
     rest = rest.slice(m.index + m[0].length);
   }

@@ -24,7 +24,8 @@ export interface IChannel {
 export interface IReaction {
   id: number;
   emoji: string;
-  ChatId: number;
+  ChatId?: number; // 채널 메시지 리액션
+  DMId?: number; // DM 리액션
   UserId: number;
 }
 
@@ -54,6 +55,8 @@ export interface IDM {
   content: string;
   createdAt: Date;
   editedAt?: Date | null;
+  pinned?: boolean;
+  Reactions?: IReaction[];
 }
 
 export interface IWorkspace {
@@ -89,4 +92,14 @@ export interface IMentionList {
   items: IMention[];
   unreadByChannel: { [channelId: number]: number };
   unreadTotal: number;
+}
+
+// 나중에 보려고 저장한 메시지 (채널 메시지 또는 DM)
+export interface ISavedItem {
+  id: number;
+  ChatId: number | null;
+  DMId: number | null;
+  createdAt: Date;
+  Chat: (IChat & { Channel: IChannel }) | null;
+  DM: IDM | null;
 }
