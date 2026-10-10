@@ -132,7 +132,7 @@ const MembersModal: FC<Props> = ({ show, onCloseModal, workspace, me, onInvite }
           );
         })}
       </MemberList>
-      <p className="footer-hint" style={{ margin: '16px 0 0', fontSize: 13, color: '#616061' }}>
+      <p className="footer-hint" style={{ margin: '16px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>
         {isOwner ? '소유자는 워크스페이스를 나갈 수 없습니다. ' : ''}
         <button
           type="button"

@@ -1,4 +1,5 @@
 import styled from '@emotion/styled';
+import { MOBILE } from '@utils/media';
 
 export const RightMenu = styled.div`
   float: right;
@@ -11,6 +12,49 @@ export const Header = styled.header`
   box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.1);
   padding: 5px;
   text-align: center;
+
+  ${MOBILE} {
+    /* 왼쪽 ☰ 버튼과 오른쪽 아이콘들 사이에 검색창 */
+    text-align: left;
+    padding-left: 44px;
+  }
+`;
+
+// 휴대폰 화면에서 채널 목록(서랍)을 여닫는 버튼
+export const NavToggle = styled.button`
+  display: none;
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  width: 32px;
+  height: 30px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  ${MOBILE} {
+    display: block;
+  }
+`;
+
+// 서랍이 열렸을 때 나머지 화면을 어둡게 하고, 누르면 닫는다
+export const NavBackdrop = styled.div`
+  display: none;
+
+  ${MOBILE} {
+    display: block;
+    position: fixed;
+    inset: 38px 0 0 0;
+    z-index: 49;
+    background: rgba(0, 0, 0, 0.45);
+  }
 `;
 
 export const ProfileImg = styled.img`
@@ -37,6 +81,21 @@ export const Workspaces = styled.div`
   vertical-align: top;
   text-align: center;
   padding: 15px 0 0;
+
+  ${MOBILE} {
+    /* 휴대폰에서는 채널 목록 서랍과 함께 열린다 */
+    position: fixed;
+    top: 38px;
+    left: 0;
+    bottom: 0;
+    z-index: 51;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease-out;
+
+    &.open {
+      transform: none;
+    }
+  }
 `;
 
 export const Channels = styled.nav`
@@ -113,6 +172,22 @@ export const Channels = styled.nav`
     white-space: nowrap;
     font-size: 15px;
   }
+
+  ${MOBILE} {
+    position: fixed;
+    top: 38px;
+    left: 65px;
+    bottom: 0;
+    width: min(280px, calc(85vw - 65px));
+    z-index: 50;
+    transform: translateX(calc(-100% - 65px));
+    transition: transform 0.2s ease-out;
+
+    &.open {
+      transform: none;
+      box-shadow: 4px 0 16px rgba(0, 0, 0, 0.3);
+    }
+  }
 `;
 
 export const WorkspaceName = styled.button`
@@ -151,7 +226,7 @@ export const WorkspaceModal = styled.div`
     align-items: center;
     gap: 12px;
     padding: 12px 16px 14px;
-    border-bottom: 1px solid #e8e8e8;
+    border-bottom: 1px solid var(--border);
 
     & .ws-icon {
       flex: 0 0 36px;
@@ -190,7 +265,7 @@ export const WorkspaceModal = styled.div`
 
     & small {
       font-size: 12px;
-      color: #616061;
+      color: var(--text-muted);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -201,11 +276,11 @@ export const WorkspaceModal = styled.div`
     }
 
     & small.away {
-      color: #616061;
+      color: var(--text-muted);
     }
 
     & small.status {
-      color: #1d1c1d;
+      color: var(--text);
     }
   }
 
@@ -218,7 +293,7 @@ export const WorkspaceModal = styled.div`
   & li.divider {
     height: 1px;
     margin: 6px 0;
-    background: #e8e8e8;
+    background: var(--border);
   }
 
   & button {
@@ -229,7 +304,7 @@ export const WorkspaceModal = styled.div`
     background: transparent;
     text-align: left;
     font-size: 15px;
-    color: #1d1c1d;
+    color: var(--text);
     cursor: pointer;
 
     &:hover,
@@ -248,6 +323,7 @@ export const WorkspaceModal = styled.div`
 
 export const Chats = styled.div`
   flex: 1;
+  min-width: 0;
 `;
 
 export const AddButton = styled.button`
@@ -274,7 +350,7 @@ export const WorkspaceButton = styled.button`
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: white;
+  background: var(--bg);
   border: 3px solid #3f0e40;
   margin-bottom: 15px;
   font-size: 18px;

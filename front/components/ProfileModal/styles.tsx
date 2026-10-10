@@ -4,7 +4,7 @@ export const Section = styled.section`
   & + & {
     margin-top: 24px;
     padding-top: 20px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--border);
   }
 
   & > h3 {
@@ -24,20 +24,20 @@ export const AvatarGrid = styled.div`
     align-items: center;
     gap: 4px;
     padding: 8px 4px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border);
     border-radius: 8px;
-    background: white;
+    background: var(--bg);
     font-size: 12px;
-    color: #1d1c1d;
+    color: var(--text);
     cursor: pointer;
 
     &:hover {
-      background: #fafafa;
+      background: var(--bg-subtle);
     }
 
     &.selected {
       border-color: #1264a3;
-      background: #f2f8fc;
+      background: var(--bg-selected);
       box-shadow: 0 0 0 1px #1264a3;
     }
 

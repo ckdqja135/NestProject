@@ -196,7 +196,7 @@ const ChannelSettingsModal: FC<Props> = ({
         </Section>
       )}
       {!canManage && !isGeneral && (
-        <p style={{ color: '#616061', fontSize: 13 }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
           채널 이름 변경·보관·삭제는 채널을 만든 사람과 워크스페이스 소유자만 할 수 있습니다.
         </p>
       )}

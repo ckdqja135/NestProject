@@ -25,6 +25,7 @@ import {
   setNotificationsPaused,
 } from '@utils/notify';
 import useUnreadTitle from '@hooks/useUnreadTitle';
+import { getThemePref, setThemePref, THEME_LABELS, ThemePref } from '@utils/theme';
 import { FileMeta, getFile, notifyUnavailable, putFile, UnavailableReason } from '@utils/fileStore';
 import StorageModal from '@components/StorageModal';
 import ProfileModal from '@components/ProfileModal';
@@ -46,6 +47,8 @@ import {
   Chats,
   Header,
   MenuScroll,
+  NavBackdrop,
+  NavToggle,
   ProfileImg,
   RightMenu,
   WorkspaceButton,
@@ -76,6 +79,13 @@ const Workspace = () => {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showWorkspaceSettings, setShowWorkspaceSettings] = useState(false);
   const [showQuickSwitcher, setShowQuickSwitcher] = useState(false);
+  const [theme, setTheme] = useState<ThemePref>(getThemePref);
+  // 시스템 설정 따르기 → 라이트 → 다크 순서로 바꾼다
+  const onCycleTheme = useCallback(() => {
+    const next: ThemePref = theme === 'system' ? 'light' : theme === 'light' ? 'dark' : 'system';
+    setThemePref(next);
+    setTheme(next);
+  }, [theme]);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
   // 전역 단축키: Ctrl/⌘+K 빠른 이동, Ctrl/⌘+/ 단축키 보기
@@ -101,6 +111,11 @@ const Workspace = () => {
   useUnreadTitle();
   const history = useHistory();
   const location = useLocation();
+  // 휴대폰 화면: 채널 목록 서랍. 다른 채널/DM 으로 이동하면 닫는다
+  const [navOpen, setNavOpen] = useState(false);
+  useEffect(() => {
+    setNavOpen(false);
+  }, [location.pathname]);
   const locationRef = useRef(location.pathname);
   locationRef.current = decodeURIComponent(location.pathname);
   const { mutate: revalidateMembers } = useSWR<IUser[]>(
@@ -382,6 +397,14 @@ const Workspace = () => {
   return (
     <div>
       <Header>
+        <NavToggle
+          type="button"
+          onClick={() => setNavOpen((v) => !v)}
+          aria-label={navOpen ? '채널 목록 닫기' : '채널 목록 열기'}
+          aria-expanded={navOpen}
+        >
+          ☰
+        </NavToggle>
         {userData && <SearchModal workspace={workspace} myId={userData.id} />}
         {userData && workspace && <ThreadsButton workspace={workspace} myId={userData.id} />}
         {userData && workspace && <SavedButton workspace={workspace} myId={userData.id} />}
@@ -494,6 +517,11 @@ const Workspace = () => {
                         키보드 단축키
                       </button>
                     </li>
+                    <li>
+                      <button type="button" role="menuitem" onClick={onCycleTheme} title="누를 때마다 바뀝니다">
+                        🌓 화면 테마: {THEME_LABELS[theme]}
+                      </button>
+                    </li>
                     <li className="divider" role="separator" />
                     <li>
                       <button type="button" role="menuitem" className="danger" onClick={onLogOut}>
@@ -508,7 +536,7 @@ const Workspace = () => {
         )}
       </Header>
       <WorkspaceWrapper>
-        <Workspaces>
+        <Workspaces className={navOpen ? 'open' : undefined}>
           {userData?.Workspaces.map((ws) => {
             const isActive = ws.url === workspace;
             return (
@@ -529,7 +557,8 @@ const Workspace = () => {
             +
           </AddButton>
         </Workspaces>
-        <Channels>
+        {navOpen && <NavBackdrop onClick={() => setNavOpen(false)} />}
+        <Channels className={navOpen ? 'open' : undefined}>
           <WorkspaceName onClick={toggleWorkspaceModal} aria-haspopup="menu" aria-expanded={showWorkspaceModal}>
             {userData?.Workspaces.find((v) => v.url === workspace)?.name}
           </WorkspaceName>

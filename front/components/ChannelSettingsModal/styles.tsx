@@ -26,16 +26,16 @@ export const DangerZone = styled.div`
     & p {
       margin: 4px 0 8px;
       font-size: 13px;
-      color: #616061;
+      color: var(--text-muted);
     }
 
     & > button {
       flex: 0 0 auto;
       height: 34px;
       padding: 0 14px;
-      border: 1px solid #bbb;
+      border: 1px solid var(--border-strong);
       border-radius: 6px;
-      background: white;
+      background: var(--bg);
       font-weight: 700;
       cursor: pointer;
 

@@ -86,7 +86,9 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
       ) : fileMeta ? (
         <FileAttachment meta={fileMeta} sentAt={data.createdAt} />
       ) : isLegacyUpload(data.content) ? (
-        <span style={{ color: '#616061' }}>[이전 방식으로 서버에 올린 첨부파일 - 더 이상 볼 수 없습니다]</span>
+        <span style={{ color: 'var(--text-muted)' }}>
+          [이전 방식으로 서버에 올린 첨부파일 - 더 이상 볼 수 없습니다]
+        </span>
       ) : (
         renderMarkdown(data.content, workspace)
       ),

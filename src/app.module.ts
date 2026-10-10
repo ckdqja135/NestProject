@@ -1,5 +1,8 @@
 import { MiddlewareConsumer, Module } from '@nestjs/common';
 import { SavedModule } from './saved/saved.module';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { rateLimitPerMinute } from './security';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
@@ -30,6 +33,11 @@ import { Workspaces } from './entities/Workspaces';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    // IP 별 요청 수 제한 (로그인 등은 컨트롤러에서 더 엄격하게)
+    ThrottlerModule.forRoot({
+      throttlers: [{ ttl: 60_000, limit: rateLimitPerMinute }],
+      errorMessage: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.',
+    }),
     TypeOrmModule.forRoot({
       type: 'mariadb',
       host: process.env.DB_HOST || 'localhost',
@@ -68,7 +76,7 @@ import { Workspaces } from './entities/Workspaces';
     FilesModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer): void {

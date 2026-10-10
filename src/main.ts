@@ -10,15 +10,14 @@ import session from 'express-session';
 import { SessionIoAdapter } from './events/session-io.adapter';
 import { createSessionStore } from './session-store';
 import { serveFrontend } from './serve-frontend';
+import { applySecurity } from './security';
 
 declare const module: any;
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  app.enableCors({
-    origin: true,
-    credentials: true,
-  });
+  // 보안 헤더(helmet, CSP), 허용한 출처만 CORS
+  applySecurity(app);
   app.useGlobalPipes(new ValidationPipe({ transform: true }));
   app.useGlobalFilters(new HttpExceptionFilter());
 
@@ -37,6 +36,10 @@ async function bootstrap() {
     secret: process.env.SECRET,
     cookie: {
       httpOnly: true,
+      // 다른 사이트에서 보낸 요청·웹소켓 연결에는 로그인 쿠키가 실리지 않게 한다
+      sameSite: 'lax',
+      // HTTPS 로 서비스할 때는 COOKIE_SECURE=true
+      secure: process.env.COOKIE_SECURE === 'true',
     },
   });
   app.use(cookieParser());

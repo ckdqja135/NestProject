@@ -12,6 +12,8 @@ import {
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JoinRequestDto } from './dto/join.request.dto';
 import { ChangePasswordDto, UpdateProfileDto } from './dto/update-profile.dto';
+import { Throttle } from '@nestjs/throttler';
+import { authRateLimitPerMinute } from '../security';
 import { UsersService } from './users.service';
 import { UserDto } from '../common/dto/user.dto';
 import { User } from '../common/decorators/user.decorator';
@@ -39,6 +41,8 @@ export class UsersController {
 
   @UseGuards(NotLoggedInGuard)
   @ApiOperation({ summary: '회원가입' })
+  // 회원가입·로그인·비밀번호 변경은 1분에 몇 번만 (비밀번호 대입 방지)
+  @Throttle({ default: { limit: authRateLimitPerMinute, ttl: 60_000 } })
   @Post()
   async join(@Body() body: JoinRequestDto) {
     await this.usersService.join(body.email, body.nickname, body.password);
@@ -56,6 +60,7 @@ export class UsersController {
   })
   @ApiOperation({ summary: '로그인' })
   @UseGuards(LocalAuthGuard)
+  @Throttle({ default: { limit: authRateLimitPerMinute, ttl: 60_000 } })
   @Post('login')
   logIn(@User() user) {
     return user;
@@ -85,6 +90,7 @@ export class UsersController {
 
   @UseGuards(LoggedInGuard)
   @ApiOperation({ summary: '비밀번호 변경' })
+  @Throttle({ default: { limit: authRateLimitPerMinute, ttl: 60_000 } })
   @Post('me/password')
   async changePassword(@User() user, @Body() body: ChangePasswordDto) {
     await this.usersService.changePassword(

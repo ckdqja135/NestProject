@@ -18,13 +18,13 @@ export const CreateModal = styled.div`
     width: 480px;
     max-width: 100%;
     box-sizing: border-box;
-    background: white;
+    background: var(--bg);
     border-radius: 8px;
     box-shadow: 0 18px 48px rgba(0, 0, 0, 0.3);
     padding: 24px 28px 24px;
     position: relative;
     text-align: left;
-    color: #1d1c1d;
+    color: var(--text);
     animation: modal-in 120ms ease-out;
   }
 
@@ -51,12 +51,12 @@ export const CloseModalButton = styled.button`
   border-radius: 4px;
   font-size: 26px;
   line-height: 1;
-  color: #616061;
+  color: var(--text-muted);
   cursor: pointer;
 
   &:hover {
-    background: #f2f2f2;
-    color: #1d1c1d;
+    background: var(--bg-hover);
+    color: var(--text);
   }
 `;
 
@@ -73,7 +73,7 @@ export const ModalHeader = styled.div`
   & > p {
     margin: 6px 0 0;
     font-size: 14px;
-    color: #616061;
+    color: var(--text-muted);
     line-height: 1.5;
   }
 `;

@@ -5,7 +5,7 @@ export const SearchInput = styled.input`
   box-sizing: border-box;
   height: 44px;
   padding: 0 14px;
-  border: 1px solid #bbb;
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   font-size: 16px;
   outline: none;
@@ -33,7 +33,7 @@ export const ResultList = styled.ul`
     border-radius: 6px;
     background: transparent;
     font-size: 15px;
-    color: #1d1c1d;
+    color: var(--text);
     text-align: left;
     cursor: pointer;
 
@@ -59,14 +59,14 @@ export const ResultList = styled.ul`
 
     & small {
       margin-left: auto;
-      color: #616061;
+      color: var(--text-muted);
       font-size: 12px;
     }
   }
 
   & > li.empty {
     padding: 12px 10px;
-    color: #616061;
+    color: var(--text-muted);
     font-size: 14px;
   }
 `;

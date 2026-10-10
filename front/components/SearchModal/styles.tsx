@@ -1,4 +1,5 @@
 import styled from '@emotion/styled';
+import { MOBILE } from '@utils/media';
 
 export const SearchForm = styled.form`
   display: inline-block;
@@ -6,6 +7,12 @@ export const SearchForm = styled.form`
   & input {
     width: 420px;
     max-width: 40vw;
+
+    ${MOBILE} {
+      /* 오른쪽 아이콘(🧵🔖🔔, 프로필)과 겹치지 않게 */
+      width: calc(100vw - 230px);
+      max-width: none;
+    }
     height: 26px;
     border-radius: 6px;
     border: 1px solid rgba(255, 255, 255, 0.3);
@@ -20,8 +27,8 @@ export const SearchForm = styled.form`
     }
 
     &:focus {
-      background: white;
-      color: #1d1c1d;
+      background: var(--bg);
+      color: var(--text);
     }
   }
 `;
@@ -36,7 +43,7 @@ export const Overlay = styled.div`
   align-items: flex-start;
   padding-top: 60px;
   text-align: left;
-  color: #1d1c1d;
+  color: var(--text);
 `;
 
 export const ResultBox = styled.div`
@@ -45,7 +52,7 @@ export const ResultBox = styled.div`
   max-height: calc(100vh - 120px);
   display: flex;
   flex-direction: column;
-  background: white;
+  background: var(--bg);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 
@@ -53,7 +60,7 @@ export const ResultBox = styled.div`
     display: flex;
     align-items: center;
     padding: 14px 20px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--border);
     font-weight: bold;
 
     & > span {
@@ -76,13 +83,13 @@ export const ResultBox = styled.div`
 
   & h3 {
     font-size: 13px;
-    color: #616061;
+    color: var(--text-muted);
     margin: 14px 20px 6px;
   }
 
   & p.empty {
     padding: 8px 20px;
-    color: #888;
+    color: var(--text-faint);
     margin: 0;
   }
 `;
@@ -97,16 +104,16 @@ export const ResultItem = styled.button`
   cursor: pointer;
 
   &:hover {
-    background: #f4f4f4;
+    background: var(--bg-subtle);
   }
 
   & .meta {
     font-size: 12px;
-    color: #616061;
+    color: var(--text-muted);
     margin-bottom: 2px;
 
     & b {
-      color: #1d1c1d;
+      color: var(--text);
     }
   }
 
@@ -117,7 +124,7 @@ export const ResultItem = styled.button`
   }
 
   & mark {
-    background: #fff3a3;
+    background: var(--bg-highlight);
     padding: 0;
   }
 `;

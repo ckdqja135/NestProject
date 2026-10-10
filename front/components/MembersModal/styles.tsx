@@ -7,7 +7,7 @@ export const MemberList = styled.div`
 
   & > p {
     margin: 12px 8px;
-    color: #616061;
+    color: var(--text-muted);
     font-size: 14px;
   }
 `;
@@ -20,7 +20,7 @@ export const MemberRow = styled.div`
   border-radius: 6px;
 
   &:hover {
-    background: #f8f8f8;
+    background: var(--bg-subtle);
   }
 
   & > .avatar {
@@ -41,7 +41,7 @@ export const MemberRow = styled.div`
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      border: 2px solid white;
+      border: 2px solid var(--bg);
       background: #bbb;
     }
 
@@ -58,22 +58,22 @@ export const MemberRow = styled.div`
 
     & .me {
       font-weight: normal;
-      color: #616061;
+      color: var(--text-muted);
     }
 
     & .badge {
       margin-left: 6px;
       padding: 1px 6px;
       border-radius: 4px;
-      background: #f2f2f2;
-      color: #616061;
+      background: var(--bg-hover);
+      color: var(--text-muted);
       font-size: 11px;
       font-weight: 700;
       vertical-align: middle;
     }
 
     & small {
-      color: #616061;
+      color: var(--text-muted);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -84,8 +84,8 @@ export const MemberRow = styled.div`
     height: 28px;
     padding: 0 10px;
     border-radius: 6px;
-    border: 1px solid #ccc;
-    background: white;
+    border: 1px solid var(--border);
+    background: var(--bg);
     font-size: 13px;
     cursor: pointer;
     white-space: nowrap;

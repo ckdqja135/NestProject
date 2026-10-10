@@ -22,10 +22,60 @@
       * {
           box-sizing: border-box;
       }
+      /* 색상 테마 (html[data-theme] 를 앱이 정한다: 라이트/다크/시스템 설정 따르기) */
+      :root {
+          color-scheme: light;
+          --bg: #ffffff;
+          --bg-subtle: #f8f8f8;
+          --bg-hover: #f2f2f2;
+          --bg-selected: #f2f8fc;
+          --bg-pinned: #fff8e1;
+          --bg-highlight: #fff3c4;
+          --bg-danger: #fdecea;
+          --text: #1d1c1d;
+          --text-muted: #616061;
+          --text-faint: #888888;
+          --border: #dddddd;
+          --border-strong: #bbbbbb;
+      }
+      :root[data-theme='dark'] {
+          color-scheme: dark;
+          --bg: #1a1d21;
+          --bg-subtle: #222529;
+          --bg-hover: #2c2f33;
+          --bg-selected: #1d3446;
+          --bg-pinned: #3a3220;
+          --bg-highlight: #4a3f15;
+          --bg-danger: #4a1f28;
+          --text: #d1d2d3;
+          --text-muted: #9a9b9d;
+          --text-faint: #7d7e80;
+          --border: #383b40;
+          --border-strong: #565a60;
+      }
     </style>
     <link rel="stylesheet" href="https://a.slack-edge.com/bv1-10/client-boot-styles.82a58f4.min.css?cacheKey=gantry-1674776250" crossorigin="anonymous" />
     <link rel="stylesheet" href="https://a.slack-edge.com/bv1-10/slack-kit-styles.b2b0c56.min.css?cacheKey=gantry-1674776250" crossorigin="anonymous" />
     <link rel="shortcut icon" href="https://a.slack-edge.com/cebaa/img/ico/favicon.ico" />
+    <style>
+      /* 슬랙 CSS 보다 뒤에 둬야 테마 색이 적용된다 */
+      body {
+          background: var(--bg);
+          color: var(--text);
+      }
+      :root[data-theme='dark'] {
+          --sk_primary_foreground: 209, 210, 211;
+          --sk_primary_background: 26, 29, 33;
+          --sk_foreground_max: 232, 232, 232;
+          --sk_foreground_high: 232, 232, 232;
+          --sk_foreground_low: 232, 232, 232;
+          --sk_foreground_min: 232, 232, 232;
+          --sk_foreground_max_solid: 171, 171, 173;
+          --sk_foreground_high_solid: 134, 134, 134;
+          --sk_foreground_low_solid: 60, 63, 68;
+          --sk_foreground_min_solid: 34, 37, 41;
+      }
+    </style>
   </head>
   <body>
     <div id="app"></div>

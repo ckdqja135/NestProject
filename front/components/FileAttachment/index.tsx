@@ -38,15 +38,15 @@ const Card = styled.div`
   max-width: 360px;
   margin-top: 4px;
   padding: 10px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: white;
+  background: var(--bg);
 
   & .icon {
     flex: 0 0 36px;
     height: 36px;
     border-radius: 6px;
-    background: #f2f2f2;
+    background: var(--bg-hover);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -66,18 +66,18 @@ const Card = styled.div`
     }
 
     & small {
-      color: #616061;
+      color: var(--text-muted);
     }
   }
 
   &.missing {
-    background: #fafafa;
-    color: #616061;
+    background: var(--bg-subtle);
+    color: var(--text-muted);
   }
 
   & button {
-    border: 1px solid #ccc;
-    background: white;
+    border: 1px solid var(--border);
+    background: var(--bg);
     border-radius: 6px;
     padding: 4px 10px;
     font-size: 13px;
@@ -85,7 +85,7 @@ const Card = styled.div`
     white-space: nowrap;
 
     &:hover {
-      background: #f2f2f2;
+      background: var(--bg-hover);
     }
   }
 `;
@@ -108,7 +108,7 @@ const ImageBox = styled.figure`
     align-items: center;
     gap: 8px;
     font-size: 12px;
-    color: #616061;
+    color: var(--text-muted);
 
     & button {
       border: none;

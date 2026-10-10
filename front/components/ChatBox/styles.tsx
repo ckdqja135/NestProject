@@ -9,11 +9,12 @@ export const ChatArea = styled.div`
 `;
 
 export const Form = styled.form`
-  color: rgb(29, 28, 29);
+  color: var(--text);
   font-size: 15px;
   width: 100%;
   border-radius: 4px;
-  border: 1px solid rgb(29, 28, 29);
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
 `;
 
 export const MentionsTextarea = styled(MentionsInput)`
@@ -33,14 +34,16 @@ export const MentionsTextarea = styled(MentionsInput)`
     resize: none !important;
     line-height: 22px;
     border: none;
+    background: transparent;
+    color: var(--text);
   }
 
   & ul {
-    border: 1px solid lightgray;
+    border: 1px solid var(--border);
     max-height: 200px;
     overflow-y: auto;
     padding: 9px 10px;
-    background: white;
+    background: var(--bg);
     border-radius: 4px;
     width: 150px;
   }
@@ -48,10 +51,10 @@ export const MentionsTextarea = styled(MentionsInput)`
 
 export const Toolbox = styled.div`
   position: relative;
-  background: rgb(248, 248, 248);
+  background: var(--bg-subtle);
   height: 41px;
   display: flex;
-  border-top: 1px solid rgb(221, 221, 221);
+  border-top: 1px solid var(--border);
   align-items: center;
   border-bottom-left-radius: 4px;
   border-bottom-right-radius: 4px;
@@ -69,7 +72,7 @@ export const EachMention = styled.button<{ focus: boolean }>`
   border: none;
   display: flex;
   align-items: center;
-  color: rgb(28, 29, 28);
+  color: var(--text);
   width: 100%;
   white-space: nowrap;
 
@@ -94,16 +97,16 @@ export const EachMention = styled.button<{ focus: boolean }>`
 
 export const AttachButton = styled.button`
   margin-left: 8px;
-  border: 1px solid #ddd;
-  background: white;
+  border: 1px solid var(--border);
+  background: var(--bg);
   border-radius: 4px;
   padding: 3px 8px;
   font-size: 12px;
-  color: #1d1c1d;
+  color: var(--text);
   cursor: pointer;
 
   &:hover {
-    background: #f2f2f2;
+    background: var(--bg-hover);
   }
 
   &:disabled {

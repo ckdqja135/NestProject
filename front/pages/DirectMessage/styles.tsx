@@ -39,13 +39,13 @@ export const Header = styled.header`
 
   & .me {
     font-weight: normal;
-    color: #616061;
+    color: var(--text-muted);
   }
 
   & small {
     font-size: 12px;
     font-weight: normal;
-    color: #616061;
+    color: var(--text-muted);
     margin-top: 2px;
   }
 
@@ -54,6 +54,6 @@ export const Header = styled.header`
   }
 
   & small .status {
-    color: #616061;
+    color: var(--text-muted);
   }
 `;

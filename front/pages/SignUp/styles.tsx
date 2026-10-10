@@ -96,7 +96,7 @@ export const Success = styled.div`
 
 export const LinkContainer = styled.p`
   font-size: 13px;
-  color: #616061;
+  color: var(--text-muted);
   margin: 0 auto 8px;
   width: 400px;
   max-width: 400px;

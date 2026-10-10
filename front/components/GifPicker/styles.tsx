@@ -6,18 +6,18 @@ export const Wrapper = styled.div`
 `;
 
 export const GifButton = styled.button`
-  border: 1px solid #ddd;
-  background: white;
+  border: 1px solid var(--border);
+  background: var(--bg);
   border-radius: 4px;
   padding: 3px 8px;
   font-size: 12px;
   font-weight: bold;
-  color: #1d1c1d;
+  color: var(--text);
   cursor: pointer;
 
   &:hover,
   &.active {
-    background: #f2f2f2;
+    background: var(--bg-hover);
   }
 `;
 
@@ -30,21 +30,21 @@ export const Popover = styled.div`
   height: 380px;
   display: flex;
   flex-direction: column;
-  background: white;
-  border: 1px solid #ddd;
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 10;
 
   & > form {
     padding: 10px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--border);
 
     & input {
       width: 100%;
       box-sizing: border-box;
       height: 30px;
-      border: 1px solid #ccc;
+      border: 1px solid var(--border);
       border-radius: 4px;
       padding: 0 8px;
       font-size: 13px;
@@ -54,9 +54,9 @@ export const Popover = styled.div`
   & > footer {
     padding: 4px 10px;
     font-size: 11px;
-    color: #888;
+    color: var(--text-faint);
     text-align: right;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--border);
   }
 `;
 
@@ -74,7 +74,7 @@ export const Grid = styled.div`
     border: none;
     border-radius: 4px;
     overflow: hidden;
-    background: #f2f2f2;
+    background: var(--bg-hover);
     cursor: pointer;
 
     &:hover {
@@ -93,7 +93,7 @@ export const Grid = styled.div`
 export const Message = styled.p`
   grid-column: 1 / -1;
   margin: 20px 10px;
-  color: #616061;
+  color: var(--text-muted);
   font-size: 13px;
   text-align: center;
   line-height: 1.5;

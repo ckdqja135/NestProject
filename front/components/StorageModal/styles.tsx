@@ -7,18 +7,18 @@ export const Summary = styled.div`
   flex-wrap: wrap;
   margin-bottom: 10px;
   font-size: 13px;
-  color: #616061;
+  color: var(--text-muted);
 `;
 
 export const FileList = styled.div`
   max-height: 320px;
   overflow-y: auto;
-  border: 1px solid #eee;
+  border: 1px solid var(--border);
   border-radius: 8px;
 
   & > p {
     margin: 16px;
-    color: #616061;
+    color: var(--text-muted);
     font-size: 14px;
   }
 `;
@@ -28,7 +28,7 @@ export const FileRow = styled.label`
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  border-bottom: 1px solid #f2f2f2;
+  border-bottom: 1px solid var(--border);
   cursor: pointer;
 
   &:last-child {
@@ -36,7 +36,7 @@ export const FileRow = styled.label`
   }
 
   &:hover {
-    background: #f8f8f8;
+    background: var(--bg-subtle);
   }
 
   & .info {
@@ -53,7 +53,7 @@ export const FileRow = styled.label`
     }
 
     & small {
-      color: #616061;
+      color: var(--text-muted);
     }
   }
 `;

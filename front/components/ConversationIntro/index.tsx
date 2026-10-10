@@ -16,13 +16,13 @@ const Wrapper = styled.div`
     height: 72px;
     border-radius: 10px;
     margin-bottom: 12px;
-    background: #f2f2f2;
+    background: var(--bg-hover);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 36px;
     font-weight: 800;
-    color: #616061;
+    color: var(--text-muted);
   }
 
   & > h3 {
@@ -34,7 +34,7 @@ const Wrapper = styled.div`
   & > p {
     margin: 0;
     font-size: 15px;
-    color: #616061;
+    color: var(--text-muted);
     line-height: 1.5;
   }
 `;

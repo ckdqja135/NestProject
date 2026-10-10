@@ -51,8 +51,8 @@ export const Dropdown = styled.div`
   max-height: 70vh;
   display: flex;
   flex-direction: column;
-  background: white;
-  color: #1d1c1d;
+  background: var(--bg);
+  color: var(--text);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   z-index: 1001;
@@ -62,7 +62,7 @@ export const Dropdown = styled.div`
     display: flex;
     align-items: center;
     padding: 12px 16px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--border);
     font-weight: 800;
     font-size: 15px;
 
@@ -84,9 +84,9 @@ export const Dropdown = styled.div`
     align-items: center;
     gap: 8px;
     padding: 10px 16px;
-    background: #f2f8fc;
+    background: var(--bg-selected);
     font-size: 13px;
-    color: #1d1c1d;
+    color: var(--text);
 
     & > span {
       flex: 1;
@@ -94,7 +94,7 @@ export const Dropdown = styled.div`
 
     & > button {
       border: 1px solid #1264a3;
-      background: white;
+      background: var(--bg);
       color: #1264a3;
       border-radius: 4px;
       padding: 3px 8px;
@@ -110,7 +110,7 @@ export const Dropdown = styled.div`
   & p.empty {
     margin: 0;
     padding: 24px 16px;
-    color: #616061;
+    color: var(--text-muted);
     text-align: center;
     font-size: 14px;
   }
@@ -120,27 +120,27 @@ export const MentionItem = styled.button`
   display: block;
   width: 100%;
   border: none;
-  border-bottom: 1px solid #f2f2f2;
+  border-bottom: 1px solid var(--border);
   background: transparent;
   padding: 10px 16px;
   text-align: left;
   cursor: pointer;
 
   &:hover {
-    background: #f8f8f8;
+    background: var(--bg-subtle);
   }
 
   &.unread {
-    background: #fff8e1;
+    background: var(--bg-pinned);
   }
 
   & .meta {
     font-size: 12px;
-    color: #616061;
+    color: var(--text-muted);
     margin-bottom: 2px;
 
     & b {
-      color: #1d1c1d;
+      color: var(--text);
     }
 
     /* 저장한 메시지 목록의 저장 취소 버튼 */
@@ -148,7 +148,7 @@ export const MentionItem = styled.button`
       float: right;
       border: none;
       background: transparent;
-      color: #888;
+      color: var(--text-faint);
       font-size: 16px;
       line-height: 1;
       cursor: pointer;

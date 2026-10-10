@@ -124,7 +124,15 @@ const WorkspaceSettingsModal: FC<Props> = ({ show, workspace, myId, onCloseModal
             id="workspace-owner"
             value={newOwner}
             onChange={(e) => setNewOwner(e.target.value)}
-            style={{ width: '100%', height: 40, borderRadius: 6, border: '1px solid #bbb', padding: '0 8px' }}
+            style={{
+              width: '100%',
+              height: 40,
+              borderRadius: 6,
+              border: '1px solid var(--border-strong)',
+              padding: '0 8px',
+              background: 'var(--bg)',
+              color: 'var(--text)',
+            }}
           >
             <option value="">멤버 선택</option>
             {members

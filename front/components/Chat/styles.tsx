@@ -6,7 +6,7 @@ export const ChatWrapper = styled.div`
   position: relative;
 
   &:hover {
-    background: #eee;
+    background: var(--bg-hover);
   }
 
   &:hover .chat-actions {
@@ -14,12 +14,12 @@ export const ChatWrapper = styled.div`
   }
 
   &.pinned {
-    background: #fff8e1;
+    background: var(--bg-pinned);
   }
 
   /* 검색 결과로 이동했을 때 잠깐 강조 */
   &.highlight {
-    background: #fff3c4;
+    background: var(--bg-highlight);
     transition: background 0.3s;
   }
 
@@ -51,9 +51,9 @@ export const ChatWrapper = styled.div`
     /* 마크다운 */
     & .md-code {
       padding: 1px 4px;
-      border: 1px solid #e3e3e3;
+      border: 1px solid var(--border);
       border-radius: 3px;
-      background: #f6f6f6;
+      background: var(--bg-subtle);
       color: #c01343;
       font-family: Monaco, Menlo, Consolas, monospace;
       font-size: 12px;
@@ -62,9 +62,9 @@ export const ChatWrapper = styled.div`
     & .md-pre {
       margin: 4px 0;
       padding: 8px 10px;
-      border: 1px solid #e3e3e3;
+      border: 1px solid var(--border);
       border-radius: 4px;
-      background: #f8f8f8;
+      background: var(--bg-subtle);
       font-family: Monaco, Menlo, Consolas, monospace;
       font-size: 12px;
       line-height: 1.5;
@@ -75,7 +75,7 @@ export const ChatWrapper = styled.div`
     & .md-mention-all {
       padding: 0 2px;
       border-radius: 3px;
-      background: #fff3c4;
+      background: var(--bg-highlight);
       color: #8a5a00;
       font-weight: 600;
     }
@@ -83,8 +83,8 @@ export const ChatWrapper = styled.div`
     & .md-quote {
       margin: 4px 0;
       padding-left: 10px;
-      border-left: 4px solid #ddd;
-      color: #555;
+      border-left: 4px solid var(--border);
+      color: var(--text-muted);
     }
   }
 
@@ -108,7 +108,7 @@ export const ChatWrapper = styled.div`
 
     & > .edited {
       margin-left: 4px;
-      color: #888;
+      color: var(--text-faint);
     }
   }
 
@@ -123,8 +123,8 @@ export const ActionBar = styled.div`
   position: absolute;
   top: -12px;
   right: 20px;
-  background: white;
-  border: 1px solid #ddd;
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: 6px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   z-index: 3;
@@ -137,7 +137,7 @@ export const ActionBar = styled.div`
     padding: 4px 6px;
 
     &:hover {
-      background: #f2f2f2;
+      background: var(--bg-hover);
     }
   }
 `;
@@ -147,8 +147,8 @@ export const EmojiPicker = styled.div`
   top: 32px;
   right: 0;
   display: flex;
-  background: white;
-  border: 1px solid #ddd;
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   padding: 4px;
@@ -162,7 +162,7 @@ export const EmojiPicker = styled.div`
     border-radius: 4px;
 
     &:hover {
-      background: #f2f2f2;
+      background: var(--bg-hover);
     }
   }
 `;
@@ -175,8 +175,8 @@ export const ReactionList = styled.div`
   margin-top: 4px;
 
   & > button {
-    border: 1px solid #ddd;
-    background: white;
+    border: 1px solid var(--border);
+    background: var(--bg);
     border-radius: 12px;
     padding: 1px 8px;
     font-size: 13px;
@@ -184,7 +184,7 @@ export const ReactionList = styled.div`
 
     &.mine {
       border-color: #1264a3;
-      background: #e8f5fa;
+      background: var(--bg-selected);
       color: #1264a3;
     }
   }
@@ -240,13 +240,13 @@ export const EditBox = styled.div`
     & > span {
       flex: 1;
       font-size: 12px;
-      color: #888;
+      color: var(--text-faint);
     }
   }
 
   & button {
-    border: 1px solid #ccc;
-    background: white;
+    border: 1px solid var(--border);
+    background: var(--bg);
     border-radius: 4px;
     padding: 3px 10px;
     cursor: pointer;
@@ -271,7 +271,7 @@ export const ConfirmBox = styled.div`
   gap: 6px;
   margin-top: 4px;
   padding: 6px 8px;
-  background: #fdecea;
+  background: var(--bg-danger);
   border-radius: 4px;
   font-size: 13px;
 
@@ -280,8 +280,8 @@ export const ConfirmBox = styled.div`
   }
 
   & button {
-    border: 1px solid #ccc;
-    background: white;
+    border: 1px solid var(--border);
+    background: var(--bg);
     border-radius: 4px;
     padding: 2px 10px;
     cursor: pointer;

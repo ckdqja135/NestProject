@@ -1,4 +1,5 @@
 import styled from '@emotion/styled';
+import { MOBILE } from '@utils/media';
 
 export const Container = styled.div`
   display: flex;
@@ -21,6 +22,20 @@ export const Header = styled.header`
   align-items: center;
   min-width: 0;
 
+  ${MOBILE} {
+    padding: 12px 10px;
+
+    /* 좁은 화면에서는 주제를 숨기고 버튼을 작게 */
+    & > .topic {
+      display: none;
+    }
+
+    & button {
+      padding: 3px 6px;
+      font-size: 12px;
+    }
+  }
+
   & > .name {
     flex: 0 0 auto;
     white-space: nowrap;
@@ -33,7 +48,7 @@ export const Header = styled.header`
     padding: 0;
     border: none;
     background: transparent;
-    color: #616061;
+    color: var(--text-muted);
     font-size: 13px;
     font-weight: normal;
     overflow: hidden;
@@ -42,7 +57,7 @@ export const Header = styled.header`
     cursor: pointer;
 
     &:hover {
-      color: #1d1c1d;
+      color: var(--text);
     }
   }
 
@@ -51,8 +66,8 @@ export const Header = styled.header`
     margin-left: 8px;
     padding: 1px 6px;
     border-radius: 4px;
-    background: #f2f2f2;
-    color: #616061;
+    background: var(--bg-hover);
+    color: var(--text-muted);
     font-size: 12px;
     font-weight: normal;
   }
@@ -62,18 +77,18 @@ export const Header = styled.header`
 export const ArchivedNotice = styled.div`
   margin: 0 20px 20px;
   padding: 14px 16px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: #f8f8f8;
-  color: #616061;
+  background: var(--bg-subtle);
+  color: var(--text-muted);
   font-size: 14px;
   text-align: center;
 
   & button {
     margin-left: 8px;
-    border: 1px solid #bbb;
+    border: 1px solid var(--border-strong);
     border-radius: 4px;
-    background: white;
+    background: var(--bg);
     padding: 3px 10px;
     cursor: pointer;
   }
@@ -85,7 +100,7 @@ export const DragOver = styled.div`
   left: 0;
   width: 100%;
   height: calc(100% - 64px);
-  background: white;
+  background: var(--bg);
   opacity: 0.7;
   display: flex;
   align-items: center;
@@ -99,8 +114,8 @@ export const Layout = styled.div`
 `;
 
 export const HeaderButton = styled.button`
-  border: 1px solid #ddd;
-  background: white;
+  border: 1px solid var(--border);
+  background: var(--bg);
   border-radius: 4px;
   padding: 3px 10px;
   font-size: 13px;
@@ -109,6 +124,6 @@ export const HeaderButton = styled.button`
 
   &:hover,
   &.active {
-    background: #f2f2f2;
+    background: var(--bg-hover);
   }
 `;

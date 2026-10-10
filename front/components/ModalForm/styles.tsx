@@ -14,7 +14,7 @@ export const Field = styled.div`
   & > .hint {
     margin: 6px 0 0;
     font-size: 13px;
-    color: #616061;
+    color: var(--text-muted);
   }
 
   & > .error {
@@ -30,9 +30,11 @@ export const TextInput = styled.input`
   height: 40px;
   padding: 0 12px;
   font-size: 15px;
-  border: 1px solid #bbb;
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
   outline: none;
+  background: var(--bg);
+  color: var(--text);
   transition: border 80ms ease-out, box-shadow 80ms ease-out;
 
   &:focus {
@@ -50,7 +52,7 @@ export const TextInput = styled.input`
 export const InputGroup = styled.div`
   display: flex;
   align-items: stretch;
-  border: 1px solid #bbb;
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
   overflow: hidden;
   transition: border 80ms ease-out, box-shadow 80ms ease-out;
@@ -69,8 +71,8 @@ export const InputGroup = styled.div`
     display: flex;
     align-items: center;
     padding: 0 4px 0 12px;
-    background: #f8f8f8;
-    color: #616061;
+    background: var(--bg-subtle);
+    color: var(--text-muted);
     font-size: 14px;
     white-space: nowrap;
   }
@@ -83,11 +85,11 @@ export const InputGroup = styled.div`
     outline: none;
     padding: 0 12px 0 4px;
     font-size: 15px;
-    background: #f8f8f8;
+    background: var(--bg-subtle);
   }
 
   & > input:focus {
-    background: white;
+    background: var(--bg);
   }
 `;
 
@@ -101,17 +103,17 @@ export const ChoiceList = styled.div`
     gap: 12px;
     align-items: flex-start;
     padding: 12px 14px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border);
     border-radius: 8px;
     cursor: pointer;
 
     &:hover {
-      background: #fafafa;
+      background: var(--bg-subtle);
     }
 
     &.selected {
       border-color: #1264a3;
-      background: #f2f8fc;
+      background: var(--bg-selected);
     }
 
     & input {
@@ -126,7 +128,7 @@ export const ChoiceList = styled.div`
     & small {
       display: block;
       margin-top: 2px;
-      color: #616061;
+      color: var(--text-muted);
       font-size: 13px;
     }
   }
@@ -136,7 +138,7 @@ export const FormError = styled.p`
   margin: 0 0 16px;
   padding: 10px 12px;
   border-radius: 6px;
-  background: #fdecea;
+  background: var(--bg-danger);
   color: #b0123d;
   font-size: 14px;
 `;
@@ -154,12 +156,12 @@ export const Actions = styled.div`
     font-size: 15px;
     font-weight: 700;
     cursor: pointer;
-    border: 1px solid #bbb;
-    background: white;
-    color: #1d1c1d;
+    border: 1px solid var(--border-strong);
+    background: var(--bg);
+    color: var(--text);
 
     &:hover {
-      background: #f8f8f8;
+      background: var(--bg-subtle);
     }
 
     &.primary {

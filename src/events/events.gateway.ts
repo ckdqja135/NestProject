@@ -18,6 +18,7 @@ import { DMs } from '../entities/DMs';
 import { findFileMessage } from '../files/find-file-message';
 import { WorkspaceMembers } from '../entities/WorkspaceMembers';
 import { onlineMap } from './onlineMap';
+import { corsOrigin, isAllowedOrigin } from '../security';
 
 // SessionIoAdapter 가 핸드셰이크 때 세션에서 꺼내 둔 로그인 사용자
 const getSessionUser = (
@@ -26,7 +27,10 @@ const getSessionUser = (
 
 @WebSocketGateway({
   namespace: /\/ws-.+/,
-  cors: { origin: true, credentials: true },
+  cors: { origin: corsOrigin, credentials: true },
+  // 웹소켓 연결에는 CORS 가 적용되지 않으므로 핸드셰이크에서 출처를 직접 확인한다 (다른 사이트에서의 소켓 가로채기 방지)
+  allowRequest: (req, callback) =>
+    callback(null, isAllowedOrigin(req.headers.origin, req.headers.host)),
 })
 export class EventsGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect

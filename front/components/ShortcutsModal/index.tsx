@@ -23,7 +23,7 @@ const Table = styled.ul`
     display: flex;
     align-items: center;
     padding: 8px 0;
-    border-bottom: 1px solid #f2f2f2;
+    border-bottom: 1px solid var(--border);
     font-size: 14px;
   }
 
@@ -35,10 +35,10 @@ const Table = styled.ul`
 
   & kbd {
     padding: 2px 6px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border);
     border-bottom-width: 2px;
     border-radius: 4px;
-    background: #f8f8f8;
+    background: var(--bg-subtle);
     font-family: inherit;
     font-size: 12px;
   }

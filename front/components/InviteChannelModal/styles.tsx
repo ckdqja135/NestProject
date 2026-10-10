@@ -7,7 +7,7 @@ export const MemberList = styled.div`
 
   & > p {
     margin: 12px 8px;
-    color: #616061;
+    color: var(--text-muted);
     font-size: 14px;
   }
 `;
@@ -20,7 +20,7 @@ export const MemberRow = styled.div`
   border-radius: 6px;
 
   &:hover {
-    background: #f8f8f8;
+    background: var(--bg-subtle);
   }
 
   & > img {
@@ -36,7 +36,7 @@ export const MemberRow = styled.div`
     flex-direction: column;
 
     & small {
-      color: #616061;
+      color: var(--text-muted);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;

@@ -7,14 +7,14 @@ export const StatusInput = styled.div`
   & > button {
     flex: 0 0 40px;
     height: 40px;
-    border: 1px solid #bbb;
+    border: 1px solid var(--border-strong);
     border-radius: 6px;
-    background: white;
+    background: var(--bg);
     font-size: 18px;
     cursor: pointer;
 
     &:hover {
-      background: #f8f8f8;
+      background: var(--bg-subtle);
     }
   }
 
@@ -39,12 +39,12 @@ export const EmojiChoices = styled.div`
     cursor: pointer;
 
     &:hover {
-      background: #f2f2f2;
+      background: var(--bg-hover);
     }
 
     &.selected {
       border-color: #1264a3;
-      background: #f2f8fc;
+      background: var(--bg-selected);
     }
   }
 `;
@@ -64,12 +64,12 @@ export const Presets = styled.ul`
     border-radius: 6px;
     background: transparent;
     font-size: 15px;
-    color: #1d1c1d;
+    color: var(--text);
     text-align: left;
     cursor: pointer;
 
     &:hover {
-      background: #f2f8fc;
+      background: var(--bg-selected);
     }
 
     & > span:first-of-type {

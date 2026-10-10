@@ -5,7 +5,7 @@ const Wrapper = styled.div`
   height: 18px;
   padding: 0 20px;
   font-size: 12px;
-  color: #616061;
+  color: var(--text-muted);
 `;
 
 interface Props {
