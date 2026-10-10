@@ -69,3 +69,19 @@ export interface ITyping {
   channelId: number | null;
   dm: boolean;
 }
+
+export interface IMention {
+  id: number;
+  ChatId: number;
+  SenderId: number;
+  ReceiverId: number;
+  readAt: string | null;
+  createdAt: string;
+  Chat: IChat;
+}
+
+export interface IMentionList {
+  items: IMention[];
+  unreadByChannel: { [channelId: number]: number };
+  unreadTotal: number;
+}

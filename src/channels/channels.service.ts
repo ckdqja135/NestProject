@@ -14,6 +14,7 @@ import { Users } from '../entities/Users';
 import { WorkspaceMembers } from '../entities/WorkspaceMembers';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { EventsGateway } from '../events/events.gateway';
+import { MentionsService } from '../mentions/mentions.service';
 
 @Injectable()
 export class ChannelsService {
@@ -32,6 +33,7 @@ export class ChannelsService {
     private reactionsRepository: Repository<Reactions>,
     private workspacesService: WorkspacesService,
     private eventsGateway: EventsGateway,
+    private mentionsService: MentionsService,
   ) {}
 
   // 채널 멤버만 채널을 다룰 수 있다. 비공개 채널은 존재 여부도 숨기도록 404 로 응답한다.
@@ -290,6 +292,11 @@ export class ChannelsService {
     });
     const chatWithUser = await this.findChatWithRelations(saved.id);
     this.emitToChannel(url, channel.id, 'message', chatWithUser);
+    await this.mentionsService.handleNewChat(
+      url,
+      channel.WorkspaceId,
+      chatWithUser,
+    );
     return chatWithUser;
   }
 
@@ -342,8 +349,16 @@ export class ChannelsService {
     if (chat.UserId !== myId) {
       throw new ForbiddenException('내가 보낸 메시지만 삭제할 수 있습니다.');
     }
-    // 답글과 리액션은 FK ON DELETE CASCADE 로 함께 삭제된다
+    // 답글과 리액션은 FK ON DELETE CASCADE 로 함께 삭제된다. 멘션은 FK 가 없으므로 직접 지운다.
+    const replies = await this.channelChatsRepository.find({
+      where: { ParentId: chat.id },
+      select: ['id'],
+    });
     await this.channelChatsRepository.delete(chat.id);
+    await this.mentionsService.removeForChats(url, [
+      chat.id,
+      ...replies.map((r) => r.id),
+    ]);
     this.emitToChannel(url, channel.id, 'messageDeleted', {
       id: chat.id,
       ChannelId: channel.id,

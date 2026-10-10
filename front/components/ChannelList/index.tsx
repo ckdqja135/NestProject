@@ -1,6 +1,7 @@
 import { CollapseButton } from '@components/DMList/styles';
 import BrowseChannelsModal from '@components/BrowseChannelsModal';
 import EachChannel from '@components/EachChannel';
+import useMentions from '@hooks/useMentions';
 import { IChannel, IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
 import React, { FC, useCallback, useState } from 'react';
@@ -16,6 +17,7 @@ const ChannelList: FC<Props> = () => {
   const { workspace } = useParams<{ workspace?: string }>();
   const [channelCollapse, setChannelCollapse] = useState(false);
   const [showBrowse, setShowBrowse] = useState(false);
+  const { data: mentions } = useMentions(workspace);
   const { data: userData } = useSWR<IUser>('/api/users', fetcher, {
     dedupingInterval: 2000, // 2초
   });
@@ -40,7 +42,9 @@ const ChannelList: FC<Props> = () => {
       <div>
         {!channelCollapse &&
           channelData?.map((channel) => {
-            return <EachChannel key={channel.id} channel={channel} />;
+            return (
+              <EachChannel key={channel.id} channel={channel} mentionCount={mentions?.unreadByChannel[channel.id]} />
+            );
           })}
         {!channelCollapse && (
           <button

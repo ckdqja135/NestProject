@@ -8,8 +8,9 @@ import useSWR from 'swr';
 
 interface Props {
   channel: IChannel;
+  mentionCount?: number; // 이 채널에서 나를 멘션한 안 읽은 메시지 수
 }
-const EachChannel: VFC<Props> = ({ channel }) => {
+const EachChannel: VFC<Props> = ({ channel, mentionCount = 0 }) => {
   const { workspace } = useParams<{ workspace?: string }>();
   const location = useLocation();
   const { data: userData } = useSWR<IUser>('/api/users', fetcher, {
@@ -58,7 +59,18 @@ const EachChannel: VFC<Props> = ({ channel }) => {
       <span className={count !== undefined && count > 0 ? 'bold' : undefined}>
         {channel.private ? '🔒' : '#'} {channel.name}
       </span>
-      {count !== undefined && count > 0 && <span className="count">{count}</span>}
+      {mentionCount > 0 ? (
+        <span className="count" title={`나를 멘션한 메시지 ${mentionCount}개`} aria-label={`멘션 ${mentionCount}개`}>
+          {mentionCount}
+        </span>
+      ) : (
+        count !== undefined &&
+        count > 0 && (
+          <span className="count muted" title={`안 읽은 메시지 ${count}개`}>
+            {count}
+          </span>
+        )
+      )}
     </NavLink>
   );
 };

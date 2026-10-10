@@ -31,6 +31,10 @@ export class Mentions {
   @UpdateDateColumn()
   updatedAt: Date;
 
+  // 받은 사람이 확인한 시각 (null 이면 안 읽은 멘션)
+  @Column('datetime', { name: 'readAt', nullable: true })
+  readAt: Date | null;
+
   @Column('int', { name: 'WorkspaceId', nullable: true })
   WorkspaceId: number | null;
 

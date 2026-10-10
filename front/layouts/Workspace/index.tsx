@@ -3,19 +3,22 @@ import CreateChannelModal from '@components/CreateChannelModal';
 import CreateWorkspaceModal from '@components/CreateWorkspaceModal';
 import DMList from '@components/DMList';
 import InviteWorkspaceModal from '@components/InviteWorkspaceModal';
+import MembersModal from '@components/MembersModal';
+import MentionsButton from '@components/MentionsButton';
 import Menu from '@components/Menu';
 import SearchModal from '@components/SearchModal';
 import useSocket from '@hooks/useSocket';
 import Channel from '@pages/Channel';
 import DirectMessage from '@pages/DirectMessage';
-import { IChannel, IUser } from '@typings/db';
+import { IChannel, IChat, IDM, IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
+import { notifyIfHidden, previewText } from '@utils/notify';
 import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
 import gravatar from 'gravatar';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router';
-import { Link, Redirect, Route, Switch } from 'react-router-dom';
+import { Link, Redirect, Route, Switch, useHistory, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import useSWR from 'swr';
 
@@ -49,6 +52,15 @@ const Workspace = () => {
   const [showCreateChannelModal, setShowCreateChannelModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
+  const [showMembersModal, setShowMembersModal] = useState(false);
+  const history = useHistory();
+  const location = useLocation();
+  const locationRef = useRef(location.pathname);
+  locationRef.current = decodeURIComponent(location.pathname);
+  const { mutate: revalidateMembers } = useSWR<IUser[]>(
+    userData ? `/api/workspaces/${workspace}/members` : null,
+    fetcher,
+  );
 
   const onLogOut = useCallback(() => {
     axios
@@ -107,19 +119,53 @@ const Workspace = () => {
   useEffect(() => {
     const onChannelsChanged = () => revalidateChannels();
     const onWorkspacesChanged = () => revalidateUser();
-    const onRemoved = () => {
-      toast.info('워크스페이스에서 내보내졌습니다.', { position: 'bottom-center' });
+    const onRemoved = (data?: { reason?: string }) => {
+      // 스스로 나간 경우는 멤버 화면에서 이미 알렸다
+      if (data?.reason !== 'left') {
+        toast.info('워크스페이스에서 내보내졌습니다.', { position: 'bottom-center' });
+      }
       revalidateUser();
     };
+    const onMembersChanged = () => revalidateMembers();
     socket?.on('channelsChanged', onChannelsChanged);
     socket?.on('workspacesChanged', onWorkspacesChanged);
     socket?.on('removedFromWorkspace', onRemoved);
+    socket?.on('membersChanged', onMembersChanged);
     return () => {
       socket?.off('channelsChanged', onChannelsChanged);
       socket?.off('workspacesChanged', onWorkspacesChanged);
       socket?.off('removedFromWorkspace', onRemoved);
+      socket?.off('membersChanged', onMembersChanged);
     };
-  }, [socket, revalidateChannels, revalidateUser]);
+  }, [socket, revalidateChannels, revalidateUser, revalidateMembers]);
+
+  // 멘션/DM 알림: 탭을 보고 있지 않으면 브라우저 알림, 보고 있지만 다른 대화면 토스트(멘션)
+  useEffect(() => {
+    const onMention = ({ chat }: { chat: IChat }) => {
+      const channelPath = `/workspace/${workspace}/channel/${chat.Channel.name}`;
+      const title = `${chat.User.nickname}님이 #${chat.Channel.name}에서 멘션했습니다`;
+      const go = () => history.push(channelPath);
+      if (document.visibilityState !== 'visible') {
+        notifyIfHidden(title, previewText(chat.content), go);
+      } else if (locationRef.current !== channelPath) {
+        toast.info(`${title}: ${previewText(chat.content)}`, { position: 'bottom-center', onClick: go });
+      }
+    };
+    const onDM = (dm: IDM) => {
+      if (!userData || dm.SenderId === userData.id) {
+        return;
+      }
+      notifyIfHidden(`${dm.Sender.nickname}님의 메시지`, previewText(dm.content), () =>
+        history.push(`/workspace/${workspace}/dm/${dm.SenderId}`),
+      );
+    };
+    socket?.on('mention', onMention);
+    socket?.on('dm', onDM);
+    return () => {
+      socket?.off('mention', onMention);
+      socket?.off('dm', onDM);
+    };
+  }, [socket, workspace, history, userData]);
 
   const currentWorkspace = userData ? userData.Workspaces.find((v) => v.url === workspace) : undefined;
 
@@ -138,6 +184,7 @@ const Workspace = () => {
     <div>
       <Header>
         {userData && <SearchModal workspace={workspace} myId={userData.id} />}
+        {userData && workspace && <MentionsButton workspace={workspace} />}
         {userData && (
           <RightMenu>
             <span onClick={onClickUserProfile}>
@@ -215,6 +262,18 @@ const Workspace = () => {
                 </header>
                 <ul role="menu">
                   <li>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setShowWorkspaceModal(false);
+                        setShowMembersModal(true);
+                      }}
+                    >
+                      멤버 보기 · 관리
+                    </button>
+                  </li>
+                  <li>
                     <button type="button" role="menuitem" onClick={onClickInviteWorkspace}>
                       워크스페이스에 사용자 초대
                     </button>
@@ -245,6 +304,18 @@ const Workspace = () => {
         </Chats>
       </WorkspaceWrapper>
       <CreateWorkspaceModal show={showCreateWorkspaceModal} onCloseModal={onCloseModal} />
+      {currentWorkspace && userData && (
+        <MembersModal
+          show={showMembersModal}
+          onCloseModal={() => setShowMembersModal(false)}
+          workspace={currentWorkspace}
+          me={userData}
+          onInvite={() => {
+            setShowMembersModal(false);
+            setShowInviteWorkspaceModal(true);
+          }}
+        />
+      )}
       <CreateChannelModal
         show={showCreateChannelModal}
         onCloseModal={onCloseModal}

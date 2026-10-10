@@ -79,6 +79,10 @@ export const Channels = styled.nav`
     color: white;
     margin-right: 16px;
   }
+  /* 멘션이 없는 단순 안 읽은 수는 눈에 덜 띄게 */
+  & .count.muted {
+    background: rgba(255, 255, 255, 0.25);
+  }
 
   & h2 {
     height: 36px;

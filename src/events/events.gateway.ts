@@ -139,10 +139,29 @@ export class EventsGateway
     });
   }
 
-  // 워크스페이스에서 내보낸 사용자의 연결을 끊어 더 이상 메시지를 받지 못하게 한다
-  removeUserFromWorkspace(url: string, userId: number) {
+  // 특정 사용자에게 (이 워크스페이스에 연결된 모든 탭으로) 이벤트 전송
+  emitToUser(url: string, userId: number, event: string, data?: unknown) {
+    this.socketsOf(`/ws-${url}`, userId).forEach((socket) =>
+      socket.emit(event, data),
+    );
+  }
+
+  // 워크스페이스에 접속한 모든 사람에게 이벤트 전송
+  emitToWorkspace(url: string, event: string, data?: unknown) {
+    const nsp: Namespace | undefined = (this.server as any).server?._nsps?.get(
+      `/ws-${url}`,
+    );
+    nsp?.emit(event, data);
+  }
+
+  // 워크스페이스에서 내보낸(또는 스스로 나간) 사용자의 연결을 끊어 더 이상 메시지를 받지 못하게 한다
+  removeUserFromWorkspace(
+    url: string,
+    userId: number,
+    reason: 'kicked' | 'left' = 'kicked',
+  ) {
     for (const socket of this.socketsOf(`/ws-${url}`, userId)) {
-      socket.emit('removedFromWorkspace', { url });
+      socket.emit('removedFromWorkspace', { url, reason });
       // disconnect(true) 는 같은 연결을 공유하는 다른 워크스페이스 소켓까지 끊으므로 이 네임스페이스만 끊는다
       socket.disconnect();
     }

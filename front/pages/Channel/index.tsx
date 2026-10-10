@@ -252,6 +252,29 @@ const Channel = () => {
     localStorage.setItem(`${workspace}-${channel}`, new Date().getTime().toString());
   }, [workspace, channel]);
 
+  // 채널을 보고 있으면 그 채널에서 받은 멘션은 읽음 처리 (들어올 때 + 보고 있는 중에 새 멘션이 올 때)
+  const markMentionsRead = useCallback(() => {
+    if (channelData) {
+      axios.post(`/api/workspaces/${workspace}/mentions/read`, { channelId: channelData.id }).catch(() => undefined);
+    }
+  }, [workspace, channelData]);
+
+  useEffect(() => {
+    markMentionsRead();
+  }, [markMentionsRead]);
+
+  useEffect(() => {
+    const onMention = ({ chat }: { chat: IChat }) => {
+      if (chat.ChannelId === channelData?.id) {
+        markMentionsRead();
+      }
+    };
+    socket?.on('mention', onMention);
+    return () => {
+      socket?.off('mention', onMention);
+    };
+  }, [socket, channelData, markMentionsRead]);
+
   // 메시지 액션 (본문과 스레드 패널이 함께 사용). 화면 갱신은 소켓 이벤트로 처리한다.
   const actions: ChatActions = useMemo(
     () => ({

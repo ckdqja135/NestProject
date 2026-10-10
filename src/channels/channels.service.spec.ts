@@ -13,6 +13,7 @@ import { Reactions } from '../entities/Reactions';
 import { Users } from '../entities/Users';
 import { WorkspaceMembers } from '../entities/WorkspaceMembers';
 import { EventsGateway } from '../events/events.gateway';
+import { MentionsService } from '../mentions/mentions.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { ChannelsService } from './channels.service';
 
@@ -49,6 +50,7 @@ describe('ChannelsService', () => {
   const channelChatsRepository = {
     save: jest.fn(),
     findOne: jest.fn(),
+    find: jest.fn(),
     count: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
@@ -63,6 +65,10 @@ describe('ChannelsService', () => {
   const workspacesService = {
     findWorkspaceByUrl: jest.fn(),
     assertMember: jest.fn(),
+  };
+  const mentionsService = {
+    handleNewChat: jest.fn(),
+    removeForChats: jest.fn(),
   };
   const emit = jest.fn();
   const eventsGateway = {
@@ -93,6 +99,7 @@ describe('ChannelsService', () => {
         { provide: getRepositoryToken(WorkspaceMembers), useValue: {} },
         { provide: WorkspacesService, useValue: workspacesService },
         { provide: EventsGateway, useValue: eventsGateway },
+        { provide: MentionsService, useValue: mentionsService },
       ],
     }).compile();
 
@@ -136,6 +143,11 @@ describe('ChannelsService', () => {
     });
     expect(eventsGateway.server.to).toHaveBeenCalledWith('/ws-shlack-3');
     expect(emit).toHaveBeenCalledWith('message', chatWithUser);
+    expect(mentionsService.handleNewChat).toHaveBeenCalledWith(
+      'shlack',
+      1,
+      chatWithUser,
+    );
   });
 
   it('안 읽은 메시지 수에서 내가 보낸 메시지와 스레드 답글은 제외한다', async () => {
@@ -184,9 +196,14 @@ describe('ChannelsService', () => {
         ParentId: null,
       });
 
+      channelChatsRepository.find.mockResolvedValue([{ id: 10 }]);
       await service.deleteChat('shlack', '일반', 9, 1);
 
       expect(channelChatsRepository.delete).toHaveBeenCalledWith(9);
+      expect(mentionsService.removeForChats).toHaveBeenCalledWith(
+        'shlack',
+        [9, 10],
+      );
       expect(emit).toHaveBeenCalledWith('messageDeleted', {
         id: 9,
         ChannelId: 3,

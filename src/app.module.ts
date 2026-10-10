@@ -12,6 +12,7 @@ import { AuthModule } from './auth/auth.module';
 import { EventsModule } from './events/events.module';
 import { SearchModule } from './search/search.module';
 import { GifsModule } from './gifs/gifs.module';
+import { MentionsModule } from './mentions/mentions.module';
 import { ChannelChats } from './entities/ChannelChats';
 import { ChannelMembers } from './entities/ChannelMembers';
 import { Channels } from './entities/Channels';
@@ -56,6 +57,7 @@ import { Workspaces } from './entities/Workspaces';
     EventsModule,
     SearchModule,
     GifsModule,
+    MentionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

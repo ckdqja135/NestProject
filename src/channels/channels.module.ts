@@ -9,6 +9,7 @@ import { Reactions } from '../entities/Reactions';
 import { Users } from '../entities/Users';
 import { WorkspaceMembers } from '../entities/WorkspaceMembers';
 import { WorkspacesModule } from '../workspaces/workspaces.module';
+import { MentionsModule } from '../mentions/mentions.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { WorkspacesModule } from '../workspaces/workspaces.module';
       WorkspaceMembers,
     ]),
     WorkspacesModule,
+    MentionsModule,
   ],
   providers: [ChannelsService],
   controllers: [ChannelsController],

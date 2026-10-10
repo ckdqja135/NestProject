@@ -23,6 +23,7 @@ describe('WorkspacesService', () => {
   const eventsGateway = {
     removeUserFromWorkspace: jest.fn(),
     notifyWorkspacesChanged: jest.fn(),
+    emitToWorkspace: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -87,6 +88,16 @@ describe('WorkspacesService', () => {
       );
     });
 
+    it('스스로 나가면 사유를 left 로 알린다', async () => {
+      channelsRepository.find.mockResolvedValue([]);
+      await service.kickMember('shlack', 2, 2);
+      expect(eventsGateway.removeUserFromWorkspace).toHaveBeenCalledWith(
+        'shlack',
+        2,
+        'left',
+      );
+    });
+
     it('본인 탈퇴 시 워크스페이스와 모든 채널 멤버에서 제거한다', async () => {
       channelsRepository.find.mockResolvedValue([{ id: 1 }, { id: 2 }]);
       await service.kickMember('shlack', 2, 2);
@@ -103,6 +114,11 @@ describe('WorkspacesService', () => {
       expect(eventsGateway.removeUserFromWorkspace).toHaveBeenCalledWith(
         'shlack',
         2,
+        'kicked',
+      );
+      expect(eventsGateway.emitToWorkspace).toHaveBeenCalledWith(
+        'shlack',
+        'membersChanged',
       );
     });
 

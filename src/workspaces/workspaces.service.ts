@@ -133,8 +133,10 @@ export class WorkspacesService {
         UserId: user.id,
       });
     }
-    // 초대받은 사람의 화면(다른 워크스페이스에 접속 중이어도)에 워크스페이스 목록 갱신을 알린다
+    // 초대받은 사람의 화면(다른 워크스페이스에 접속 중이어도)에 워크스페이스 목록 갱신을 알리고,
+    // 기존 멤버들의 멤버 목록(DM 목록)도 갱신한다
     this.eventsGateway.notifyWorkspacesChanged(user.id);
+    this.eventsGateway.emitToWorkspace(url, 'membersChanged');
   }
 
   async kickMember(url: string, targetId: number, myId: number) {
@@ -160,8 +162,13 @@ export class WorkspacesService {
         UserId: targetId,
       });
     }
-    // 내보낸 사람의 소켓 연결을 끊어 이 워크스페이스 메시지를 더 받지 못하게 한다
-    this.eventsGateway.removeUserFromWorkspace(url, targetId);
+    // 내보낸 사람의 소켓 연결을 끊어 이 워크스페이스 메시지를 더 받지 못하게 하고, 남은 멤버들에게 알린다
+    this.eventsGateway.removeUserFromWorkspace(
+      url,
+      targetId,
+      targetId === myId ? 'left' : 'kicked',
+    );
+    this.eventsGateway.emitToWorkspace(url, 'membersChanged');
   }
 
   async getWorkspaceMember(url: string, id: number, myId: number) {
