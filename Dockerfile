@@ -24,5 +24,4 @@ COPY docker-entrypoint.sh ./
 ENV NODE_ENV=production \
     PORT=3002
 EXPOSE 3002
-VOLUME ["/app/uploads"]
 ENTRYPOINT ["./docker-entrypoint.sh"]

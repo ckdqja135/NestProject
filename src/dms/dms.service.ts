@@ -9,6 +9,7 @@ import { DMs } from '../entities/DMs';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { EventsGateway } from '../events/events.gateway';
 import { onlineMap } from '../events/onlineMap';
+import { toFileContent, toFileMeta } from '../common/upload';
 
 function getKeysByValue(object: Record<string, number>, value: number) {
   return Object.keys(object).filter((key) => object[key] === value);
@@ -124,22 +125,33 @@ export class DmsService {
     return this.saveAndBroadcast(url, workspace.id, content, id, myId);
   }
 
-  async createWorkspaceDMImages(
+  // 파일 전송: DM 에는 파일 정보만 저장하고, 파일 내용은 디스크에 쓰지 않고 두 사람의 접속 중인 탭으로 중계한다
+  async sendDMFiles(
     url: string,
     files: Express.Multer.File[],
+    clientIds: string[],
     id: number,
     myId: number,
   ) {
     const workspace = await this.findWorkspace(url, id, myId);
-    for (const file of files) {
-      await this.saveAndBroadcast(
-        url,
-        workspace.id,
-        file.path.replace(/\\/g, '/'),
-        id,
-        myId,
+    const dms = [];
+    for (const [index, file] of files.entries()) {
+      const meta = toFileMeta(file, clientIds[index]);
+      dms.push(
+        await this.saveAndBroadcast(
+          url,
+          workspace.id,
+          toFileContent(meta),
+          id,
+          myId,
+        ),
       );
+      this.emitToPair(url, id, myId, 'fileData', {
+        ...meta,
+        data: file.buffer,
+      });
     }
+    return dms;
   }
 
   // 상대(id)와 나눈 DM 중 내가 보낸 메시지(dmId)를 찾는다

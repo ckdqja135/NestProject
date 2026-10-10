@@ -15,6 +15,7 @@ import { WorkspaceMembers } from '../entities/WorkspaceMembers';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { EventsGateway } from '../events/events.gateway';
 import { MentionsService } from '../mentions/mentions.service';
+import { toFileContent, toFileMeta } from '../common/upload';
 
 @Injectable()
 export class ChannelsService {
@@ -305,21 +306,27 @@ export class ChannelsService {
     return this.saveAndBroadcast(url, channel, content, myId);
   }
 
-  async createWorkspaceChannelImages(
+  // 파일 전송: 채팅에는 파일 정보만 저장하고, 파일 내용은 디스크에 쓰지 않고 채널에 접속 중인 사람들에게 중계한다
+  async sendChannelFiles(
     url: string,
     name: string,
     files: Express.Multer.File[],
+    clientIds: string[],
     myId: number,
   ) {
     const channel = await this.findChannel(url, name, myId);
-    for (const file of files) {
-      await this.saveAndBroadcast(
-        url,
-        channel,
-        file.path.replace(/\\/g, '/'),
-        myId,
+    const chats = [];
+    for (const [index, file] of files.entries()) {
+      const meta = toFileMeta(file, clientIds[index]);
+      chats.push(
+        await this.saveAndBroadcast(url, channel, toFileContent(meta), myId),
       );
+      this.emitToChannel(url, channel.id, 'fileData', {
+        ...meta,
+        data: file.buffer,
+      });
     }
+    return chats;
   }
 
   async editChat(

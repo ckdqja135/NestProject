@@ -34,7 +34,8 @@ export const ChatWrapper = styled.div`
     flex: 1;
     min-width: 0;
 
-    & p {
+    & p,
+    & .attachment {
       flex: 0 0 100%;
       margin: 0;
       word-break: break-word;

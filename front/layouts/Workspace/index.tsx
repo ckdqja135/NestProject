@@ -13,6 +13,7 @@ import DirectMessage from '@pages/DirectMessage';
 import { IChannel, IChat, IDM, IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
 import { notifyIfHidden, previewText } from '@utils/notify';
+import { FileMeta, putFile } from '@utils/fileStore';
 import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
 import gravatar from 'gravatar';
@@ -138,6 +139,19 @@ const Workspace = () => {
       socket?.off('membersChanged', onMembersChanged);
     };
   }, [socket, revalidateChannels, revalidateUser, revalidateMembers]);
+
+  // 서버가 중계한 파일을 이 기기의 브라우저 저장소에 보관한다 (서버에는 저장되지 않음)
+  useEffect(() => {
+    const onFileData = ({ data, ...meta }: FileMeta & { data: ArrayBuffer }) => {
+      putFile(meta, new Blob([data], { type: meta.type })).catch((error) =>
+        console.error('파일을 기기에 저장하지 못했습니다.', error),
+      );
+    };
+    socket?.on('fileData', onFileData);
+    return () => {
+      socket?.off('fileData', onFileData);
+    };
+  }, [socket]);
 
   // 멘션/DM 알림: 탭을 보고 있지 않으면 브라우저 알림, 보고 있지만 다른 대화면 토스트(멘션)
   useEffect(() => {

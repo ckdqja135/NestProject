@@ -11,6 +11,8 @@ import {
 import { IChat, IDM, IUser } from '@typings/db';
 import { isTempId } from '@utils/chatPages';
 import { parseGifContent } from '@utils/gif';
+import { parseFileContent } from '@utils/fileStore';
+import FileAttachment from '@components/FileAttachment';
 import dayjs from 'dayjs';
 import gravatar from 'gravatar';
 import React, { FC, useMemo, memo, useState, useCallback } from 'react';
@@ -34,9 +36,8 @@ interface Props {
   actions?: ChatActions;
 }
 
-// 업로드 이미지 주소. 배포 시에는 같은 서버(same origin)
-const BACK_URL = process.env.NODE_ENV === 'development' ? 'http://localhost:3002' : '';
-const isImage = (content: string) => content.startsWith('uploads\\') || content.startsWith('uploads/');
+// 예전에 서버에 업로드하던 방식의 첨부 (서버 저장을 없애서 더 이상 볼 수 없음)
+const isLegacyUpload = (content: string) => content.startsWith('uploads\\') || content.startsWith('uploads/');
 
 const Chat: FC<Props> = memo(({ data, myId, actions }) => {
   const { workspace } = useParams<{ workspace: string; channel: string }>();
@@ -49,12 +50,15 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
   const [showPicker, setShowPicker] = useState(false);
 
   const gifUrl = useMemo(() => parseGifContent(data.content), [data.content]);
+  const fileMeta = useMemo(() => parseFileContent(data.content), [data.content]);
   const result = useMemo<(string | JSX.Element)[] | JSX.Element>(
     () =>
       gifUrl ? (
         <img src={gifUrl} alt="GIF" style={{ maxHeight: 200, maxWidth: '100%', borderRadius: 4 }} />
-      ) : isImage(data.content) ? (
-        <img src={`${BACK_URL}/${data.content}`} style={{ maxHeight: 200 }} />
+      ) : fileMeta ? (
+        <FileAttachment meta={fileMeta} sentAt={data.createdAt} />
+      ) : isLegacyUpload(data.content) ? (
+        <span style={{ color: '#616061' }}>[이전 방식으로 서버에 올린 첨부파일 - 더 이상 볼 수 없습니다]</span>
       ) : (
         regexifyString({
           pattern: /@\[(.+?)]\((\d+?)\)|\n/g,
@@ -72,7 +76,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
           input: data.content,
         })
       ),
-    [workspace, data.content, gifUrl],
+    [workspace, data.content, gifUrl, fileMeta, data.createdAt],
   );
 
   // 같은 이모지끼리 묶어서 개수와 내가 눌렀는지 표시
@@ -138,7 +142,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
 
   // 전송 중(임시 id)인 메시지에는 액션을 보여주지 않는다
   const canAct = !!actions && !isTempId(data.id);
-  const canEdit = canAct && isMine && !!actions?.onEdit && !isImage(data.content) && !gifUrl;
+  const canEdit = canAct && isMine && !!actions?.onEdit && !gifUrl && !fileMeta && !isLegacyUpload(data.content);
   const canDelete = canAct && isMine && !!actions?.onDelete;
   const canReact = canAct && !!channelChat && !!actions?.onReact;
   const canReply = canAct && !!channelChat && !channelChat.ParentId && !!actions?.onReply;
@@ -175,6 +179,9 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
               </button>
             </div>
           </EditBox>
+        ) : fileMeta ? (
+          // 파일 카드/그림은 블록 요소라 <p> 안에 넣을 수 없다
+          <div className="attachment">{result}</div>
         ) : (
           <p>{result}</p>
         )}

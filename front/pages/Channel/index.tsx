@@ -9,7 +9,7 @@ import ConversationIntro from '@components/ConversationIntro';
 import useInput from '@hooks/useInput';
 import useSocket from '@hooks/useSocket';
 import GifPicker from '@components/GifPicker';
-import useImageUpload from '@hooks/useImageUpload';
+import useFileUpload from '@hooks/useFileUpload';
 import useTyping from '@hooks/useTyping';
 import { Header, Container, DragOver, HeaderButton, Layout } from '@pages/Channel/styles';
 import { IChannel, IChat, IDM, IReaction, IUser } from '@typings/db';
@@ -29,7 +29,8 @@ import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 
 const PAGE_SIZE = 20;
-const isImage = (content: string) => content.startsWith('uploads\\') || content.startsWith('uploads/');
+// 내가 보낸 파일 메시지는 낙관적 업데이트가 없으므로 소켓으로 받은 것을 그대로 표시한다
+const isFileMessage = (content: string) => content.startsWith('file:');
 const showError = (error: unknown) => toast.error(getErrorMessage(error), { position: 'bottom-center' });
 
 const Channel = () => {
@@ -169,7 +170,7 @@ const Channel = () => {
         );
         return;
       }
-      if (!isImage(data.content) && data.UserId === userData?.id) {
+      if (!isFileMessage(data.content) && data.UserId === userData?.id) {
         return;
       }
       mutateChat((chatData) => prependChat(chatData, data), false).then(() => {
@@ -326,7 +327,7 @@ const Channel = () => {
   const onUploaded = useCallback(() => {
     localStorage.setItem(`${workspace}-${channel}`, new Date().getTime().toString());
   }, [workspace, channel]);
-  const { upload, uploading } = useImageUpload(`/api/workspaces/${workspace}/channels/${channel}/images`, onUploaded);
+  const { upload, uploading } = useFileUpload(`/api/workspaces/${workspace}/channels/${channel}/files`, onUploaded);
 
   const onDrop = useCallback(
     (e) => {
@@ -426,7 +427,7 @@ const Channel = () => {
           onCloseModal={onCloseModal}
           setShowInviteChannelModal={setShowInviteChannelModal}
         />
-        {dragOver && <DragOver>여기에 놓아서 이미지/GIF 업로드</DragOver>}
+        {dragOver && <DragOver>여기에 놓아서 파일 보내기</DragOver>}
       </Container>
       {threadParent && userData && (
         <ThreadPanel

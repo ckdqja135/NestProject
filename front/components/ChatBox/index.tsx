@@ -7,7 +7,6 @@ import {
   Toolbox,
   EachMention,
 } from '@components/ChatBox/styles';
-import { ACCEPT_IMAGES } from '@hooks/useImageUpload';
 import { IUser } from '@typings/db';
 import autosize from 'autosize';
 import gravatar from 'gravatar';
@@ -21,7 +20,7 @@ interface Props {
   placeholder: string;
   data?: IUser[];
   inputId?: string;
-  onAttachFiles?: (files: File[]) => void; // 있으면 이미지 첨부 버튼과 붙여넣기 업로드를 켠다
+  onAttachFiles?: (files: File[]) => void; // 있으면 파일 첨부 버튼과 붙여넣기 전송을 켠다
   uploading?: boolean;
   toolbarExtra?: React.ReactNode; // 첨부 버튼 옆에 추가할 도구 (예: GIF 검색)
 }
@@ -50,7 +49,7 @@ const ChatBox: FC<Props> = ({
     [onAttachFiles],
   );
 
-  // 클립보드의 이미지(스크린샷, 복사한 GIF 등)를 붙여넣으면 바로 업로드
+  // 클립보드의 파일(스크린샷, 복사한 이미지 등)을 붙여넣으면 바로 전송
   const onPaste = useCallback(
     (e: React.ClipboardEvent) => {
       const files = Array.from(e.clipboardData?.files || []);
@@ -126,12 +125,12 @@ const ChatBox: FC<Props> = ({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                aria-label="이미지/GIF 첨부"
-                title="이미지/GIF 첨부"
+                aria-label="파일 첨부"
+                title="파일 첨부 (이미지, 문서 등 20MB 이하)"
               >
-                {uploading ? '업로드 중...' : '＋ 이미지/GIF'}
+                {uploading ? '보내는 중...' : '＋ 파일'}
               </AttachButton>
-              <input ref={fileInputRef} type="file" accept={ACCEPT_IMAGES} multiple hidden onChange={onChangeFile} />
+              <input ref={fileInputRef} type="file" multiple hidden onChange={onChangeFile} />
             </>
           )}
           {toolbarExtra}

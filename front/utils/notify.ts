@@ -1,3 +1,5 @@
+import { parseFileContent } from '@utils/fileStore';
+
 // 브라우저 알림. 탭을 보고 있지 않을 때만 띄운다.
 export const canNotify = () => typeof window !== 'undefined' && 'Notification' in window;
 
@@ -24,8 +26,9 @@ export const previewText = (content: string) => {
   if (content.startsWith('gif:')) {
     return '[GIF]';
   }
-  if (content.startsWith('uploads/') || content.startsWith('uploads\\')) {
-    return '[이미지]';
+  const file = parseFileContent(content);
+  if (file) {
+    return `[파일] ${file.name}`;
   }
   const text = content.replace(/@\[(.+?)]\((\d+?)\)/g, '@$1');
   return text.length > 80 ? `${text.slice(0, 80)}…` : text;

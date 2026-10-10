@@ -405,4 +405,39 @@ describe('ChannelsService', () => {
     });
     expect(eventsGateway.refreshUserChannels).toHaveBeenCalledWith('shlack', 9);
   });
+
+  it('파일은 정보만 채팅으로 저장하고 내용은 채널에 중계한다 (디스크 저장 없음)', async () => {
+    channelChatsRepository.save.mockResolvedValue({ id: 20 });
+    qb.getOne.mockResolvedValue({ id: 20 });
+    const id = '3f2b8c1e-1a2b-4c3d-8e9f-0123456789ab';
+    const buffer = Buffer.from('hello');
+
+    await service.sendChannelFiles(
+      'shlack',
+      '일반',
+      [
+        {
+          originalname: 'a.txt',
+          mimetype: 'text/plain',
+          size: 5,
+          buffer,
+        } as any,
+      ],
+      [id],
+      1,
+    );
+
+    expect(channelChatsRepository.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: `file:{"id":"${id}","name":"a.txt","type":"text/plain","size":5}`,
+      }),
+    );
+    expect(emit).toHaveBeenCalledWith('fileData', {
+      id,
+      name: 'a.txt',
+      type: 'text/plain',
+      size: 5,
+      data: buffer,
+    });
+  });
 });

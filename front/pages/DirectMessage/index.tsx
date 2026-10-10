@@ -4,7 +4,7 @@ import ChatList from '@components/ChatList';
 import useInput from '@hooks/useInput';
 import useSocket from '@hooks/useSocket';
 import GifPicker from '@components/GifPicker';
-import useImageUpload from '@hooks/useImageUpload';
+import useFileUpload from '@hooks/useFileUpload';
 import useTyping from '@hooks/useTyping';
 import TypingIndicator from '@components/TypingIndicator';
 import ConversationIntro from '@components/ConversationIntro';
@@ -215,7 +215,7 @@ const DirectMessage = () => {
     localStorage.setItem(`${workspace}-${id}`, new Date().getTime().toString());
     mutateChat();
   }, [workspace, id, mutateChat]);
-  const { upload, uploading } = useImageUpload(`/api/workspaces/${workspace}/dms/${id}/images`, onUploaded);
+  const { upload, uploading } = useFileUpload(`/api/workspaces/${workspace}/dms/${id}/files`, onUploaded);
 
   const onDrop = useCallback(
     (e) => {
@@ -298,7 +298,7 @@ const DirectMessage = () => {
         uploading={uploading}
         toolbarExtra={<GifPicker onSelect={onSelectGif} />}
       />
-      {dragOver && <DragOver>여기에 놓아서 이미지/GIF 업로드</DragOver>}
+      {dragOver && <DragOver>여기에 놓아서 파일 보내기</DragOver>}
     </Container>
   );
 };

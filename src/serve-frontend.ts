@@ -5,7 +5,7 @@ import fs from 'fs';
 import path from 'path';
 
 // 프론트 빌드(front/dist) 가 있고 운영 모드면 같은 서버에서 프론트를 서빙한다.
-// API(/api), 업로드(/uploads), 소켓(/socket.io) 이 아닌 GET 요청은 index.html 로 보내 SPA 라우팅이 동작하게 한다.
+// API(/api), 소켓(/socket.io) 이 아닌 GET 요청은 index.html 로 보내 SPA 라우팅이 동작하게 한다.
 export function serveFrontend(app: NestExpressApplication) {
   const frontDir = path.resolve(
     process.env.FRONT_DIR || path.join(process.cwd(), 'front'),
@@ -23,7 +23,7 @@ export function serveFrontend(app: NestExpressApplication) {
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (
       req.method !== 'GET' ||
-      /^\/(api|uploads|dist|socket\.io)(\/|$)/.test(req.path)
+      /^\/(api|dist|socket\.io)(\/|$)/.test(req.path)
     ) {
       return next();
     }

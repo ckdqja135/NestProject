@@ -26,7 +26,7 @@ import { User } from '../common/decorators/user.decorator';
 import { InviteMemberDto } from '../common/dto/invite-member.dto';
 import { PostChatDto } from '../common/dto/post-chat.dto';
 import { ReactionDto } from '../common/dto/reaction.dto';
-import { imageUploadOptions } from '../common/upload';
+import { MAX_FILES, normalizeIds, relayUploadOptions } from '../common/upload';
 import { Users } from '../entities/Users';
 import { ChannelsService } from './channels.service';
 import { CreateChannelDto } from './dto/create-channel.dto';
@@ -252,23 +252,26 @@ export class ChannelsController {
     return this.channelsService.getPinnedChats(url, name, user.id);
   }
 
-  @ApiOperation({ summary: '채널 이미지 전송' })
+  @ApiOperation({
+    summary: '채널 파일 전송 (서버에 저장하지 않고 접속 중인 멤버에게 중계)',
+  })
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FilesInterceptor('image', 10, imageUploadOptions))
-  @Post(':name/images')
-  async postImages(
+  @UseInterceptors(FilesInterceptor('file', MAX_FILES, relayUploadOptions))
+  @Post(':name/files')
+  sendFiles(
     @Param('url') url: string,
     @Param('name') name: string,
     @UploadedFiles() files: Express.Multer.File[],
+    @Body('ids') ids: string | string[],
     @User() user: Users,
   ) {
-    await this.channelsService.createWorkspaceChannelImages(
+    return this.channelsService.sendChannelFiles(
       url,
       name,
       files || [],
+      normalizeIds(ids),
       user.id,
     );
-    return 'ok';
   }
 
   @ApiOperation({ summary: '채널 멤버 목록' })

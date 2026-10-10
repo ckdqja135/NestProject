@@ -25,7 +25,7 @@ import {
 import { LoggedInGuard } from '../auth/logged-in.guard';
 import { User } from '../common/decorators/user.decorator';
 import { PostChatDto } from '../common/dto/post-chat.dto';
-import { imageUploadOptions } from '../common/upload';
+import { MAX_FILES, normalizeIds, relayUploadOptions } from '../common/upload';
 import { Users } from '../entities/Users';
 import { DmsService } from './dms.service';
 
@@ -121,22 +121,25 @@ export class DmsController {
     return 'ok';
   }
 
-  @ApiOperation({ summary: 'DM 이미지 전송' })
+  @ApiOperation({
+    summary: 'DM 파일 전송 (서버에 저장하지 않고 두 사람에게 중계)',
+  })
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FilesInterceptor('image', 10, imageUploadOptions))
-  @Post(':id/images')
-  async postImages(
+  @UseInterceptors(FilesInterceptor('file', MAX_FILES, relayUploadOptions))
+  @Post(':id/files')
+  sendFiles(
     @Param('url') url: string,
     @Param('id', ParseIntPipe) id: number,
     @UploadedFiles() files: Express.Multer.File[],
+    @Body('ids') ids: string | string[],
     @User() user: Users,
   ) {
-    await this.dmsService.createWorkspaceDMImages(
+    return this.dmsService.sendDMFiles(
       url,
       files || [],
+      normalizeIds(ids),
       id,
       user.id,
     );
-    return 'ok';
   }
 }

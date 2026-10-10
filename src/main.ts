@@ -7,8 +7,6 @@ import { ValidationPipe } from '@nestjs/common';
 import passport from 'passport';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
-import path from 'path';
-import fs from 'fs';
 import { SessionIoAdapter } from './events/session-io.adapter';
 import { createSessionStore } from './session-store';
 import { serveFrontend } from './serve-frontend';
@@ -23,12 +21,6 @@ async function bootstrap() {
   });
   app.useGlobalPipes(new ValidationPipe({ transform: true }));
   app.useGlobalFilters(new HttpExceptionFilter());
-
-  const uploadsDir = path.join(process.cwd(), 'uploads');
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir);
-  }
-  app.useStaticAssets(uploadsDir, { prefix: '/uploads' });
 
   const config = new DocumentBuilder()
     .setTitle('Shlack API')
