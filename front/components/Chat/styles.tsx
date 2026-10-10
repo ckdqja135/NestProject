@@ -293,3 +293,40 @@ export const ConfirmBox = styled.div`
     }
   }
 `;
+
+// 리마인더 시각 고르기 (메시지 액션 바 아래)
+export const PresetMenu = styled.div`
+  position: absolute;
+  top: 32px;
+  right: 0;
+  min-width: 220px;
+  padding: 4px 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+
+  & > .title {
+    padding: 4px 12px 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+  }
+
+  & > button {
+    display: block;
+    width: 100%;
+    padding: 6px 12px;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      background: #1264a3;
+      color: white;
+    }
+  }
+`;

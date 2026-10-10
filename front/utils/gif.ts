@@ -1,3 +1,4 @@
+import { parsePollContent } from '@utils/poll';
 import { parseFileContent } from '@utils/fileStore';
 
 // GIF 메시지는 본문을 `gif:<GIPHY 주소>` 형태로 저장한다.
@@ -19,6 +20,10 @@ export const parseGifContent = (content: string): string | null => {
 export const describeContent = (content: string) => {
   if (parseGifContent(content)) {
     return '[GIF]';
+  }
+  const poll = parsePollContent(content);
+  if (poll) {
+    return `[투표] ${poll.q}`;
   }
   const file = parseFileContent(content);
   return file ? `[파일] ${file.name}` : content;

@@ -1,5 +1,8 @@
 import { Overlay, ResultBox, ResultItem, SearchForm } from '@components/SearchModal/styles';
-import { IChat, IDM, ISearchResult } from '@typings/db';
+import { IChannel, IChat, IDM, ISearchResult, IUser } from '@typings/db';
+import fetcher from '@utils/fetcher';
+import useSWR from 'swr';
+import { Filters, MoreButton } from '@components/SearchModal/styles';
 import getErrorMessage from '@utils/getErrorMessage';
 import { describeContent } from '@utils/gif';
 import axios from 'axios';
@@ -39,31 +42,80 @@ const SearchModal: FC<Props> = ({ workspace, myId }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const onSubmit = useCallback(
-    (e) => {
-      e.preventDefault();
-      const q = keyword.trim();
-      if (!q || !workspace) {
+  // 검색 필터 (채널, 보낸 사람, 기간)와 페이지
+  const [filters, setFilters] = useState({ channel: '', from: '', after: '', before: '' });
+  const [page, setPage] = useState(1);
+  const { data: channels } = useSWR<IChannel[]>(
+    result && workspace ? `/api/workspaces/${workspace}/channels` : null,
+    fetcher,
+  );
+  const { data: members } = useSWR<IUser[]>(
+    result && workspace ? `/api/workspaces/${workspace}/members` : null,
+    fetcher,
+  );
+
+  const run = useCallback(
+    (q: string, nextFilters: typeof filters, nextPage: number) => {
+      if (!workspace) {
         return;
       }
       setLoading(true);
       setError('');
       setSearched(q);
+      setPage(nextPage);
+      const params: Record<string, string | number> = { page: nextPage };
+      if (q) {
+        params.q = q;
+      }
+      Object.entries(nextFilters).forEach(([key, value]) => {
+        if (value) {
+          params[key] = value;
+        }
+      });
       axios
-        .get<ISearchResult>(`/api/workspaces/${workspace}/search`, { params: { q } })
-        .then(({ data }) => setResult(data))
+        .get<ISearchResult>(`/api/workspaces/${workspace}/search`, { params })
+        .then(({ data }) =>
+          // 다음 페이지면 이어 붙인다
+          setResult((prev) =>
+            nextPage > 1 && prev
+              ? { ...data, chats: [...prev.chats, ...data.chats], dms: [...prev.dms, ...data.dms] }
+              : data,
+          ),
+        )
         .catch((err) => {
           setResult({ chats: [], dms: [] });
           setError(getErrorMessage(err));
         })
         .finally(() => setLoading(false));
     },
-    [keyword, workspace],
+    [workspace],
   );
+
+  const onSubmit = useCallback(
+    (e) => {
+      e.preventDefault();
+      const q = keyword.trim();
+      if (!q) {
+        return;
+      }
+      run(q, filters, 1);
+    },
+    [keyword, filters, run],
+  );
+
+  const onChangeFilter = (key: keyof typeof filters, value: string) => {
+    const next = { ...filters, [key]: value };
+    setFilters(next);
+    if (searched || Object.values(next).some(Boolean)) {
+      run(searched, next, 1);
+    }
+  };
 
   const onClose = useCallback(() => {
     setResult(null);
     setSearched('');
+    setFilters({ channel: '', from: '', after: '', before: '' });
+    setPage(1);
   }, []);
 
   const onClickChat = useCallback(
@@ -106,11 +158,56 @@ const SearchModal: FC<Props> = ({ workspace, myId }) => {
         <Overlay onClick={onClose}>
           <ResultBox onClick={(e) => e.stopPropagation()} role="dialog" aria-label="검색 결과">
             <header>
-              <span>{loading ? '검색 중...' : `"${searched}" 검색 결과 ${total}건`}</span>
+              <span>
+                {loading
+                  ? '검색 중...'
+                  : `${searched ? `"${searched}" ` : ''}검색 결과 ${total}건${
+                      result?.hasMoreChats || result?.hasMoreDms ? '+' : ''
+                    }`}
+              </span>
               <button type="button" onClick={onClose} aria-label="검색 결과 닫기">
                 &times;
               </button>
             </header>
+            <Filters>
+              <select
+                value={filters.channel}
+                onChange={(e) => onChangeFilter('channel', e.target.value)}
+                aria-label="채널"
+              >
+                <option value="">모든 채널·DM</option>
+                {channels?.map((c) => (
+                  <option key={c.id} value={c.name}>
+                    #{c.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={filters.from}
+                onChange={(e) => onChangeFilter('from', e.target.value)}
+                aria-label="보낸 사람"
+              >
+                <option value="">보낸 사람 전체</option>
+                {members?.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.nickname}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="date"
+                value={filters.after}
+                onChange={(e) => onChangeFilter('after', e.target.value)}
+                aria-label="시작 날짜"
+              />
+              <span>~</span>
+              <input
+                type="date"
+                value={filters.before}
+                onChange={(e) => onChangeFilter('before', e.target.value)}
+                aria-label="끝 날짜"
+              />
+            </Filters>
             {result && (
               <div>
                 {error && <p className="empty">{error}</p>}
@@ -126,8 +223,8 @@ const SearchModal: FC<Props> = ({ workspace, myId }) => {
                     <div className="content">{highlight(chat.content, searched)}</div>
                   </ResultItem>
                 ))}
-                <h3>다이렉트 메시지 ({result.dms.length})</h3>
-                {result.dms.length === 0 && <p className="empty">일치하는 DM이 없습니다.</p>}
+                {!filters.channel && <h3>다이렉트 메시지 ({result.dms.length})</h3>}
+                {!filters.channel && result.dms.length === 0 && <p className="empty">일치하는 DM이 없습니다.</p>}
                 {result.dms.map((dm) => (
                   <ResultItem key={`d${dm.id}`} type="button" onClick={() => onClickDM(dm)}>
                     <div className="meta">
@@ -139,6 +236,11 @@ const SearchModal: FC<Props> = ({ workspace, myId }) => {
                     <div className="content">{highlight(dm.content, searched)}</div>
                   </ResultItem>
                 ))}
+                {(result.hasMoreChats || result.hasMoreDms) && (
+                  <MoreButton type="button" disabled={loading} onClick={() => run(searched, filters, page + 1)}>
+                    {loading ? '불러오는 중...' : '더 보기'}
+                  </MoreButton>
+                )}
               </div>
             )}
           </ResultBox>

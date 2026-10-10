@@ -9,6 +9,7 @@ import { WorkspacesModule } from '../workspaces/workspaces.module';
 @Module({
   imports: [TypeOrmModule.forFeature([DMs, DMReactions]), WorkspacesModule],
   providers: [DmsService],
+  exports: [DmsService],
   controllers: [DmsController],
 })
 export class DmsModule {}

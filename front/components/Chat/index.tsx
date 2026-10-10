@@ -2,6 +2,7 @@ import {
   ActionBar,
   ChatWrapper,
   ConfirmBox,
+  PresetMenu,
   EditBox,
   EmojiPicker,
   PinnedLabel,
@@ -23,6 +24,11 @@ import fetcher from '@utils/fetcher';
 import useSaved, { useToggleSaved } from '@hooks/useSaved';
 import { toast } from 'react-toastify';
 import { subscribeEditRequest } from '@utils/editRequest';
+import PollView from '@components/PollView';
+import { parsePollContent, POLL_EMOJIS } from '@utils/poll';
+import { formatWhen, timePresets } from '@utils/timePresets';
+import getErrorMessage from '@utils/getErrorMessage';
+import axios from 'axios';
 
 export const EMOJIS = ['👍', '❤️', '😂', '🎉', '😮', '👀'];
 
@@ -76,8 +82,10 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
   const [editText, setEditText] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
+  const [showReminder, setShowReminder] = useState(false);
 
   const gifUrl = useMemo(() => parseGifContent(data.content), [data.content]);
+  const poll = useMemo(() => parsePollContent(data.content), [data.content]);
   const fileMeta = useMemo(() => parseFileContent(data.content), [data.content]);
   const result = useMemo<React.ReactNode>(
     () =>
@@ -99,6 +107,10 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
   const reactionGroups = useMemo(() => {
     const groups: { emoji: string; count: number; mine: boolean }[] = [];
     data.Reactions?.forEach((reaction) => {
+      // 투표 메시지의 선택지 번호 이모지는 투표 결과로만 보여준다
+      if (poll && POLL_EMOJIS.includes(reaction.emoji)) {
+        return;
+      }
       const group = groups.find((g) => g.emoji === reaction.emoji);
       if (group) {
         group.count += 1;
@@ -108,7 +120,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
       }
     });
     return groups;
-  }, [data.Reactions, myId]);
+  }, [data.Reactions, myId, poll]);
 
   const onStartEdit = useCallback(() => {
     setEditText(data.content);
@@ -169,7 +181,21 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
 
   // 전송 중(임시 id)인 메시지에는 액션을 보여주지 않는다
   const canAct = !!actions && !isTempId(data.id);
-  const canEdit = canAct && isMine && !!actions?.onEdit && !gifUrl && !fileMeta && !isLegacyUpload(data.content);
+  const canEdit =
+    canAct && isMine && !!actions?.onEdit && !gifUrl && !fileMeta && !poll && !isLegacyUpload(data.content);
+  const canRemind = canAct && !!workspace;
+
+  // 리마인더: 정한 시각에 이 메시지를 다시 알려준다
+  const onRemind = (date: Date) => {
+    setShowReminder(false);
+    axios
+      .post(`/api/workspaces/${workspace}/reminders`, {
+        [isDM ? 'dmId' : 'chatId']: data.id,
+        remindAt: date.toISOString(),
+      })
+      .then(() => toast.info(`${formatWhen(date)}에 이 메시지를 다시 알려드릴게요.`, { position: 'bottom-center' }))
+      .catch((error) => toast.error(getErrorMessage(error), { position: 'bottom-center' }));
+  };
   const canDelete = canAct && isMine && !!actions?.onDelete;
   const canReact = canAct && !!actions?.onReact;
   const canReply = canAct && !!channelChat && !channelChat.ParentId && !!actions?.onReply;
@@ -197,7 +223,10 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
     <ChatWrapper
       className={data.pinned ? 'pinned' : undefined}
       data-chat-id={data.id}
-      onMouseLeave={() => setShowPicker(false)}
+      onMouseLeave={() => {
+        setShowPicker(false);
+        setShowReminder(false);
+      }}
     >
       <div className="chat-img">
         <img src={avatarUrl(user, 36)} alt={user.nickname} />
@@ -239,8 +268,16 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
               </button>
             </div>
           </EditBox>
+        ) : // 코드 블록/인용/파일 카드는 블록 요소라 <p> 대신 <div> 로 감싼다
+        poll ? (
+          <PollView
+            poll={poll}
+            reactions={data.Reactions}
+            myId={myId}
+            members={members}
+            onVote={canReact ? (emoji) => onPickEmoji(emoji) : undefined}
+          />
         ) : (
-          // 코드 블록/인용/파일 카드는 블록 요소라 <p> 대신 <div> 로 감싼다
           <div className={fileMeta ? 'attachment' : 'message-body'}>{result}</div>
         )}
         {reactionGroups.length > 0 && (
@@ -320,6 +357,20 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
               🔖
             </button>
           )}
+          {canRemind && (
+            <button
+              type="button"
+              title="나중에 다시 알림"
+              aria-label="리마인더"
+              aria-expanded={showReminder}
+              onClick={() => {
+                setShowPicker(false);
+                setShowReminder((v) => !v);
+              }}
+            >
+              ⏰
+            </button>
+          )}
           {canCopyLink && (
             <button type="button" title="메시지 링크 복사" aria-label="메시지 링크 복사" onClick={onCopyLink}>
               🔗
@@ -334,6 +385,16 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
             <button type="button" title="삭제" aria-label="삭제" onClick={() => setConfirmDelete(true)}>
               🗑️
             </button>
+          )}
+          {showReminder && (
+            <PresetMenu role="menu" aria-label="다시 알릴 시각">
+              <div className="title">다시 알림</div>
+              {timePresets().map((preset) => (
+                <button key={preset.label} type="button" role="menuitem" onClick={() => onRemind(preset.date)}>
+                  {preset.label}
+                </button>
+              ))}
+            </PresetMenu>
           )}
           {showPicker && (
             <EmojiPicker>

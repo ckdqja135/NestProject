@@ -1,4 +1,5 @@
 import { parseFileContent } from '@utils/fileStore';
+import { parsePollContent } from '@utils/poll';
 
 // 브라우저 알림. 탭을 보고 있지 않을 때만 띄운다.
 export const canNotify = () => typeof window !== 'undefined' && 'Notification' in window;
@@ -57,6 +58,10 @@ export const previewText = (content: string) => {
   const file = parseFileContent(content);
   if (file) {
     return `[파일] ${file.name}`;
+  }
+  const poll = parsePollContent(content);
+  if (poll) {
+    return `[투표] ${poll.q}`;
   }
   const text = content.replace(/@\[(.+?)]\((\d+?|channel|here)\)/g, '@$1');
   return text.length > 80 ? `${text.slice(0, 80)}…` : text;

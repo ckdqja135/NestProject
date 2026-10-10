@@ -8,6 +8,13 @@ import { canClosePanelWithEscape, requestEdit } from '@utils/editRequest';
 
 import useSocket from '@hooks/useSocket';
 import GifPicker from '@components/GifPicker';
+import PollModal from '@components/PollModal';
+import ScheduleButton from '@components/ScheduleButton';
+import ScheduledBar from '@components/ScheduledBar';
+import { AttachButton } from '@components/ChatBox/styles';
+import { Poll, toPollContent } from '@utils/poll';
+import { formatWhen } from '@utils/timePresets';
+
 import useFileUpload from '@hooks/useFileUpload';
 import useTyping from '@hooks/useTyping';
 import TypingIndicator from '@components/TypingIndicator';
@@ -165,6 +172,29 @@ const DirectMessage = () => {
   );
 
   const onSelectGif = useCallback((url: string) => sendMessage(toGifContent(url)), [sendMessage]);
+
+  // 투표 만들기, 정한 시각에 보내기
+  const [showPollModal, setShowPollModal] = useState(false);
+  const onCreatePoll = useCallback((poll: Poll) => sendMessage(toPollContent(poll)), [sendMessage]);
+  const onSchedule = useCallback(
+    (date: Date) => {
+      if (!chat?.trim()) {
+        return;
+      }
+      axios
+        .post(`/api/workspaces/${workspace}/scheduled`, {
+          ...{ receiverId: Number(id) },
+          content: chat,
+          sendAt: date.toISOString(),
+        })
+        .then(() => {
+          setChat('');
+          toast.success(`${formatWhen(date)}에 보낼게요.`, { position: 'bottom-center' });
+        })
+        .catch((error) => toast.error(getErrorMessage(error), { position: 'bottom-center' }));
+    },
+    [workspace, id, chat, setChat],
+  );
 
   const onMessage = useCallback(
     (data: IDM) => {
@@ -373,6 +403,8 @@ const DirectMessage = () => {
           }
         />
         <TypingIndicator names={typingUsers} />
+        <ScheduledBar workspace={workspace} receiverId={Number(id)} />
+        <PollModal show={showPollModal} onCloseModal={() => setShowPollModal(false)} onCreate={onCreatePoll} />
         <ChatBox
           onSubmitForm={onSubmitForm}
           chat={chat}
@@ -383,7 +415,15 @@ const DirectMessage = () => {
           onAttachFiles={upload}
           uploading={uploading}
           uploadProgress={progress}
-          toolbarExtra={<GifPicker onSelect={onSelectGif} />}
+          toolbarExtra={
+            <>
+              <GifPicker onSelect={onSelectGif} />
+              <AttachButton type="button" onClick={() => setShowPollModal(true)} title="투표 만들기">
+                📊 투표
+              </AttachButton>
+              <ScheduleButton disabled={!chat?.trim()} onSchedule={onSchedule} />
+            </>
+          }
         />
         {dragOver && <DragOver>여기에 놓아서 파일 보내기</DragOver>}
       </Container>

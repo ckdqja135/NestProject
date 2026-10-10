@@ -9,6 +9,7 @@ import SavedButton from '@components/SavedButton';
 import ThreadsButton from '@components/ThreadsButton';
 import QuickSwitcher from '@components/QuickSwitcher';
 import ShortcutsModal from '@components/ShortcutsModal';
+import ScheduledModal from '@components/ScheduledModal';
 import Menu from '@components/Menu';
 import SearchModal from '@components/SearchModal';
 import useSocket from '@hooks/useSocket';
@@ -87,6 +88,7 @@ const Workspace = () => {
     setTheme(next);
   }, [theme]);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showScheduled, setShowScheduled] = useState(false);
 
   // 전역 단축키: Ctrl/⌘+K 빠른 이동, Ctrl/⌘+/ 단축키 보기
   useEffect(() => {
@@ -331,9 +333,42 @@ const Workspace = () => {
         history.push(`/workspace/${workspace}/dm/${dm.SenderId}?message=${dm.id}`),
       );
     };
+    // 리마인더: 정한 시각이 되면 그 메시지를 다시 알려준다 (누르면 그 메시지로 이동)
+    const onReminder = ({ chat, dm }: { chat: IChat | null; dm: IDM | null }) => {
+      const message = chat || dm;
+      if (!message) {
+        return;
+      }
+      const path = chat
+        ? `/workspace/${workspace}/channel/${chat.Channel.name}?${
+            chat.ParentId ? `message=${chat.ParentId}&reply=${chat.id}` : `message=${chat.id}`
+          }`
+        : `/workspace/${workspace}/dm/${
+            userData && dm!.SenderId === userData.id ? dm!.ReceiverId : dm!.SenderId
+          }?message=${dm!.id}`;
+      const go = () => history.push(path);
+      const title = '⏰ 리마인더';
+      toast.info(`${title}: ${previewText(message.content)}`, {
+        position: 'top-right',
+        autoClose: false,
+        onClick: go,
+      });
+      notifyIfHidden(title, previewText(message.content), go);
+    };
+    // 예약 메시지를 보내지 못함 (채널을 나갔거나 보관됨 등)
+    const onScheduledFailed = ({ content, reason }: { content: string; reason: string }) => {
+      toast.error(`예약한 메시지를 보내지 못했습니다: ${reason} (${previewText(content)})`, {
+        position: 'bottom-center',
+        autoClose: false,
+      });
+    };
     socket?.on('mention', onMention);
     socket?.on('dm', onDM);
+    socket?.on('reminder', onReminder);
+    socket?.on('scheduledFailed', onScheduledFailed);
     return () => {
+      socket?.off('reminder', onReminder);
+      socket?.off('scheduledFailed', onScheduledFailed);
       socket?.off('mention', onMention);
       socket?.off('dm', onDM);
     };
@@ -518,6 +553,18 @@ const Workspace = () => {
                       </button>
                     </li>
                     <li>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          setShowScheduled(true);
+                        }}
+                      >
+                        예약 메시지 · 리마인더
+                      </button>
+                    </li>
+                    <li>
                       <button type="button" role="menuitem" onClick={onCycleTheme} title="누를 때마다 바뀝니다">
                         🌓 화면 테마: {THEME_LABELS[theme]}
                       </button>
@@ -645,6 +692,9 @@ const Workspace = () => {
         />
       )}
       <ShortcutsModal show={showShortcuts} onCloseModal={() => setShowShortcuts(false)} />
+      {workspace && (
+        <ScheduledModal show={showScheduled} workspace={workspace} onCloseModal={() => setShowScheduled(false)} />
+      )}
       {currentWorkspace && userData && currentWorkspace.OwnerId === userData.id && (
         <WorkspaceSettingsModal
           show={showWorkspaceSettings}

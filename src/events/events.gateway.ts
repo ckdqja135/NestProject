@@ -206,6 +206,11 @@ export class EventsGateway
     });
   }
 
+  // 이 워크스페이스에 접속 중인지 (리마인더는 접속해 있을 때 알린다)
+  isOnline(url: string, userId: number) {
+    return this.socketsOf(`/ws-${url}`, userId).length > 0;
+  }
+
   // 특정 사용자에게 (이 워크스페이스에 연결된 모든 탭으로) 이벤트 전송
   emitToUser(url: string, userId: number, event: string, data?: unknown) {
     this.socketsOf(`/ws-${url}`, userId).forEach((socket) =>

@@ -128,3 +128,41 @@ export const ResultItem = styled.button`
     padding: 0;
   }
 `;
+
+// 검색 결과 위의 필터 (채널, 보낸 사람, 기간)
+export const Filters = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+
+  & select,
+  & input {
+    height: 28px;
+    border: 1px solid var(--border-strong);
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--text);
+    padding: 0 6px;
+    font-size: 13px;
+  }
+`;
+
+export const MoreButton = styled.button`
+  display: block;
+  margin: 8px auto 12px;
+  padding: 5px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+`;

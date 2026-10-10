@@ -13,6 +13,13 @@ import { canClosePanelWithEscape, requestEdit } from '@utils/editRequest';
 
 import useSocket from '@hooks/useSocket';
 import GifPicker from '@components/GifPicker';
+import PollModal from '@components/PollModal';
+import ScheduleButton from '@components/ScheduleButton';
+import ScheduledBar from '@components/ScheduledBar';
+import { AttachButton } from '@components/ChatBox/styles';
+import { Poll, toPollContent } from '@utils/poll';
+import { formatWhen } from '@utils/timePresets';
+
 import useFileUpload from '@hooks/useFileUpload';
 import useTyping from '@hooks/useTyping';
 import { ArchivedNotice, Header, Container, DragOver, HeaderButton, Layout } from '@pages/Channel/styles';
@@ -204,6 +211,25 @@ const Channel = () => {
   );
 
   const onSelectGif = useCallback((url: string) => sendMessage(toGifContent(url)), [sendMessage]);
+
+  // 투표 만들기, 정한 시각에 보내기
+  const [showPollModal, setShowPollModal] = useState(false);
+  const onCreatePoll = useCallback((poll: Poll) => sendMessage(toPollContent(poll)), [sendMessage]);
+  const onSchedule = useCallback(
+    (date: Date) => {
+      if (!chat?.trim()) {
+        return;
+      }
+      axios
+        .post(`/api/workspaces/${workspace}/scheduled`, { ...{ channel }, content: chat, sendAt: date.toISOString() })
+        .then(() => {
+          setChat('');
+          toast.success(`${formatWhen(date)}에 보낼게요.`, { position: 'bottom-center' });
+        })
+        .catch((error) => toast.error(getErrorMessage(error), { position: 'bottom-center' }));
+    },
+    [workspace, channel, chat, setChat],
+  );
 
   const onMessage = useCallback(
     (data: IChat) => {
@@ -519,6 +545,8 @@ const Channel = () => {
           }
         />
         <TypingIndicator names={typingUsers} />
+        <ScheduledBar workspace={workspace} channel={channel} />
+        <PollModal show={showPollModal} onCloseModal={() => setShowPollModal(false)} onCreate={onCreatePoll} />
         {channelData?.archived ? (
           <ArchivedNotice role="status">
             🗄 보관된 채널입니다. 메시지를 읽을 수만 있어요.
@@ -540,7 +568,15 @@ const Channel = () => {
             onAttachFiles={upload}
             uploading={uploading}
             uploadProgress={progress}
-            toolbarExtra={<GifPicker onSelect={onSelectGif} />}
+            toolbarExtra={
+              <>
+                <GifPicker onSelect={onSelectGif} />
+                <AttachButton type="button" onClick={() => setShowPollModal(true)} title="투표 만들기">
+                  📊 투표
+                </AttachButton>
+                <ScheduleButton disabled={!chat?.trim()} onSchedule={onSchedule} />
+              </>
+            }
           />
         )}
         {channelData && workspace && (

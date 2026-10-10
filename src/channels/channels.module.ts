@@ -26,6 +26,7 @@ import { MentionsModule } from '../mentions/mentions.module';
     MentionsModule,
   ],
   providers: [ChannelsService],
+  exports: [ChannelsService],
   controllers: [ChannelsController, ThreadsController],
 })
 export class ChannelsModule {}

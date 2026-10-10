@@ -72,6 +72,8 @@ export interface IWorkspace {
 export interface ISearchResult {
   chats: IChat[];
   dms: IDM[];
+  hasMoreChats?: boolean; // 다음 페이지가 있는지
+  hasMoreDms?: boolean;
 }
 
 export interface ITyping {
@@ -110,4 +112,25 @@ export interface ISavedItem {
 // 내가 참여한 스레드 (원본 메시지 + 마지막 답글)
 export interface IThread extends IChat {
   lastReply: IChat;
+}
+
+// 예약 메시지 (채널 또는 DM)
+export interface IScheduledMessage {
+  id: number;
+  content: string;
+  sendAt: string;
+  ChannelId: number | null;
+  ReceiverId: number | null;
+  Channel: IChannel | null;
+  Receiver: IUser | null;
+}
+
+// 리마인더 (채널 메시지 또는 DM)
+export interface IReminder {
+  id: number;
+  remindAt: string;
+  ChatId: number | null;
+  DMId: number | null;
+  Chat: (IChat & { Channel: IChannel }) | null;
+  DM: IDM | null;
 }

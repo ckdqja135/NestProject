@@ -1,5 +1,6 @@
 import { MiddlewareConsumer, Module } from '@nestjs/common';
 import { SavedModule } from './saved/saved.module';
+import { ScheduledModule } from './scheduled/scheduled.module';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { rateLimitPerMinute } from './security';
@@ -24,6 +25,8 @@ import { Channels } from './entities/Channels';
 import { DMs } from './entities/DMs';
 import { DMReactions } from './entities/DMReactions';
 import { SavedItems } from './entities/SavedItems';
+import { ScheduledMessages } from './entities/ScheduledMessages';
+import { Reminders } from './entities/Reminders';
 import { Mentions } from './entities/Mentions';
 import { Reactions } from './entities/Reactions';
 import { Users } from './entities/Users';
@@ -54,6 +57,8 @@ import { Workspaces } from './entities/Workspaces';
         Mentions,
         Reactions,
         SavedItems,
+        ScheduledMessages,
+        Reminders,
         Users,
         WorkspaceMembers,
         Workspaces,
@@ -72,6 +77,7 @@ import { Workspaces } from './entities/Workspaces';
     SearchModule,
     GifsModule,
     SavedModule,
+    ScheduledModule,
     MentionsModule,
     FilesModule,
   ],
