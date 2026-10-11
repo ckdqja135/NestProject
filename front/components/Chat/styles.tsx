@@ -84,6 +84,13 @@ export const ChatWrapper = styled.div`
       overflow-x: auto;
     }
 
+    & .custom-emoji {
+      width: 22px;
+      height: 22px;
+      vertical-align: middle;
+      object-fit: contain;
+    }
+
     & .md-mention-all {
       padding: 0 2px;
       border-radius: 3px;
@@ -213,6 +220,12 @@ export const ReactionList = styled.div`
     border: 1px solid var(--border);
     background: var(--bg);
     border-radius: 12px;
+
+    & .custom-emoji {
+      width: 16px;
+      height: 16px;
+      vertical-align: -3px;
+    }
     padding: 1px 8px;
     font-size: 13px;
     cursor: pointer;
@@ -364,4 +377,12 @@ export const PresetMenu = styled.div`
       color: white;
     }
   }
+`;
+
+// 전체 이모지 고르기 (메시지 액션 바 아래)
+export const FullPicker = styled.div`
+  position: absolute;
+  top: 32px;
+  right: 0;
+  z-index: 6;
 `;

@@ -2,6 +2,7 @@ import {
   ActionBar,
   ChatWrapper,
   ConfirmBox,
+  FullPicker,
   PresetMenu,
   EditBox,
   EmojiPicker,
@@ -26,6 +27,8 @@ import { toast } from 'react-toastify';
 import { subscribeEditRequest } from '@utils/editRequest';
 import PollView from '@components/PollView';
 import EditHistoryModal from '@components/EditHistoryModal';
+import EmojiPanel from '@components/EmojiPanel';
+import useCustomEmojis from '@hooks/useCustomEmojis';
 import { parsePollContent, POLL_EMOJIS } from '@utils/poll';
 import { formatWhen, timePresets } from '@utils/timePresets';
 import getErrorMessage from '@utils/getErrorMessage';
@@ -92,6 +95,9 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [showReminder, setShowReminder] = useState(false);
+  const [showFullPicker, setShowFullPicker] = useState(false);
+  // 커스텀 이모지 (레이아웃이 불러온 캐시만 읽는다)
+  const { map: emojiMap } = useCustomEmojis(workspace, false);
   const [showHistory, setShowHistory] = useState(false);
 
   const gifUrl = useMemo(() => parseGifContent(data.content), [data.content]);
@@ -108,9 +114,9 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
           [이전 방식으로 서버에 올린 첨부파일 - 더 이상 볼 수 없습니다]
         </span>
       ) : (
-        renderMarkdown(data.content, workspace)
+        renderMarkdown(data.content, workspace, emojiMap)
       ),
-    [workspace, data.content, gifUrl, fileMeta, data.createdAt],
+    [workspace, data.content, gifUrl, fileMeta, data.createdAt, emojiMap],
   );
 
   // 같은 이모지끼리 묶어서 개수와 내가 눌렀는지 표시 (채널 메시지, DM 모두)
@@ -195,6 +201,16 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
     canAct && isMine && !!actions?.onEdit && !gifUrl && !fileMeta && !poll && !isLegacyUpload(data.content);
   const canRemind = canAct && !!workspace;
 
+  // 리액션 이모지: 커스텀(:이름:)이면 그림
+  const renderReactionEmoji = (emoji: string) => {
+    const custom = /^:([a-z0-9_-]+):$/.exec(emoji);
+    return custom && emojiMap[custom[1]] ? (
+      <img className="custom-emoji" src={emojiMap[custom[1]]} alt={emoji} title={emoji} />
+    ) : (
+      emoji
+    );
+  };
+
   // 투표 마감 (올린 사람만): 수정 내역 주소와 같은 경로 아래의 poll/close
   const onClosePoll = () => {
     axios
@@ -254,6 +270,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
       onMouseLeave={() => {
         setShowPicker(false);
         setShowReminder(false);
+        setShowFullPicker(false);
       }}
     >
       <div className="chat-img">
@@ -336,7 +353,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
                 onClick={() => canReact && onPickEmoji(group.emoji)}
                 title={`${group.count}명${group.mine ? ' (나 포함)' : ''}`}
               >
-                {group.emoji} {group.count}
+                {renderReactionEmoji(group.emoji)} {group.count}
               </button>
             ))}
           </ReactionList>
@@ -449,7 +466,28 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
                   {emoji}
                 </button>
               ))}
+              <button
+                type="button"
+                aria-label="다른 이모지 고르기"
+                title="다른 이모지"
+                onClick={() => {
+                  setShowPicker(false);
+                  setShowFullPicker(true);
+                }}
+              >
+                ＋
+              </button>
             </EmojiPicker>
+          )}
+          {showFullPicker && (
+            <FullPicker>
+              <EmojiPanel
+                onPick={(emoji) => {
+                  setShowFullPicker(false);
+                  onPickEmoji(emoji);
+                }}
+              />
+            </FullPicker>
           )}
         </ActionBar>
       )}

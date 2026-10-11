@@ -11,6 +11,8 @@ import QuickSwitcher from '@components/QuickSwitcher';
 import ShortcutsModal from '@components/ShortcutsModal';
 import ScheduledModal from '@components/ScheduledModal';
 import GroupsModal from '@components/GroupsModal';
+import CustomEmojiModal from '@components/CustomEmojiModal';
+import useCustomEmojis from '@hooks/useCustomEmojis';
 import Menu from '@components/Menu';
 import SearchModal from '@components/SearchModal';
 import useSocket from '@hooks/useSocket';
@@ -95,6 +97,9 @@ const Workspace = () => {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showScheduled, setShowScheduled] = useState(false);
   const [showGroups, setShowGroups] = useState(false);
+  const [showEmojis, setShowEmojis] = useState(false);
+  // 커스텀 이모지 목록을 미리 받아 둔다 (메시지가 캐시를 읽어 :이름: 을 그림으로)
+  useCustomEmojis(workspace);
 
   // 전역 단축키: Ctrl/⌘+K 빠른 이동, Ctrl/⌘+/ 단축키 보기
   useEffect(() => {
@@ -732,6 +737,18 @@ const Workspace = () => {
                     </button>
                   </li>
                   <li>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setShowWorkspaceModal(false);
+                        setShowEmojis(true);
+                      }}
+                    >
+                      커스텀 이모지
+                    </button>
+                  </li>
+                  <li>
                     <button type="button" role="menuitem" onClick={onClickInviteWorkspace}>
                       워크스페이스에 사용자 초대
                     </button>
@@ -772,6 +789,15 @@ const Workspace = () => {
         />
       )}
       <ShortcutsModal show={showShortcuts} onCloseModal={() => setShowShortcuts(false)} />
+      {workspace && userData && (
+        <CustomEmojiModal
+          show={showEmojis}
+          workspace={workspace}
+          me={userData}
+          isOwner={currentWorkspace?.OwnerId === userData.id}
+          onCloseModal={() => setShowEmojis(false)}
+        />
+      )}
       {workspace && userData && (
         <GroupsModal
           show={showGroups}

@@ -16,6 +16,8 @@ declare const module: any;
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // 커스텀 이모지 그림(data URL)을 받을 수 있게 JSON 본문 크기를 늘린다 (기본 100KB)
+  app.useBodyParser('json', { limit: '1mb' });
   // 보안 헤더(helmet, CSP), 허용한 출처만 CORS
   applySecurity(app);
   app.useGlobalPipes(new ValidationPipe({ transform: true }));

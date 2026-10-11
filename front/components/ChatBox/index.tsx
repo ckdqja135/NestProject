@@ -7,11 +7,13 @@ import {
   Toolbox,
   EachMention,
   CommandHints,
+  EmojiButtonWrap,
 } from '@components/ChatBox/styles';
 import { IUser } from '@typings/db';
 import autosize from 'autosize';
 import { avatarUrl } from '@utils/avatar';
-import React, { FC, useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import EmojiPanel from '@components/EmojiPanel';
 import { Mention, SuggestionDataItem } from 'react-mentions';
 import { useParams } from 'react-router';
 import useGroups from '@hooks/useGroups';
@@ -54,6 +56,26 @@ const ChatBox: FC<Props> = ({
   commands,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [showEmoji, setShowEmoji] = useState(false);
+  const emojiRef = useRef<HTMLDivElement>(null);
+  // 이모지 창 밖을 누르면 닫는다
+  useEffect(() => {
+    if (!showEmoji) {
+      return undefined;
+    }
+    const onMouseDown = (e: MouseEvent) => {
+      if (!emojiRef.current?.contains(e.target as Node)) {
+        setShowEmoji(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => e.key === 'Escape' && setShowEmoji(false);
+    document.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [showEmoji]);
   // 채널에서는 사용자 그룹(@디자인팀)도 멘션할 수 있다
   const { workspace } = useParams<{ workspace?: string }>();
   const { data: groups } = useGroups(allowBroadcast ? workspace : undefined);
@@ -216,6 +238,31 @@ const ChatBox: FC<Props> = ({
               <input ref={fileInputRef} type="file" multiple hidden onChange={onChangeFile} />
             </>
           )}
+          <EmojiButtonWrap ref={emojiRef}>
+            <AttachButton
+              type="button"
+              aria-label="이모지 넣기"
+              aria-expanded={showEmoji}
+              title="이모지 넣기"
+              onClick={() => setShowEmoji((v) => !v)}
+            >
+              😀
+            </AttachButton>
+            {showEmoji && (
+              <div className="panel">
+                <EmojiPanel
+                  onPick={(emoji) => {
+                    setShowEmoji(false);
+                    // 커스텀 이모지(:이름:)는 앞뒤 글자와 붙지 않게 띄운다
+                    const text = chat || '';
+                    const insert = emoji.startsWith(':') && text && !/\s$/.test(text) ? ` ${emoji} ` : emoji;
+                    onChangeChat({ target: { value: text + insert } });
+                    textareaRef.current?.focus();
+                  }}
+                />
+              </div>
+            )}
+          </EmojiButtonWrap>
           {toolbarExtra}
           <SendButton
             className={

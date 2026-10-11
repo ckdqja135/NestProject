@@ -159,3 +159,16 @@ export const CommandHints = styled.ul`
     }
   }
 `;
+
+// 입력창의 😀 버튼과 이모지 고르기 창
+export const EmojiButtonWrap = styled.div`
+  position: relative;
+  display: inline-block;
+
+  & > .panel {
+    position: absolute;
+    bottom: 34px;
+    left: 0;
+    z-index: 6;
+  }
+`;

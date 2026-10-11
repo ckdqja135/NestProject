@@ -146,3 +146,11 @@ export interface IUserGroup {
   CreatorId: number | null;
   Members: { UserId: number; User: Pick<IUser, 'id' | 'nickname' | 'email' | 'avatarStyle'> }[];
 }
+
+// 워크스페이스 커스텀 이모지 (:name:)
+export interface ICustomEmoji {
+  id: number;
+  name: string;
+  image: string; // data URL
+  CreatorId: number | null;
+}

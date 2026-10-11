@@ -42,6 +42,37 @@ const INLINE = new RegExp(
   ].join('|'),
 );
 
+// 지금 그리는 메시지에서 쓸 커스텀 이모지 (:이름: → 그림). renderMarkdown 이 정한다
+let customEmojis: Record<string, string> = {};
+
+// 일반 글 안의 :이름: 을 커스텀 이모지 그림으로 (없는 이름이면 글자 그대로)
+function withCustomEmojis(text: string, keyPrefix: string): ReactNode[] {
+  if (!text.includes(':')) {
+    return [text];
+  }
+  const nodes: ReactNode[] = [];
+  const pattern = /:([a-z0-9_-]{1,14}):/g;
+  let last = 0;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(text))) {
+    const image = customEmojis[match[1]];
+    if (!image) {
+      continue;
+    }
+    if (match.index > last) {
+      nodes.push(text.slice(last, match.index));
+    }
+    nodes.push(
+      <img key={`${keyPrefix}-e${match.index}`} className="custom-emoji" src={image} alt={match[0]} title={match[0]} />,
+    );
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) {
+    nodes.push(text.slice(last));
+  }
+  return nodes;
+}
+
 function renderInline(text: string, workspace: string, keyPrefix: string): ReactNode[] {
   const nodes: ReactNode[] = [];
   let rest = text;
@@ -49,13 +80,13 @@ function renderInline(text: string, workspace: string, keyPrefix: string): React
   while (rest) {
     const m = INLINE.exec(rest);
     if (!m) {
-      nodes.push(rest);
+      nodes.push(...withCustomEmojis(rest, `${keyPrefix}-r${i}`));
       break;
     }
     // 기울임 패턴은 앞 글자 1개를 함께 잡으므로 그만큼 앞에 그대로 둔다
     const lead = m[8] ?? m[10] ?? '';
     if (m.index + lead.length > 0) {
-      nodes.push(rest.slice(0, m.index) + lead);
+      nodes.push(...withCustomEmojis(rest.slice(0, m.index) + lead, `${keyPrefix}-p${i}`));
     }
     const key = `${keyPrefix}-${i++}`;
     if (m[1] !== undefined && m[2].startsWith('g')) {
@@ -139,7 +170,8 @@ function renderLines(text: string, workspace: string, keyPrefix: string): ReactN
   return nodes;
 }
 
-export function renderMarkdown(content: string, workspace: string): ReactNode[] {
+export function renderMarkdown(content: string, workspace: string, emojis: Record<string, string> = {}): ReactNode[] {
+  customEmojis = emojis;
   const nodes: ReactNode[] = [];
   const fence = /```(?:[\w-]*\n)?([\s\S]*?)```/g;
   let last = 0;

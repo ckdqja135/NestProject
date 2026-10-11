@@ -16,6 +16,7 @@ import { UserGroupMembers } from './src/entities/UserGroupMembers';
 import { ReadMarkers } from './src/entities/ReadMarkers';
 import { Drafts } from './src/entities/Drafts';
 import { Webhooks } from './src/entities/Webhooks';
+import { CustomEmojis } from './src/entities/CustomEmojis';
 import { Mentions } from './src/entities/Mentions';
 import { Reactions } from './src/entities/Reactions';
 import { Users } from './src/entities/Users';
@@ -49,6 +50,7 @@ const options: DataSourceOptions & SeederOptions = {
     ReadMarkers,
     Drafts,
     Webhooks,
+    CustomEmojis,
     Users,
     WorkspaceMembers,
     Workspaces,

@@ -5,6 +5,7 @@ import { GroupsModule } from './groups/groups.module';
 import { MailModule } from './mail/mail.module';
 import { SyncModule } from './sync/sync.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
+import { EmojisModule } from './emojis/emojis.module';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { rateLimitPerMinute } from './security';
@@ -38,6 +39,7 @@ import { UserGroupMembers } from './entities/UserGroupMembers';
 import { ReadMarkers } from './entities/ReadMarkers';
 import { Drafts } from './entities/Drafts';
 import { Webhooks } from './entities/Webhooks';
+import { CustomEmojis } from './entities/CustomEmojis';
 import { Mentions } from './entities/Mentions';
 import { Reactions } from './entities/Reactions';
 import { Users } from './entities/Users';
@@ -77,6 +79,7 @@ import { Workspaces } from './entities/Workspaces';
         ReadMarkers,
         Drafts,
         Webhooks,
+        CustomEmojis,
         Users,
         WorkspaceMembers,
         Workspaces,
@@ -100,6 +103,7 @@ import { Workspaces } from './entities/Workspaces';
     MailModule,
     SyncModule,
     WebhooksModule,
+    EmojisModule,
     MentionsModule,
     FilesModule,
   ],
