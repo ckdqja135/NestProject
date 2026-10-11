@@ -48,9 +48,9 @@ const ThreadPanel: FC<Props> = ({ workspace, channel, parent, me, members, socke
     if (replyCount !== undefined) {
       scrollToBottom();
       // 스레드를 보고 있으면 지금까지의 답글은 읽은 것으로 (스레드 모아 보기의 '새 답글' 표시)
-      markThreadRead(parent.id);
+      markThreadRead(parent.id, workspace);
     }
-  }, [replyCount, scrollToBottom, parent.id]);
+  }, [replyCount, scrollToBottom, parent.id, workspace]);
 
   useEffect(() => {
     const onMessage = (data: IChat) => {

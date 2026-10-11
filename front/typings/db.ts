@@ -6,6 +6,8 @@ export interface IUser {
   statusEmoji?: string | null; // 상태 메시지 (예: 🗓️ 회의 중)
   statusText?: string | null;
   away?: boolean; // 자리 비움으로 표시
+  theme?: 'system' | 'light' | 'dark' | null; // 계정에 저장한 화면 테마 (모든 기기 공통)
+  notificationsPaused?: boolean; // 데스크톱 알림 일시 중지 (모든 기기 공통)
   Workspaces: IWorkspace[];
 }
 

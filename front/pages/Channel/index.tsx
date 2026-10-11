@@ -6,9 +6,10 @@ import PinnedPanel from '@components/PinnedPanel';
 import ThreadPanel from '@components/ThreadPanel';
 import TypingIndicator from '@components/TypingIndicator';
 import ConversationIntro from '@components/ConversationIntro';
-import useDraft, { draftKey } from '@hooks/useDraft';
+import useDraft from '@hooks/useDraft';
 import useJumpToMessage from '@hooks/useJumpToMessage';
 import useFirstUnread from '@hooks/useFirstUnread';
+import { markRead } from '@utils/readState';
 import { canClosePanelWithEscape, requestEdit } from '@utils/editRequest';
 
 import useSocket from '@hooks/useSocket';
@@ -78,7 +79,7 @@ const Channel = () => {
     fetcher,
   );
   // 쓰다 만 메시지는 대화별로 임시 저장된다
-  const [chat, setChat] = useDraft(draftKey(workspace, `channel:${channel}`));
+  const [chat, setChat] = useDraft(workspace, `channel:${channel}`);
   const onChangeChat = useCallback((e: { target: { value: string } }) => setChat(e.target.value), [setChat]);
   const [showInviteChannelModal, setShowInviteChannelModal] = useState(false);
   const [threadParentId, setThreadParentId] = useState<number | null>(null);
@@ -182,7 +183,7 @@ const Channel = () => {
           }),
         false,
       ).then(() => {
-        localStorage.setItem(`${workspace}-${channel}`, new Date().getTime().toString());
+        markRead(workspace, { channel });
         scrollbarRef.current?.scrollToBottom();
       });
       axios
@@ -238,7 +239,7 @@ const Channel = () => {
       }
       clearTypingUser(data.UserId);
       // 보고 있는 동안 받은 메시지는 읽은 것으로 기록 (나중에 안 읽음으로 다시 잡히지 않게)
-      localStorage.setItem(`${workspace}-${channel}`, new Date().getTime().toString());
+      markRead(workspace, { channel });
       // 스레드 답글이면 원본 메시지의 답글 수만 올린다 (답글 목록은 스레드 패널이 처리)
       if (data.ParentId) {
         mutateChat(
@@ -331,7 +332,7 @@ const Channel = () => {
   }, [socket, onMessage, onMessageUpdated, onMessageDeleted, onReactionUpdated]);
 
   useEffect(() => {
-    localStorage.setItem(`${workspace}-${channel}`, new Date().getTime().toString());
+    markRead(workspace, { channel });
   }, [workspace, channel]);
 
   // 채널을 보고 있으면 그 채널에서 받은 멘션은 읽음 처리 (들어올 때 + 보고 있는 중에 새 멘션이 올 때)
@@ -432,7 +433,7 @@ const Channel = () => {
   }, [workspace, channel, channelData, mutateChannels]);
 
   const onUploaded = useCallback(() => {
-    localStorage.setItem(`${workspace}-${channel}`, new Date().getTime().toString());
+    markRead(workspace, { channel });
   }, [workspace, channel]);
   const { upload, uploading, progress } = useFileUpload(
     `/api/workspaces/${workspace}/channels/${channel}/files`,

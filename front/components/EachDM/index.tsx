@@ -2,8 +2,9 @@ import useSocket from '@hooks/useSocket';
 import { IDM, IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
 import { setUnread } from '@utils/unreadStore';
+import { getLastRead, subscribeReadState } from '@utils/readState';
 import { draftKey, loadDraft } from '@hooks/useDraft';
-import React, { useEffect, useRef, VFC } from 'react';
+import React, { useEffect, useReducer, useRef, VFC } from 'react';
 import { useParams } from 'react-router';
 import { NavLink, useLocation } from 'react-router-dom';
 import useSWR from 'swr';
@@ -18,13 +19,16 @@ const EachDM: VFC<Props> = ({ member, isOnline }) => {
   const { data: userData } = useSWR<IUser>('/api/users', fetcher, {
     dedupingInterval: 2000, // 2초
   });
-  const date = localStorage.getItem(`${workspace}-${member.id}`) || 0;
+  const date = workspace ? getLastRead(workspace, { dm: member.id }) : 0;
   const { data: count, mutate } = useSWR<number>(
     userData ? `/api/workspaces/${workspace}/dms/${member.id}/unreads?after=${date}` : null,
     fetcher,
   );
 
   const [socket] = useSocket(workspace);
+  // 다른 기기에서 읽으면 안 읽은 수를 다시 센다
+  const [, rerender] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => subscribeReadState(rerender), []);
   const isViewing = location.pathname === `/workspace/${workspace}/dm/${member.id}`;
   const isViewingRef = useRef(isViewing);
   isViewingRef.current = isViewing;

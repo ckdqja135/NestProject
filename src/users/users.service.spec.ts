@@ -44,7 +44,10 @@ describe('UsersService', () => {
       },
     })),
   };
-  const eventsGateway = { emitToWorkspace: jest.fn() };
+  const eventsGateway = {
+    emitToWorkspace: jest.fn(),
+    emitToUserEverywhere: jest.fn(),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -151,6 +154,28 @@ describe('UsersService', () => {
         statusEmoji: null,
         statusText: null,
       });
+    });
+
+    it('설정을 저장하고 내 다른 기기에 알린다 (워크스페이스 사람들에게는 알리지 않음)', async () => {
+      usersRepository.findOne.mockResolvedValue({
+        id: 7,
+        theme: 'dark',
+        notificationsPaused: true,
+      });
+      await service.updatePreferences(7, {
+        theme: 'dark',
+        notificationsPaused: true,
+      });
+      expect(usersRepository.update).toHaveBeenCalledWith(7, {
+        theme: 'dark',
+        notificationsPaused: true,
+      });
+      expect(eventsGateway.emitToUserEverywhere).toHaveBeenCalledWith(
+        7,
+        'preferencesChanged',
+        { theme: 'dark', notificationsPaused: true },
+      );
+      expect(eventsGateway.emitToWorkspace).not.toHaveBeenCalled();
     });
 
     it('공백뿐인 닉네임은 거부한다', async () => {

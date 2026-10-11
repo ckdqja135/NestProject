@@ -55,6 +55,14 @@ export class Users {
   @Column('boolean', { name: 'away', default: false })
   away: boolean;
 
+  // 화면 테마 (system/light/dark). null 이면 아직 정하지 않음 → 기기 설정
+  @Column('varchar', { name: 'theme', length: 10, nullable: true })
+  theme: string | null;
+
+  // 데스크톱 알림 일시 중지
+  @Column('boolean', { name: 'notificationsPaused', default: false })
+  notificationsPaused: boolean;
+
   @IsString()
   @IsNotEmpty()
   @ApiProperty({

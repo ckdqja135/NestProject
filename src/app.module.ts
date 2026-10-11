@@ -3,6 +3,7 @@ import { SavedModule } from './saved/saved.module';
 import { ScheduledModule } from './scheduled/scheduled.module';
 import { GroupsModule } from './groups/groups.module';
 import { MailModule } from './mail/mail.module';
+import { SyncModule } from './sync/sync.module';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { rateLimitPerMinute } from './security';
@@ -33,6 +34,8 @@ import { MessageEdits } from './entities/MessageEdits';
 import { DMReads } from './entities/DMReads';
 import { UserGroups } from './entities/UserGroups';
 import { UserGroupMembers } from './entities/UserGroupMembers';
+import { ReadMarkers } from './entities/ReadMarkers';
+import { Drafts } from './entities/Drafts';
 import { Mentions } from './entities/Mentions';
 import { Reactions } from './entities/Reactions';
 import { Users } from './entities/Users';
@@ -69,6 +72,8 @@ import { Workspaces } from './entities/Workspaces';
         DMReads,
         UserGroups,
         UserGroupMembers,
+        ReadMarkers,
+        Drafts,
         Users,
         WorkspaceMembers,
         Workspaces,
@@ -90,6 +95,7 @@ import { Workspaces } from './entities/Workspaces';
     ScheduledModule,
     GroupsModule,
     MailModule,
+    SyncModule,
     MentionsModule,
     FilesModule,
   ],

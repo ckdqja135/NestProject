@@ -31,6 +31,8 @@ export class LocalSerializer extends PassportSerializer {
           'statusEmoji',
           'statusText',
           'away',
+          'theme',
+          'notificationsPaused',
         ],
       });
       if (!user) {

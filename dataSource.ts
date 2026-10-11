@@ -13,6 +13,8 @@ import { MessageEdits } from './src/entities/MessageEdits';
 import { DMReads } from './src/entities/DMReads';
 import { UserGroups } from './src/entities/UserGroups';
 import { UserGroupMembers } from './src/entities/UserGroupMembers';
+import { ReadMarkers } from './src/entities/ReadMarkers';
+import { Drafts } from './src/entities/Drafts';
 import { Mentions } from './src/entities/Mentions';
 import { Reactions } from './src/entities/Reactions';
 import { Users } from './src/entities/Users';
@@ -43,6 +45,8 @@ const options: DataSourceOptions & SeederOptions = {
     DMReads,
     UserGroups,
     UserGroupMembers,
+    ReadMarkers,
+    Drafts,
     Users,
     WorkspaceMembers,
     Workspaces,

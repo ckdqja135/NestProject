@@ -22,6 +22,8 @@ export class AuthService {
         'statusEmoji',
         'statusText',
         'away',
+        'theme',
+        'notificationsPaused',
       ],
     });
     if (!user) {

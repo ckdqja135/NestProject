@@ -27,6 +27,8 @@ import {
   setNotificationsPaused,
 } from '@utils/notify';
 import useUnreadTitle from '@hooks/useUnreadTitle';
+import { applyReadMarker, refreshSidebar, registerChannels } from '@utils/readState';
+import { applyServerDrafts } from '@hooks/useDraft';
 import { getThemePref, setThemePref, THEME_LABELS, ThemePref } from '@utils/theme';
 import { FileMeta, getFile, notifyUnavailable, putFile, UnavailableReason } from '@utils/fileStore';
 import StorageModal from '@components/StorageModal';
@@ -87,6 +89,8 @@ const Workspace = () => {
     const next: ThemePref = theme === 'system' ? 'light' : theme === 'light' ? 'dark' : 'system';
     setThemePref(next);
     setTheme(next);
+    // 계정에도 저장해서 다른 기기에서도 같은 테마로
+    axios.patch('/api/users/me/preferences', { theme: next }).catch(() => undefined);
   }, [theme]);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showScheduled, setShowScheduled] = useState(false);
@@ -204,6 +208,66 @@ const Workspace = () => {
     },
     [revalidateUser, history],
   );
+
+  // 기기 간 동기화: 들어올 때와 창으로 돌아올 때 서버의 읽은 위치·임시 저장 글을 받아 이 기기에 반영한다
+  useEffect(() => {
+    if (!workspace || !userData || !channelData) {
+      return undefined;
+    }
+    registerChannels(workspace, channelData);
+    const load = () =>
+      axios
+        .get<{ readMarkers: Record<string, number>; drafts: Record<string, { content: string; at: number }> }>(
+          `/api/workspaces/${workspace}/sync`,
+        )
+        .then(({ data }) => {
+          Object.entries(data.readMarkers).forEach(([key, at]) => applyReadMarker(workspace, key, at));
+          applyServerDrafts(workspace, data.drafts);
+          refreshSidebar();
+        })
+        .catch(() => undefined);
+    load();
+    window.addEventListener('focus', load);
+    return () => window.removeEventListener('focus', load);
+  }, [workspace, userData, channelData]);
+
+  // 다른 기기에서 읽은 위치·설정이 바뀌면 바로 반영
+  useEffect(() => {
+    const onReadMarker = ({ key, at }: { key: string; at: number }) => workspace && applyReadMarker(workspace, key, at);
+    const onPreferences = (prefs: { theme: ThemePref | null; notificationsPaused: boolean }) => {
+      if (prefs.theme) {
+        setThemePref(prefs.theme);
+        setTheme(prefs.theme);
+      }
+      setNotificationsPaused(prefs.notificationsPaused);
+      setPaused(prefs.notificationsPaused);
+    };
+    socket?.on('readMarker', onReadMarker);
+    socket?.on('preferencesChanged', onPreferences);
+    return () => {
+      socket?.off('readMarker', onReadMarker);
+      socket?.off('preferencesChanged', onPreferences);
+    };
+  }, [socket, workspace]);
+
+  // 로그인하면 계정에 저장된 설정을 이 기기에 적용 (처음이면 이 기기 설정을 계정에 올린다)
+  const appliedPrefsFor = useRef<number | null>(null);
+  useEffect(() => {
+    if (!userData || appliedPrefsFor.current === userData.id) {
+      return;
+    }
+    appliedPrefsFor.current = userData.id;
+    if (userData.theme) {
+      setThemePref(userData.theme);
+      setTheme(userData.theme);
+    } else {
+      axios.patch('/api/users/me/preferences', { theme: getThemePref() }).catch(() => undefined);
+    }
+    if (typeof userData.notificationsPaused === 'boolean') {
+      setNotificationsPaused(userData.notificationsPaused);
+      setPaused(userData.notificationsPaused);
+    }
+  }, [userData]);
 
   // 서버가 알려주는 멤버십 변경: 채널 초대, 워크스페이스 초대, 워크스페이스에서 내보내짐
   useEffect(() => {
@@ -396,6 +460,7 @@ const Workspace = () => {
         if (result === 'granted') {
           setNotificationsPaused(false);
           setPaused(false);
+          axios.patch('/api/users/me/preferences', { notificationsPaused: false }).catch(() => undefined);
           toast.success('데스크톱 알림을 켰습니다.', { position: 'bottom-center' });
         }
       });
@@ -407,6 +472,7 @@ const Workspace = () => {
     }
     setNotificationsPaused(!paused);
     setPaused(!paused);
+    axios.patch('/api/users/me/preferences', { notificationsPaused: !paused }).catch(() => undefined);
     toast.info(paused ? '데스크톱 알림을 다시 켰습니다.' : '데스크톱 알림을 일시 중지했습니다.', {
       position: 'bottom-center',
     });

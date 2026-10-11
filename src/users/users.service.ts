@@ -116,6 +116,8 @@ export class UsersService {
         'statusEmoji',
         'statusText',
         'away',
+        'theme',
+        'notificationsPaused',
       ],
     });
     const workspaces = await this.dataSource
@@ -134,6 +136,32 @@ export class UsersService {
     workspaces.forEach((workspace) => {
       this.eventsGateway.emitToWorkspace(workspace.url, 'membersChanged');
       this.eventsGateway.emitToWorkspace(workspace.url, 'profileUpdated', user);
+    });
+    return user;
+  }
+
+  // 화면 테마·알림 일시 중지 (내 계정 설정). 내 다른 기기/탭에도 바로 반영한다.
+  async updatePreferences(
+    myId: number,
+    changes: { theme?: string; notificationsPaused?: boolean },
+  ) {
+    const update: Partial<Users> = {};
+    if (changes.theme !== undefined) {
+      update.theme = changes.theme;
+    }
+    if (changes.notificationsPaused !== undefined) {
+      update.notificationsPaused = changes.notificationsPaused;
+    }
+    if (Object.keys(update).length) {
+      await this.usersRepository.update(myId, update);
+    }
+    const user = await this.usersRepository.findOne({
+      where: { id: myId },
+      select: ['id', 'theme', 'notificationsPaused'],
+    });
+    this.eventsGateway.emitToUserEverywhere(myId, 'preferencesChanged', {
+      theme: user.theme,
+      notificationsPaused: user.notificationsPaused,
     });
     return user;
   }

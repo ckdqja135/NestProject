@@ -72,3 +72,17 @@ export class ChangePasswordDto {
   @ApiProperty({ description: '새 비밀번호 (4자 이상)' })
   public newPassword: string;
 }
+
+export const THEMES = ['system', 'light', 'dark'] as const;
+
+export class UpdatePreferencesDto {
+  @IsOptional()
+  @IsIn(THEMES)
+  @ApiProperty({ required: false, enum: THEMES, description: '화면 테마' })
+  public theme?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  @ApiProperty({ required: false, description: '데스크톱 알림 일시 중지' })
+  public notificationsPaused?: boolean;
+}

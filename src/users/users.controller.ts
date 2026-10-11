@@ -11,7 +11,11 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JoinRequestDto } from './dto/join.request.dto';
-import { ChangePasswordDto, UpdateProfileDto } from './dto/update-profile.dto';
+import {
+  ChangePasswordDto,
+  UpdatePreferencesDto,
+  UpdateProfileDto,
+} from './dto/update-profile.dto';
 import { Throttle } from '@nestjs/throttler';
 import { authRateLimitPerMinute } from '../security';
 import { UsersService } from './users.service';
@@ -86,6 +90,15 @@ export class UsersController {
   @Patch('me')
   updateProfile(@User() user, @Body() body: UpdateProfileDto) {
     return this.usersService.updateProfile(user.id, body);
+  }
+
+  @UseGuards(LoggedInGuard)
+  @ApiOperation({
+    summary: '내 설정 (화면 테마, 알림 일시 중지) — 모든 기기에 적용',
+  })
+  @Patch('me/preferences')
+  updatePreferences(@User() user, @Body() body: UpdatePreferencesDto) {
+    return this.usersService.updatePreferences(user.id, body);
   }
 
   @UseGuards(LoggedInGuard)

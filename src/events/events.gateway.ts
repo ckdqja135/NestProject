@@ -197,6 +197,15 @@ export class EventsGateway
     }
   }
 
+  // 접속 중인 모든 워크스페이스 화면의 내 탭들에 이벤트 전송 (계정 설정 등)
+  emitToUserEverywhere(userId: number, event: string, data?: unknown) {
+    Object.keys(onlineMap).forEach((namespace) => {
+      this.socketsOf(namespace, userId).forEach((socket) =>
+        socket.emit(event, data),
+      );
+    });
+  }
+
   // 워크스페이스 목록이 바뀐 사용자에게 (접속 중인 모든 워크스페이스 화면에) 알린다
   notifyWorkspacesChanged(userId: number) {
     Object.keys(onlineMap).forEach((namespace) => {

@@ -1,9 +1,10 @@
 import { ChatActions } from '@components/Chat';
 import ChatBox from '@components/ChatBox';
 import ChatList from '@components/ChatList';
-import useDraft, { draftKey } from '@hooks/useDraft';
+import useDraft from '@hooks/useDraft';
 import useJumpToMessage from '@hooks/useJumpToMessage';
 import useFirstUnread from '@hooks/useFirstUnread';
+import { markRead } from '@utils/readState';
 import { canClosePanelWithEscape, requestEdit } from '@utils/editRequest';
 
 import useSocket from '@hooks/useSocket';
@@ -60,7 +61,7 @@ const DirectMessage = () => {
     },
   });
   // 쓰다 만 메시지는 대화별로 임시 저장된다
-  const [chat, setChat] = useDraft(draftKey(workspace, `dm:${id}`));
+  const [chat, setChat] = useDraft(workspace, `dm:${id}`);
   const onChangeChat = useCallback((e: { target: { value: string } }) => setChat(e.target.value), [setChat]);
   const scrollbarRef = useRef<Scrollbars>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -189,7 +190,7 @@ const DirectMessage = () => {
           }),
         false,
       ).then(() => {
-        localStorage.setItem(`${workspace}-${id}`, new Date().getTime().toString());
+        markRead(workspace, { dm: Number(id) });
         scrollbarRef.current?.scrollToBottom();
       });
       axios
@@ -247,7 +248,7 @@ const DirectMessage = () => {
       if (data.SenderId === Number(id) && myData.id !== Number(id)) {
         clearTypingUser(data.SenderId);
         // 보고 있는 동안 받은 메시지는 읽은 것으로 기록 (나중에 안 읽음으로 다시 잡히지 않게)
-        localStorage.setItem(`${workspace}-${id}`, new Date().getTime().toString());
+        markRead(workspace, { dm: Number(id) });
         mutateChat((chatData) => prependChat(chatData, data), false).then(() => {
           if (scrollbarRef.current) {
             if (
@@ -351,11 +352,11 @@ const DirectMessage = () => {
   );
 
   useEffect(() => {
-    localStorage.setItem(`${workspace}-${id}`, new Date().getTime().toString());
+    markRead(workspace, { dm: Number(id) });
   }, [workspace, id]);
 
   const onUploaded = useCallback(() => {
-    localStorage.setItem(`${workspace}-${id}`, new Date().getTime().toString());
+    markRead(workspace, { dm: Number(id) });
     mutateChat();
   }, [workspace, id, mutateChat]);
   const { upload, uploading, progress } = useFileUpload(`/api/workspaces/${workspace}/dms/${id}/files`, onUploaded);
