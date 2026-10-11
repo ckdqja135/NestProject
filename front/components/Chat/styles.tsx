@@ -32,6 +32,18 @@ export const ChatWrapper = styled.div`
       width: 36px;
       height: 36px;
     }
+
+    /* 수신 웹훅(앱) 메시지 */
+    & .bot-avatar {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      background: var(--bg-hover);
+      font-size: 20px;
+    }
   }
 
   & .chat-text {
@@ -99,6 +111,16 @@ export const ChatWrapper = styled.div`
 
     & > span {
       font-size: 12px;
+    }
+
+    & > .bot-badge {
+      margin-right: 5px;
+      padding: 0 4px;
+      border-radius: 3px;
+      background: var(--bg-hover);
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 700;
     }
 
     & > .status {

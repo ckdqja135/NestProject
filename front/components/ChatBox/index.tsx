@@ -6,6 +6,7 @@ import {
   SendButton,
   Toolbox,
   EachMention,
+  CommandHints,
 } from '@components/ChatBox/styles';
 import { IUser } from '@typings/db';
 import autosize from 'autosize';
@@ -14,6 +15,7 @@ import React, { FC, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Mention, SuggestionDataItem } from 'react-mentions';
 import { useParams } from 'react-router';
 import useGroups from '@hooks/useGroups';
+import { SlashCommand } from '@utils/slashCommands';
 
 interface Props {
   onSubmitForm: (e: any) => void;
@@ -28,6 +30,7 @@ interface Props {
   toolbarExtra?: React.ReactNode; // 첨부 버튼 옆에 추가할 도구 (예: GIF 검색)
   allowBroadcast?: boolean; // 채널이면 @channel / @here 멘션을 제안한다
   onEditLast?: () => void; // 입력창이 비어 있을 때 ↑ : 내 마지막 메시지 수정
+  commands?: SlashCommand[]; // '/' 로 시작하면 쓸 수 있는 명령을 보여준다
 }
 
 // 채널 전체 멘션 (서버가 채널 멤버 모두 / 접속 중인 멤버에게 알린다)
@@ -48,6 +51,7 @@ const ChatBox: FC<Props> = ({
   toolbarExtra,
   allowBroadcast,
   onEditLast,
+  commands,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   // 채널에서는 사용자 그룹(@디자인팀)도 멘션할 수 있다
@@ -147,6 +151,12 @@ const ChatBox: FC<Props> = ({
     [data, groups],
   );
 
+  // '/re' 처럼 명령을 치는 중이면 맞는 명령 목록
+  const commandHints = useMemo(() => {
+    const match = /^\/(\w*)$/.exec(chat || '');
+    return match && commands ? commands.filter((c) => c.name.startsWith(match[1].toLowerCase())) : [];
+  }, [chat, commands]);
+
   const suggestions = useMemo(
     () => [
       ...(data?.map((v) => ({ id: v.id, display: v.nickname })) || []),
@@ -159,6 +169,26 @@ const ChatBox: FC<Props> = ({
   return (
     <ChatArea>
       <Form onSubmit={onSubmitForm} onPaste={onPaste}>
+        {commandHints.length > 0 && (
+          <CommandHints role="listbox" aria-label="명령어">
+            {commandHints.map((command) => (
+              <li key={command.name}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={false}
+                  onClick={() => {
+                    onChangeChat({ target: { value: `/${command.name} ` } });
+                    textareaRef.current?.focus();
+                  }}
+                >
+                  <b>/{command.name}</b>
+                  <span>{command.description}</span>
+                </button>
+              </li>
+            ))}
+          </CommandHints>
+        )}
         <MentionsTextarea
           id={inputId}
           value={chat}

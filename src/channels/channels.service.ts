@@ -720,4 +720,29 @@ export class ChannelsService {
     this.emitToChannel(url, channel.id, 'messageUpdated', updated);
     return updated;
   }
+
+  // 수신 웹훅 메시지: 사람 대신 이름(botName)으로 채널에 올린다
+  async postBotMessage(channelId: number, content: string, botName: string) {
+    const channel = await this.channelsRepository.findOne({
+      where: { id: channelId },
+      relations: ['Workspace'],
+    });
+    if (!channel?.Workspace) {
+      throw new NotFoundException('존재하지 않는 채널입니다.');
+    }
+    if (channel.archived) {
+      throw new ForbiddenException('보관된 채널에는 쓸 수 없습니다.');
+    }
+    const url = channel.Workspace.url;
+    const saved = await this.channelChatsRepository.save({
+      content,
+      UserId: null,
+      botName,
+      ChannelId: channel.id,
+    });
+    const chat = await this.findChatWithRelations(saved.id);
+    this.emitToChannel(url, channel.id, 'message', chat);
+    await this.mentionsService.handleNewChat(url, channel.WorkspaceId, chat);
+    return chat;
+  }
 }

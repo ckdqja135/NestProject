@@ -9,6 +9,8 @@ import ConversationIntro from '@components/ConversationIntro';
 import useDraft from '@hooks/useDraft';
 import useJumpToMessage from '@hooks/useJumpToMessage';
 import useFirstUnread from '@hooks/useFirstUnread';
+import useSlashCommands from '@hooks/useSlashCommands';
+import { SLASH_COMMANDS } from '@utils/slashCommands';
 import { markRead } from '@utils/readState';
 import { canClosePanelWithEscape, requestEdit } from '@utils/editRequest';
 
@@ -200,15 +202,22 @@ const Channel = () => {
     [workspace, channel, channelData, userData, chatData, mutateChat, chatsKey],
   );
 
+  // 입력창의 /명령 (/remind, /poll, /status …)
+  const runCommand = useSlashCommands({ workspace, me: userData, channel, sendMessage });
   const onSubmitForm = useCallback(
     (e) => {
       e.preventDefault();
-      if (chat?.trim()) {
-        sendMessage(chat);
-        setChat('');
+      if (!chat?.trim()) {
+        return;
       }
+      if (chat.trim().startsWith('/') && runCommand(chat)) {
+        setChat('');
+        return;
+      }
+      sendMessage(chat);
+      setChat('');
     },
-    [chat, sendMessage, setChat],
+    [chat, sendMessage, setChat, runCommand],
   );
 
   const onSelectGif = useCallback((url: string) => sendMessage(toGifContent(url)), [sendMessage]);
@@ -566,6 +575,7 @@ const Channel = () => {
             data={channelMembersData}
             allowBroadcast
             onEditLast={onEditLast}
+            commands={SLASH_COMMANDS}
             onAttachFiles={upload}
             uploading={uploading}
             uploadProgress={progress}

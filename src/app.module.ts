@@ -4,6 +4,7 @@ import { ScheduledModule } from './scheduled/scheduled.module';
 import { GroupsModule } from './groups/groups.module';
 import { MailModule } from './mail/mail.module';
 import { SyncModule } from './sync/sync.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { rateLimitPerMinute } from './security';
@@ -36,6 +37,7 @@ import { UserGroups } from './entities/UserGroups';
 import { UserGroupMembers } from './entities/UserGroupMembers';
 import { ReadMarkers } from './entities/ReadMarkers';
 import { Drafts } from './entities/Drafts';
+import { Webhooks } from './entities/Webhooks';
 import { Mentions } from './entities/Mentions';
 import { Reactions } from './entities/Reactions';
 import { Users } from './entities/Users';
@@ -74,6 +76,7 @@ import { Workspaces } from './entities/Workspaces';
         UserGroupMembers,
         ReadMarkers,
         Drafts,
+        Webhooks,
         Users,
         WorkspaceMembers,
         Workspaces,
@@ -96,6 +99,7 @@ import { Workspaces } from './entities/Workspaces';
     GroupsModule,
     MailModule,
     SyncModule,
+    WebhooksModule,
     MentionsModule,
     FilesModule,
   ],

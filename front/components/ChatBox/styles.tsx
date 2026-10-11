@@ -9,6 +9,7 @@ export const ChatArea = styled.div`
 `;
 
 export const Form = styled.form`
+  position: relative;
   color: var(--text);
   font-size: 15px;
   width: 100%;
@@ -112,5 +113,49 @@ export const AttachButton = styled.button`
   &:disabled {
     opacity: 0.6;
     cursor: default;
+  }
+`;
+
+// '/' 로 시작하는 명령 목록 (입력창 위)
+export const CommandHints = styled.ul`
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  margin: 0 0 4px;
+  padding: 4px 0;
+  list-style: none;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+
+  & button {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    padding: 6px 12px;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      background: #1264a3;
+      color: white;
+
+      & span {
+        color: rgba(255, 255, 255, 0.85);
+      }
+    }
+
+    & span {
+      color: var(--text-muted);
+    }
   }
 `;

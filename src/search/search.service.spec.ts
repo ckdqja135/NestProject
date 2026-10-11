@@ -10,6 +10,7 @@ const createQueryBuilderMock = (result: unknown[]) => {
   const qb: Record<string, jest.Mock> = {};
   [
     'innerJoinAndSelect',
+    'leftJoinAndSelect',
     'innerJoin',
     'where',
     'andWhere',

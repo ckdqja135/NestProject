@@ -38,7 +38,8 @@ export interface IChat {
   // 채널의 채팅
   id: number;
   UserId: number;
-  User: IUser; // 보낸 사람
+  User: IUser | null; // 보낸 사람 (수신 웹훅 메시지면 없음)
+  botName?: string | null; // 수신 웹훅 메시지의 보낸 사람 이름
   content: string;
   createdAt: Date;
   editedAt?: Date | null; // 내용을 수정한 시각

@@ -37,6 +37,10 @@ export class ChannelChats {
   @Column('int', { name: 'UserId', nullable: true })
   UserId: number | null;
 
+  // 수신 웹훅으로 들어온 메시지면 보낸 사람 이름 (UserId 는 비어 있다)
+  @Column('varchar', { name: 'botName', length: 40, nullable: true })
+  botName: string | null;
+
   @Column('int', { name: 'ChannelId', nullable: true })
   ChannelId: number | null;
 

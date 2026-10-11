@@ -78,7 +78,7 @@ export class SearchService {
     // 내가 참여한 채널의 메시지만 검색
     const chatQuery = this.channelChatsRepository
       .createQueryBuilder('chats')
-      .innerJoinAndSelect('chats.User', 'user')
+      .leftJoinAndSelect('chats.User', 'user') // 수신 웹훅 메시지는 보낸 사람(User)이 없다
       .innerJoinAndSelect('chats.Channel', 'channel')
       .innerJoin(
         'channel.ChannelMembers',

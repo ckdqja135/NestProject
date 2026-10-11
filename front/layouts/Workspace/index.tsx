@@ -381,7 +381,7 @@ const Workspace = () => {
   useEffect(() => {
     const onMention = ({ chat }: { chat: IChat }) => {
       const channelPath = `/workspace/${workspace}/channel/${chat.Channel.name}`;
-      const title = `${chat.User.nickname}님이 #${chat.Channel.name}에서 멘션했습니다`;
+      const title = `${chat.User?.nickname || chat.botName}님이 #${chat.Channel.name}에서 멘션했습니다`;
       // 알림을 누르면 그 메시지로 이동 (스레드 답글이면 스레드를 열어서)
       const query = chat.ParentId ? `message=${chat.ParentId}&reply=${chat.id}` : `message=${chat.id}`;
       const go = () => history.push(`${channelPath}?${query}`);

@@ -221,7 +221,7 @@ const SearchModal: FC<Props> = ({ workspace, myId }) => {
                 {result.chats.map((chat) => (
                   <ResultItem key={`c${chat.id}`} type="button" onClick={() => onClickChat(chat)}>
                     <div className="meta">
-                      <b>#{chat.Channel.name}</b> · {chat.User.nickname} ·{' '}
+                      <b>#{chat.Channel.name}</b> · {chat.User?.nickname || chat.botName} ·{' '}
                       {dayjs(chat.createdAt).format('YYYY-MM-DD h:mm A')}
                       {chat.ParentId ? ' · 스레드 답글' : ''}
                     </div>

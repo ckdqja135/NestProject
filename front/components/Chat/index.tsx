@@ -57,7 +57,15 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
   const { ids: savedIds } = useSaved(workspace, false);
   const isSaved = isDM ? savedIds.dms.has(data.id) : savedIds.chats.has(data.id);
   const toggleSaved = useToggleSaved(workspace);
-  const sender: IUser = 'Sender' in data ? data.Sender : data.User;
+  // 수신 웹훅 메시지는 사람 대신 이름(botName)으로 보낸다
+  const botName = 'Sender' in data ? null : data.User ? null : data.botName || '앱';
+  const sender: IUser = useMemo(
+    () =>
+      'Sender' in data
+        ? data.Sender
+        : data.User || ({ id: 0, nickname: botName || '앱', email: `bot:${botName}`, Workspaces: [] } as IUser),
+    [data, botName],
+  );
   // 메시지에 담긴 보낸 사람 정보는 보낼 당시 것이라, 닉네임/프로필 그림은 최신 멤버 목록 값을 쓴다
   // (멤버 목록은 워크스페이스 레이아웃이 불러오고 profileUpdated 때 갱신하므로 여기서는 캐시만 읽는다)
   const { data: members } = useSWR<IUser[]>(workspace ? `/api/workspaces/${workspace}/members` : null, fetcher, {
@@ -249,7 +257,13 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
       }}
     >
       <div className="chat-img">
-        <img src={avatarUrl(user, 36)} alt={user.nickname} />
+        {botName ? (
+          <span className="bot-avatar" aria-hidden="true">
+            🤖
+          </span>
+        ) : (
+          <img src={avatarUrl(user, 36)} alt={user.nickname} />
+        )}
       </div>
       <div className="chat-text">
         {(data.pinned || isSaved) && (
@@ -261,6 +275,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
         )}
         <div className="chat-user">
           <b>{user.nickname}</b>
+          {botName && <span className="bot-badge">앱</span>}
           {user.statusEmoji && (
             <span className="status" title={user.statusText || undefined}>
               {user.statusEmoji}

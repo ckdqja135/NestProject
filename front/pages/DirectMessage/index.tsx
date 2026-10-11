@@ -4,6 +4,8 @@ import ChatList from '@components/ChatList';
 import useDraft from '@hooks/useDraft';
 import useJumpToMessage from '@hooks/useJumpToMessage';
 import useFirstUnread from '@hooks/useFirstUnread';
+import useSlashCommands from '@hooks/useSlashCommands';
+import { SLASH_COMMANDS } from '@utils/slashCommands';
 import { markRead } from '@utils/readState';
 import { canClosePanelWithEscape, requestEdit } from '@utils/editRequest';
 
@@ -207,15 +209,22 @@ const DirectMessage = () => {
     [workspace, id, myData, userData, chatData, mutateChat, chatsKey],
   );
 
+  // 입력창의 /명령 (/remind, /poll, /status …)
+  const runCommand = useSlashCommands({ workspace, me: myData, sendMessage });
   const onSubmitForm = useCallback(
     (e) => {
       e.preventDefault();
-      if (chat?.trim()) {
-        sendMessage(chat);
-        setChat('');
+      if (!chat?.trim()) {
+        return;
       }
+      if (chat.trim().startsWith('/') && runCommand(chat)) {
+        setChat('');
+        return;
+      }
+      sendMessage(chat);
+      setChat('');
     },
-    [chat, sendMessage, setChat],
+    [chat, sendMessage, setChat, runCommand],
   );
 
   const onSelectGif = useCallback((url: string) => sendMessage(toGifContent(url)), [sendMessage]);
@@ -460,6 +469,7 @@ const DirectMessage = () => {
           placeholder={isSelf ? '나에게 메모 남기기' : `${userData.nickname}님에게 메시지 보내기`}
           data={mentionTargets}
           onEditLast={onEditLast}
+          commands={SLASH_COMMANDS.filter((c) => !c.channelOnly)}
           onAttachFiles={upload}
           uploading={uploading}
           uploadProgress={progress}

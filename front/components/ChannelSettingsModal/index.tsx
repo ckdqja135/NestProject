@@ -7,6 +7,7 @@ import axios from 'axios';
 import React, { FC, useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { DangerZone } from './styles';
+import WebhooksSection from '@components/WebhooksSection';
 
 interface Props {
   show: boolean;
@@ -153,6 +154,9 @@ const ChannelSettingsModal: FC<Props> = ({
           </form>
         </Section>
       )}
+      <Section>
+        <WebhooksSection workspace={workspace} channel={channel.name} disabled={!!channel.archived} />
+      </Section>
       {manageable && (
         <Section>
           <DangerZone>
