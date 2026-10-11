@@ -57,3 +57,10 @@ export const NewDivider = styled.div`
     padding: 0 8px;
   }
 `;
+
+// DM 읽음 표시 (상대가 읽은 내 마지막 메시지 아래)
+export const ReadReceipt = styled.div`
+  margin: -4px 20px 4px 64px;
+  font-size: 11px;
+  color: var(--text-faint);
+`;

@@ -380,4 +380,15 @@ export class ChannelsController {
     await this.channelsService.deleteChannel(url, name, user.id);
     return 'ok';
   }
+
+  @ApiOperation({ summary: '메시지 수정 내역 (처음 내용부터 지금까지)' })
+  @Get(':name/chats/:chatId/history')
+  getEditHistory(
+    @Param('url') url: string,
+    @Param('name') name: string,
+    @Param('chatId', ParseIntPipe) chatId: number,
+    @User() user: Users,
+  ) {
+    return this.channelsService.getEditHistory(url, name, chatId, user.id);
+  }
 }

@@ -25,6 +25,7 @@ import useSaved, { useToggleSaved } from '@hooks/useSaved';
 import { toast } from 'react-toastify';
 import { subscribeEditRequest } from '@utils/editRequest';
 import PollView from '@components/PollView';
+import EditHistoryModal from '@components/EditHistoryModal';
 import { parsePollContent, POLL_EMOJIS } from '@utils/poll';
 import { formatWhen, timePresets } from '@utils/timePresets';
 import getErrorMessage from '@utils/getErrorMessage';
@@ -83,6 +84,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [showReminder, setShowReminder] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const gifUrl = useMemo(() => parseGifContent(data.content), [data.content]);
   const poll = useMemo(() => parsePollContent(data.content), [data.content]);
@@ -203,6 +205,16 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
   const canSave = canAct && !!workspace;
   // 메시지 링크는 채널 메시지만 (DM 주소는 보는 사람마다 달라서 공유할 수 없다)
   const linkChannel = channelChat?.Channel?.name || channel;
+  // 수정 내역 주소 (채널 메시지면 채널 이름, DM 이면 대화 상대 id 로)
+  const historyUrl = !workspace
+    ? ''
+    : isDM
+    ? `/api/workspaces/${workspace}/dms/${
+        (data as IDM).SenderId === myId ? (data as IDM).ReceiverId : (data as IDM).SenderId
+      }/chats/${data.id}/history`
+    : linkChannel
+    ? `/api/workspaces/${workspace}/channels/${encodeURIComponent(linkChannel)}/chats/${data.id}/history`
+    : '';
   const canCopyLink = canAct && !!channelChat && !!linkChannel;
 
   const onCopyLink = () => {
@@ -247,7 +259,17 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
             </span>
           )}
           <span>{dayjs(data.createdAt).format('h:mm A')}</span>
-          {data.editedAt && <span className="edited">(수정됨)</span>}
+          {data.editedAt && (
+            <button
+              type="button"
+              className="edited"
+              title="수정 내역 보기"
+              onClick={() => setShowHistory(true)}
+              disabled={!historyUrl}
+            >
+              (수정됨)
+            </button>
+          )}
         </div>
         {editing ? (
           <EditBox data-editing="true">
@@ -406,6 +428,14 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
             </EmojiPicker>
           )}
         </ActionBar>
+      )}
+      {showHistory && (
+        <EditHistoryModal
+          show={showHistory}
+          historyUrl={historyUrl}
+          workspace={workspace}
+          onCloseModal={() => setShowHistory(false)}
+        />
       )}
     </ChatWrapper>
   );

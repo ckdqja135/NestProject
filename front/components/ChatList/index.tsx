@@ -1,5 +1,5 @@
 import Chat, { ChatActions } from '@components/Chat';
-import { ChatZone, NewDivider, Section, StickyHeader } from '@components/ChatList/styles';
+import { ChatZone, NewDivider, ReadReceipt, Section, StickyHeader } from '@components/ChatList/styles';
 import { IChat, IDM } from '@typings/db';
 import React, { FC, RefObject, useCallback } from 'react';
 import { Scrollbars } from 'react-custom-scrollbars-2';
@@ -14,6 +14,7 @@ interface Props {
   actions?: ChatActions;
   intro?: React.ReactNode; // 첫 메시지까지 모두 불러왔을 때 맨 위에 보여줄 대화 시작 안내
   firstUnreadId?: number | null; // 이 메시지 위에 '새 메시지' 구분선을 그린다
+  readReceiptId?: number | null; // DM: 상대가 여기까지 읽었다는 표시를 이 메시지 아래에 그린다
 }
 const ChatList: FC<Props> = ({
   scrollbarRef,
@@ -25,6 +26,7 @@ const ChatList: FC<Props> = ({
   actions,
   intro,
   firstUnreadId,
+  readReceiptId,
 }) => {
   const onScroll = useCallback(
     (values) => {
@@ -55,6 +57,7 @@ const ChatList: FC<Props> = ({
                     </NewDivider>
                   )}
                   <Chat data={chat} myId={myId} actions={actions} />
+                  {chat.id === readReceiptId && <ReadReceipt>✓ 읽음</ReadReceipt>}
                 </React.Fragment>
               ))}
             </Section>

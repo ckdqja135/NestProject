@@ -108,7 +108,20 @@ export const ChatWrapper = styled.div`
 
     & > .edited {
       margin-left: 4px;
+      padding: 0;
+      border: none;
+      background: transparent;
       color: var(--text-faint);
+      font-size: 12px;
+      cursor: pointer;
+
+      &:hover:not(:disabled) {
+        text-decoration: underline;
+      }
+
+      &:disabled {
+        cursor: default;
+      }
     }
   }
 

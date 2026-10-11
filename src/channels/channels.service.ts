@@ -10,6 +10,8 @@ import { Channels } from '../entities/Channels';
 import { ChannelMembers } from '../entities/ChannelMembers';
 import { ChannelChats } from '../entities/ChannelChats';
 import { Reactions } from '../entities/Reactions';
+import { MessageEdits } from '../entities/MessageEdits';
+import { toVersions } from '../common/edit-history';
 import { Users } from '../entities/Users';
 import { WorkspaceMembers } from '../entities/WorkspaceMembers';
 import { WorkspacesService } from '../workspaces/workspaces.service';
@@ -35,6 +37,8 @@ export class ChannelsService {
     private workspaceMembersRepository: Repository<WorkspaceMembers>,
     @InjectRepository(Reactions)
     private reactionsRepository: Repository<Reactions>,
+    @InjectRepository(MessageEdits)
+    private messageEditsRepository: Repository<MessageEdits>,
     private workspacesService: WorkspacesService,
     private eventsGateway: EventsGateway,
     private mentionsService: MentionsService,
@@ -383,6 +387,13 @@ export class ChannelsService {
     if (chat.UserId !== myId) {
       throw new ForbiddenException('내가 보낸 메시지만 수정할 수 있습니다.');
     }
+    // 내용이 바뀔 때만 바뀌기 전 내용을 수정 내역으로 남긴다
+    if (chat.content !== content) {
+      await this.messageEditsRepository.save({
+        ChatId: chat.id,
+        content: chat.content,
+      });
+    }
     await this.channelChatsRepository.update(chat.id, {
       content,
       editedAt: new Date(),
@@ -656,5 +667,21 @@ export class ChannelsService {
         return parent && lastReply ? { ...parent, lastReply } : null;
       })
       .filter(Boolean);
+  }
+
+  // 수정 내역 (채널 멤버 누구나 볼 수 있다)
+  async getEditHistory(
+    url: string,
+    name: string,
+    chatId: number,
+    myId: number,
+  ) {
+    const channel = await this.findChannel(url, name, myId);
+    const chat = await this.findChatInChannel(channel, chatId);
+    const edits = await this.messageEditsRepository.find({
+      where: { ChatId: chat.id },
+      order: { id: 'ASC' },
+    });
+    return toVersions(chat, edits);
   }
 }

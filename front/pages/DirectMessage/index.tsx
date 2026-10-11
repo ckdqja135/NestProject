@@ -83,6 +83,52 @@ const DirectMessage = () => {
     }
   }, [chatData, myData?.id]);
 
+  // DM 읽음 표시: 상대 메시지를 어디까지 읽었는지 서버에 알리고, 상대가 내 메시지를 어디까지 읽었는지 받는다
+  const readKey = `/api/workspaces/${workspace}/dms/${id}/read`;
+  const isSelfDM = !!myData && myData.id === Number(id);
+  const { data: partnerRead, mutate: mutatePartnerRead } = useSWR<{ lastReadId: number }>(
+    myData && !isSelfDM ? readKey : null,
+    fetcher,
+  );
+  useEffect(() => {
+    const onRead = (data: { readerId: number; lastReadId: number }) => {
+      if (data.readerId === Number(id)) {
+        mutatePartnerRead({ lastReadId: data.lastReadId }, false);
+      }
+    };
+    socket?.on('dmRead', onRead);
+    return () => {
+      socket?.off('dmRead', onRead);
+    };
+  }, [socket, id, mutatePartnerRead]);
+  const lastReportedRead = useRef(0);
+  useEffect(() => {
+    lastReportedRead.current = 0;
+  }, [workspace, id]);
+  useEffect(() => {
+    if (isSelfDM) {
+      return undefined;
+    }
+    // 화면을 보고 있을 때만 읽은 것으로 친다
+    const report = () => {
+      const newest = chatData?.flat().find((dm) => dm.SenderId === Number(id) && !isTempId(dm.id));
+      if (document.visibilityState !== 'visible' || !newest || newest.id <= lastReportedRead.current) {
+        return;
+      }
+      lastReportedRead.current = newest.id;
+      axios.post(readKey, { lastId: newest.id }).catch(() => undefined);
+    };
+    report();
+    document.addEventListener('visibilitychange', report);
+    return () => document.removeEventListener('visibilitychange', report);
+  }, [chatData, id, isSelfDM, readKey]);
+  // 상대가 읽은 내 메시지 중 가장 최근 것 아래에 '읽음'
+  const readReceiptId = useMemo(() => {
+    const lastReadId = partnerRead?.lastReadId || 0;
+    const mine = chatData?.flat().find((dm) => dm.SenderId === myData?.id && !isTempId(dm.id) && dm.id <= lastReadId);
+    return mine ? mine.id : null;
+  }, [partnerRead, chatData, myData?.id]);
+
   // Esc : 고정 메시지 패널 닫기
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -385,6 +431,7 @@ const DirectMessage = () => {
           myId={myData.id}
           actions={actions}
           firstUnreadId={firstUnreadId}
+          readReceiptId={readReceiptId}
           intro={
             <ConversationIntro
               image={avatarUrl(userData, 144)}

@@ -7,6 +7,7 @@ import { Channels } from '../entities/Channels';
 import { ChannelMembers } from '../entities/ChannelMembers';
 import { ChannelChats } from '../entities/ChannelChats';
 import { Reactions } from '../entities/Reactions';
+import { MessageEdits } from '../entities/MessageEdits';
 import { Users } from '../entities/Users';
 import { WorkspaceMembers } from '../entities/WorkspaceMembers';
 import { WorkspacesModule } from '../workspaces/workspaces.module';
@@ -19,6 +20,7 @@ import { MentionsModule } from '../mentions/mentions.module';
       ChannelMembers,
       ChannelChats,
       Reactions,
+      MessageEdits,
       Users,
       WorkspaceMembers,
     ]),

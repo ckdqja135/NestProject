@@ -26,6 +26,7 @@ import { LoggedInGuard } from '../auth/logged-in.guard';
 import { User } from '../common/decorators/user.decorator';
 import { PostChatDto } from '../common/dto/post-chat.dto';
 import { ReactionDto } from '../common/dto/reaction.dto';
+import { MarkReadDto } from './dto/mark-read.dto';
 import { MAX_FILES, normalizeIds, relayUploadOptions } from '../common/upload';
 import { Users } from '../entities/Users';
 import { DmsService } from './dms.service';
@@ -186,5 +187,39 @@ export class DmsController {
     @User() user: Users,
   ) {
     return this.dmsService.getPinnedDMs(url, id, user.id);
+  }
+
+  @ApiOperation({ summary: 'DM 수정 내역 (처음 내용부터 지금까지)' })
+  @Get(':id/chats/:dmId/history')
+  getEditHistory(
+    @Param('url') url: string,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('dmId', ParseIntPipe) dmId: number,
+    @User() user: Users,
+  ) {
+    return this.dmsService.getEditHistory(url, id, dmId, user.id);
+  }
+
+  @ApiOperation({
+    summary: '상대가 보낸 DM 을 어디까지 읽었는지 기록 (읽음 표시)',
+  })
+  @Post(':id/read')
+  markRead(
+    @Param('url') url: string,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: MarkReadDto,
+    @User() user: Users,
+  ) {
+    return this.dmsService.markRead(url, id, body.lastId, user.id);
+  }
+
+  @ApiOperation({ summary: '상대가 내 DM 을 어디까지 읽었는지' })
+  @Get(':id/read')
+  getPartnerRead(
+    @Param('url') url: string,
+    @Param('id', ParseIntPipe) id: number,
+    @User() user: Users,
+  ) {
+    return this.dmsService.getPartnerRead(url, id, user.id);
   }
 }

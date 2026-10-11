@@ -3,6 +3,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DMs } from '../entities/DMs';
 import { DMReactions } from '../entities/DMReactions';
+import { MessageEdits } from '../entities/MessageEdits';
+import { DMReads } from '../entities/DMReads';
 import { EventsGateway } from '../events/events.gateway';
 import { onlineMap } from '../events/onlineMap';
 import { WorkspacesService } from '../workspaces/workspaces.service';
@@ -22,12 +24,17 @@ describe('DmsService', () => {
     save: jest.fn(),
     delete: jest.fn(),
   };
+  const messageEditsRepository = { save: jest.fn(), find: jest.fn() };
+  const dmReadsRepository = { findOne: jest.fn(), save: jest.fn() };
   const workspacesService = {
     findWorkspaceByUrl: jest.fn(),
     assertMember: jest.fn(),
   };
   const emit = jest.fn();
-  const eventsGateway = { server: { to: jest.fn(() => ({ emit })) } };
+  const eventsGateway = {
+    server: { to: jest.fn(() => ({ emit })) },
+    emitToUser: jest.fn(),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -39,6 +46,11 @@ describe('DmsService', () => {
           provide: getRepositoryToken(DMReactions),
           useValue: dmReactionsRepository,
         },
+        {
+          provide: getRepositoryToken(MessageEdits),
+          useValue: messageEditsRepository,
+        },
+        { provide: getRepositoryToken(DMReads), useValue: dmReadsRepository },
         { provide: WorkspacesService, useValue: workspacesService },
         { provide: EventsGateway, useValue: eventsGateway },
       ],
@@ -84,6 +96,40 @@ describe('DmsService', () => {
     await service.createWorkspaceDMChats('shlack', '안녕', 2, 1);
 
     expect(eventsGateway.server.to).not.toHaveBeenCalled();
+  });
+
+  describe('DM 읽음 표시', () => {
+    it('상대가 보낸 마지막 메시지까지만 읽음으로 기록하고 상대에게 알린다', async () => {
+      dmsRepository.findOne.mockResolvedValue({ id: 30 });
+      dmReadsRepository.findOne.mockResolvedValue(null);
+      await expect(service.markRead('shlack', 2, 999, 1)).resolves.toEqual({
+        lastReadId: 30,
+      });
+      expect(dmReadsRepository.save).toHaveBeenCalledWith({
+        WorkspaceId: 1,
+        UserId: 1,
+        PartnerId: 2,
+        lastReadId: 30,
+      });
+      expect(eventsGateway.emitToUser).toHaveBeenCalledWith(
+        'shlack',
+        2,
+        'dmRead',
+        {
+          readerId: 1,
+          lastReadId: 30,
+        },
+      );
+    });
+
+    it('이미 더 뒤까지 읽었으면 바꾸지 않는다', async () => {
+      dmsRepository.findOne.mockResolvedValue({ id: 30 });
+      dmReadsRepository.findOne.mockResolvedValue({ lastReadId: 25 });
+      await expect(service.markRead('shlack', 2, 20, 1)).resolves.toEqual({
+        lastReadId: 25,
+      });
+      expect(dmReadsRepository.save).not.toHaveBeenCalled();
+    });
   });
 
   describe('DM 리액션/고정', () => {

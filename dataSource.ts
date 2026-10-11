@@ -9,6 +9,8 @@ import { DMReactions } from './src/entities/DMReactions';
 import { SavedItems } from './src/entities/SavedItems';
 import { ScheduledMessages } from './src/entities/ScheduledMessages';
 import { Reminders } from './src/entities/Reminders';
+import { MessageEdits } from './src/entities/MessageEdits';
+import { DMReads } from './src/entities/DMReads';
 import { Mentions } from './src/entities/Mentions';
 import { Reactions } from './src/entities/Reactions';
 import { Users } from './src/entities/Users';
@@ -35,6 +37,8 @@ const options: DataSourceOptions & SeederOptions = {
     SavedItems,
     ScheduledMessages,
     Reminders,
+    MessageEdits,
+    DMReads,
     Users,
     WorkspaceMembers,
     Workspaces,

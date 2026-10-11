@@ -7,6 +7,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { MoreThan, Repository } from 'typeorm';
 import { DMs } from '../entities/DMs';
 import { DMReactions } from '../entities/DMReactions';
+import { MessageEdits } from '../entities/MessageEdits';
+import { DMReads } from '../entities/DMReads';
+import { toVersions } from '../common/edit-history';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { EventsGateway } from '../events/events.gateway';
 import { onlineMap } from '../events/onlineMap';
@@ -22,6 +25,10 @@ export class DmsService {
     @InjectRepository(DMs) private dmsRepository: Repository<DMs>,
     @InjectRepository(DMReactions)
     private dmReactionsRepository: Repository<DMReactions>,
+    @InjectRepository(MessageEdits)
+    private messageEditsRepository: Repository<MessageEdits>,
+    @InjectRepository(DMReads)
+    private dmReadsRepository: Repository<DMReads>,
     private workspacesService: WorkspacesService,
     private eventsGateway: EventsGateway,
   ) {}
@@ -198,6 +205,13 @@ export class DmsService {
     myId: number,
   ) {
     const dm = await this.findMyDM(url, id, dmId, myId);
+    // 내용이 바뀔 때만 바뀌기 전 내용을 수정 내역으로 남긴다
+    if (dm.content !== content) {
+      await this.messageEditsRepository.save({
+        DMId: dm.id,
+        content: dm.content,
+      });
+    }
     await this.dmsRepository.update(dm.id, { content, editedAt: new Date() });
     const updated = await this.dmsRepository.findOne({
       where: { id: dm.id },
@@ -285,5 +299,50 @@ export class DmsService {
       .andWhere('dms.pinned = :pinned', { pinned: true })
       .orderBy('dms.createdAt', 'DESC')
       .getMany();
+  }
+
+  // 수정 내역 (대화한 두 사람만)
+  async getEditHistory(url: string, id: number, dmId: number, myId: number) {
+    const dm = await this.findConversationDM(url, id, dmId, myId);
+    const edits = await this.messageEditsRepository.find({
+      where: { DMId: dm.id },
+      order: { id: 'ASC' },
+    });
+    return toVersions(dm, edits);
+  }
+
+  // 상대(id)가 보낸 메시지를 lastId 까지 읽었다고 기록하고 상대에게 알린다 (뒤로 가지 않는다)
+  async markRead(url: string, id: number, lastId: number, myId: number) {
+    const workspace = await this.findWorkspace(url, id, myId);
+    // 상대가 실제로 보낸 마지막 메시지보다 앞서 읽을 수는 없다
+    const latest = await this.dmsRepository.findOne({
+      where: { WorkspaceId: workspace.id, SenderId: id, ReceiverId: myId },
+      order: { id: 'DESC' },
+      select: ['id'],
+    });
+    lastId = Math.min(lastId, latest?.id || 0);
+    if (!lastId) {
+      return { lastReadId: 0 };
+    }
+    const key = { WorkspaceId: workspace.id, UserId: myId, PartnerId: id };
+    const existing = await this.dmReadsRepository.findOne({ where: key });
+    if (existing && existing.lastReadId >= lastId) {
+      return { lastReadId: existing.lastReadId };
+    }
+    await this.dmReadsRepository.save({ ...key, lastReadId: lastId });
+    this.eventsGateway.emitToUser(url, id, 'dmRead', {
+      readerId: myId,
+      lastReadId: lastId,
+    });
+    return { lastReadId: lastId };
+  }
+
+  // 상대가 내 메시지를 어디까지 읽었는지
+  async getPartnerRead(url: string, id: number, myId: number) {
+    const workspace = await this.findWorkspace(url, id, myId);
+    const read = await this.dmReadsRepository.findOne({
+      where: { WorkspaceId: workspace.id, UserId: id, PartnerId: myId },
+    });
+    return { lastReadId: read?.lastReadId || 0 };
   }
 }

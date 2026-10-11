@@ -27,6 +27,8 @@ import { DMReactions } from './entities/DMReactions';
 import { SavedItems } from './entities/SavedItems';
 import { ScheduledMessages } from './entities/ScheduledMessages';
 import { Reminders } from './entities/Reminders';
+import { MessageEdits } from './entities/MessageEdits';
+import { DMReads } from './entities/DMReads';
 import { Mentions } from './entities/Mentions';
 import { Reactions } from './entities/Reactions';
 import { Users } from './entities/Users';
@@ -59,6 +61,8 @@ import { Workspaces } from './entities/Workspaces';
         SavedItems,
         ScheduledMessages,
         Reminders,
+        MessageEdits,
+        DMReads,
         Users,
         WorkspaceMembers,
         Workspaces,

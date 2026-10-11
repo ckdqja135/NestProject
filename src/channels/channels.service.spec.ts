@@ -10,6 +10,7 @@ import { ChannelChats } from '../entities/ChannelChats';
 import { ChannelMembers } from '../entities/ChannelMembers';
 import { Channels } from '../entities/Channels';
 import { Reactions } from '../entities/Reactions';
+import { MessageEdits } from '../entities/MessageEdits';
 import { Users } from '../entities/Users';
 import { WorkspaceMembers } from '../entities/WorkspaceMembers';
 import { EventsGateway } from '../events/events.gateway';
@@ -63,6 +64,7 @@ describe('ChannelsService', () => {
     createQueryBuilder: jest.fn(),
     query: jest.fn(),
   };
+  const messageEditsRepository = { save: jest.fn(), find: jest.fn() };
   const reactionsRepository = {
     findOne: jest.fn(),
     find: jest.fn(),
@@ -102,6 +104,10 @@ describe('ChannelsService', () => {
         {
           provide: getRepositoryToken(Reactions),
           useValue: reactionsRepository,
+        },
+        {
+          provide: getRepositoryToken(MessageEdits),
+          useValue: messageEditsRepository,
         },
         { provide: getRepositoryToken(Users), useValue: {} },
         { provide: getRepositoryToken(WorkspaceMembers), useValue: {} },
@@ -308,6 +314,59 @@ describe('ChannelsService', () => {
         ChannelId: 4,
         UserId: 1,
       });
+    });
+  });
+
+  describe('수정 내역', () => {
+    it('내용이 바뀌면 바뀌기 전 내용을 남긴다', async () => {
+      channelsRepository.findOne.mockResolvedValue({ id: 3, name: '일반' });
+      channelChatsRepository.findOne.mockResolvedValue({
+        id: 9,
+        ChannelId: 3,
+        UserId: 1,
+        content: '처음',
+      });
+      qb.getOne.mockResolvedValue({ id: 9 });
+      await service.editChat('shlack', '일반', 9, '고친 내용', 1);
+      expect(messageEditsRepository.save).toHaveBeenCalledWith({
+        ChatId: 9,
+        content: '처음',
+      });
+    });
+
+    it('같은 내용으로 저장하면 내역을 남기지 않는다', async () => {
+      channelChatsRepository.findOne.mockResolvedValue({
+        id: 9,
+        ChannelId: 3,
+        UserId: 1,
+        content: '그대로',
+      });
+      qb.getOne.mockResolvedValue({ id: 9 });
+      await service.editChat('shlack', '일반', 9, '그대로', 1);
+      expect(messageEditsRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('처음 내용부터 지금 내용까지 시간 순서로 돌려준다', async () => {
+      const created = new Date('2026-10-01T00:00:00Z');
+      const edited1 = new Date('2026-10-02T00:00:00Z');
+      const edited2 = new Date('2026-10-03T00:00:00Z');
+      channelChatsRepository.findOne.mockResolvedValue({
+        id: 9,
+        ChannelId: 3,
+        content: 'v2',
+        createdAt: created,
+      });
+      messageEditsRepository.find.mockResolvedValue([
+        { content: 'v0', createdAt: edited1 },
+        { content: 'v1', createdAt: edited2 },
+      ]);
+      await expect(
+        service.getEditHistory('shlack', '일반', 9, 1),
+      ).resolves.toEqual([
+        { content: 'v0', at: created },
+        { content: 'v1', at: edited1 },
+        { content: 'v2', at: edited2 },
+      ]);
     });
   });
 
