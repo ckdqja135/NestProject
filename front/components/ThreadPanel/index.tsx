@@ -42,13 +42,15 @@ const ThreadPanel: FC<Props> = ({ workspace, channel, parent, me, members, socke
     }, 50);
   }, []);
 
+  // 답글이 늘거나 줄 때만 (리액션 변경 등에는 스크롤하지 않는다)
+  const replyCount = replies?.length;
   useEffect(() => {
-    if (replies) {
+    if (replyCount !== undefined) {
       scrollToBottom();
       // 스레드를 보고 있으면 지금까지의 답글은 읽은 것으로 (스레드 모아 보기의 '새 답글' 표시)
       markThreadRead(parent.id);
     }
-  }, [replies?.length, scrollToBottom, parent.id]);
+  }, [replyCount, scrollToBottom, parent.id]);
 
   useEffect(() => {
     const onMessage = (data: IChat) => {

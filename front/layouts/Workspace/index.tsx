@@ -135,7 +135,7 @@ const Workspace = () => {
         console.dir(error);
         toast.error(getErrorMessage(error), { position: 'bottom-center' });
       });
-  }, []);
+  }, [revalidateUser]);
 
   const onClickCreateWorkspace = useCallback(() => {
     setShowCreateWorkspaceModal(true);
