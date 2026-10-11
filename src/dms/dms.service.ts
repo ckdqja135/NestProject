@@ -1,15 +1,17 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { MoreThan, Repository } from 'typeorm';
+import { In, MoreThan, Repository } from 'typeorm';
 import { DMs } from '../entities/DMs';
 import { DMReactions } from '../entities/DMReactions';
 import { MessageEdits } from '../entities/MessageEdits';
 import { DMReads } from '../entities/DMReads';
 import { toVersions } from '../common/edit-history';
+import { checkPollVote, parsePoll, toPollContent } from '../common/poll';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { EventsGateway } from '../events/events.gateway';
 import { onlineMap } from '../events/onlineMap';
@@ -240,6 +242,22 @@ export class DmsService {
     myId: number,
   ) {
     const dm = await this.findConversationDM(url, id, dmId, myId);
+    // 투표 메시지: 마감됐으면 막고, 하나만 고르는 투표면 내 다른 선택을 지운다
+    const mine = await this.dmReactionsRepository.find({
+      where: { DMId: dm.id, UserId: myId },
+    });
+    const replaced = checkPollVote(
+      dm.content,
+      emoji,
+      mine.map((r) => r.emoji),
+    );
+    if (replaced.length) {
+      await this.dmReactionsRepository.delete({
+        DMId: dm.id,
+        UserId: myId,
+        emoji: In(replaced),
+      });
+    }
     const existing = await this.dmReactionsRepository.findOne({
       where: { DMId: dm.id, UserId: myId, emoji },
     });
@@ -344,5 +362,23 @@ export class DmsService {
       where: { WorkspaceId: workspace.id, UserId: id, PartnerId: myId },
     });
     return { lastReadId: read?.lastReadId || 0 };
+  }
+
+  // 투표 마감 (투표를 올린 사람만). 내용 수정이 아니므로 수정 내역·(수정됨)을 남기지 않는다
+  async closePoll(url: string, id: number, dmId: number, myId: number) {
+    const dm = await this.findMyDM(url, id, dmId, myId);
+    const poll = parsePoll(dm.content);
+    if (!poll) {
+      throw new BadRequestException('투표 메시지가 아닙니다.');
+    }
+    await this.dmsRepository.update(dm.id, {
+      content: toPollContent({ ...poll, c: true }),
+    });
+    const updated = await this.dmsRepository.findOne({
+      where: { id: dm.id },
+      relations: ['Sender', 'Receiver', 'Reactions'],
+    });
+    this.emitToPair(url, id, myId, 'dmUpdated', updated);
+    return updated;
   }
 }

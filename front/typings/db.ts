@@ -134,3 +134,12 @@ export interface IReminder {
   Chat: (IChat & { Channel: IChannel }) | null;
   DM: IDM | null;
 }
+
+// 사용자 그룹 (@디자인팀 처럼 멘션)
+export interface IUserGroup {
+  id: number;
+  name: string;
+  description: string | null;
+  CreatorId: number | null;
+  Members: { UserId: number; User: Pick<IUser, 'id' | 'nickname' | 'email' | 'avatarStyle'> }[];
+}

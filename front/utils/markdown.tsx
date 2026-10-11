@@ -31,7 +31,7 @@ const renderLink = (key: string, url: string, children: ReactNode) => {
 // 왼쪽부터 가장 먼저 나오는 인라인 문법을 찾는다
 const INLINE = new RegExp(
   [
-    /@\[(.+?)]\((\d+?|channel|here)\)/.source, // 1,2: 멘션 (@channel, @here 포함)
+    /@\[(.+?)]\((\d+?|channel|here|g\d+)\)/.source, // 1,2: 멘션 (@channel, @here, @그룹 포함)
     /`([^`\n]+)`/.source, // 3: 코드
     /\[([^\]\n]+)]\((https?:\/\/[^\s)]+)\)/.source, // 4,5: 링크
     /\*\*([^\n]+?)\*\*/.source, // 6: 굵게
@@ -58,7 +58,13 @@ function renderInline(text: string, workspace: string, keyPrefix: string): React
       nodes.push(rest.slice(0, m.index) + lead);
     }
     const key = `${keyPrefix}-${i++}`;
-    if (m[1] !== undefined && (m[2] === 'channel' || m[2] === 'here')) {
+    if (m[1] !== undefined && m[2].startsWith('g')) {
+      nodes.push(
+        <span key={key} className="md-mention-all" title="사용자 그룹">
+          @{m[1]}
+        </span>,
+      );
+    } else if (m[1] !== undefined && (m[2] === 'channel' || m[2] === 'here')) {
       // 서버와 같은 규칙: 표시 이름과 대상이 같을 때만 채널 전체 멘션 (@[here](channel) 같은 위장은 글자로)
       if (m[1] !== m[2]) {
         nodes.push(<span key={key}>@{m[1]}</span>);

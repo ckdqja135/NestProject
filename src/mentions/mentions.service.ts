@@ -4,6 +4,7 @@ import { In, Repository } from 'typeorm';
 import { ChannelChats } from '../entities/ChannelChats';
 import { ChannelMembers } from '../entities/ChannelMembers';
 import { Mentions } from '../entities/Mentions';
+import { UserGroupMembers } from '../entities/UserGroupMembers';
 import { EventsGateway } from '../events/events.gateway';
 import { onlineMap } from '../events/onlineMap';
 import { WorkspacesService } from '../workspaces/workspaces.service';
@@ -33,6 +34,17 @@ export function parseSpecialMentions(content: string) {
   return { channel: kinds.has('channel'), here: kinds.has('here') };
 }
 
+// 그룹 멘션: @[디자인팀](g5) → 그룹 id 5
+const GROUP_PATTERN = /@\[(.+?)]\(g(\d+)\)/g;
+
+export function parseGroupIds(content: string): number[] {
+  const ids = new Set<number>();
+  for (const match of content.matchAll(GROUP_PATTERN)) {
+    ids.add(Number(match[2]));
+  }
+  return [...ids];
+}
+
 @Injectable()
 export class MentionsService {
   constructor(
@@ -40,15 +52,36 @@ export class MentionsService {
     private mentionsRepository: Repository<Mentions>,
     @InjectRepository(ChannelMembers)
     private channelMembersRepository: Repository<ChannelMembers>,
+    @InjectRepository(UserGroupMembers)
+    private groupMembersRepository: Repository<UserGroupMembers>,
     private workspacesService: WorkspacesService,
     private eventsGateway: EventsGateway,
   ) {}
 
   // 새 채널 메시지에서 멘션된 채널 멤버에게 멘션을 기록하고 실시간으로 알린다
   async handleNewChat(url: string, workspaceId: number, chat: ChannelChats) {
-    const mentionedIds = parseMentionIds(chat.content).filter(
-      (id) => id !== chat.UserId,
-    );
+    // 그룹 멘션은 이 워크스페이스 그룹의 멤버로 펼친다
+    const groupIds = parseGroupIds(chat.content);
+    const groupMemberIds = groupIds.length
+      ? (
+          await this.groupMembersRepository
+            .createQueryBuilder('member')
+            .innerJoin(
+              'member.Group',
+              'group',
+              'group.WorkspaceId = :workspaceId',
+              {
+                workspaceId,
+              },
+            )
+            .where('member.GroupId IN (:...groupIds)', { groupIds })
+            .select('member.UserId', 'UserId')
+            .getRawMany<{ UserId: number }>()
+        ).map((row) => Number(row.UserId))
+      : [];
+    const mentionedIds = [
+      ...new Set([...parseMentionIds(chat.content), ...groupMemberIds]),
+    ].filter((id) => id !== chat.UserId);
     const special = parseSpecialMentions(chat.content);
     if (!mentionedIds.length && !special.channel && !special.here) {
       return;

@@ -1,5 +1,6 @@
 import { parseFileContent } from '@utils/fileStore';
 import { parsePollContent } from '@utils/poll';
+import { plainMentions } from '@utils/mention';
 
 // 브라우저 알림. 탭을 보고 있지 않을 때만 띄운다.
 export const canNotify = () => typeof window !== 'undefined' && 'Notification' in window;
@@ -63,6 +64,6 @@ export const previewText = (content: string) => {
   if (poll) {
     return `[투표] ${poll.q}`;
   }
-  const text = content.replace(/@\[(.+?)]\((\d+?|channel|here)\)/g, '@$1');
+  const text = plainMentions(content);
   return text.length > 80 ? `${text.slice(0, 80)}…` : text;
 };

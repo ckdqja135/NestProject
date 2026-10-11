@@ -11,6 +11,8 @@ import { ScheduledMessages } from './src/entities/ScheduledMessages';
 import { Reminders } from './src/entities/Reminders';
 import { MessageEdits } from './src/entities/MessageEdits';
 import { DMReads } from './src/entities/DMReads';
+import { UserGroups } from './src/entities/UserGroups';
+import { UserGroupMembers } from './src/entities/UserGroupMembers';
 import { Mentions } from './src/entities/Mentions';
 import { Reactions } from './src/entities/Reactions';
 import { Users } from './src/entities/Users';
@@ -39,6 +41,8 @@ const options: DataSourceOptions & SeederOptions = {
     Reminders,
     MessageEdits,
     DMReads,
+    UserGroups,
+    UserGroupMembers,
     Users,
     WorkspaceMembers,
     Workspaces,

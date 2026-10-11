@@ -222,4 +222,15 @@ export class DmsController {
   ) {
     return this.dmsService.getPartnerRead(url, id, user.id);
   }
+
+  @ApiOperation({ summary: '투표 마감 (투표를 올린 사람만)' })
+  @Post(':id/chats/:dmId/poll/close')
+  closePoll(
+    @Param('url') url: string,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('dmId', ParseIntPipe) dmId: number,
+    @User() user: Users,
+  ) {
+    return this.dmsService.closePoll(url, id, dmId, user.id);
+  }
 }

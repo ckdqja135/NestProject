@@ -2,6 +2,7 @@ import { FileList, FileRow } from '@components/StorageModal/styles';
 import Modal from '@components/Modal';
 import useScheduled from '@hooks/useScheduled';
 import { describeContent } from '@utils/gif';
+import { plainMentions } from '@utils/mention';
 import getErrorMessage from '@utils/getErrorMessage';
 import { formatWhen } from '@utils/timePresets';
 import axios from 'axios';
@@ -27,7 +28,7 @@ const CANCEL_STYLE: React.CSSProperties = {
 };
 
 const preview = (content: string) => {
-  const text = describeContent(content).replace(/@\[(.+?)]\((\d+?|channel|here)\)/g, '@$1');
+  const text = plainMentions(describeContent(content));
   return text.length > 80 ? `${text.slice(0, 80)}…` : text;
 };
 

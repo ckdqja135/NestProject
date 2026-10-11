@@ -1,6 +1,7 @@
 import { MiddlewareConsumer, Module } from '@nestjs/common';
 import { SavedModule } from './saved/saved.module';
 import { ScheduledModule } from './scheduled/scheduled.module';
+import { GroupsModule } from './groups/groups.module';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { rateLimitPerMinute } from './security';
@@ -29,6 +30,8 @@ import { ScheduledMessages } from './entities/ScheduledMessages';
 import { Reminders } from './entities/Reminders';
 import { MessageEdits } from './entities/MessageEdits';
 import { DMReads } from './entities/DMReads';
+import { UserGroups } from './entities/UserGroups';
+import { UserGroupMembers } from './entities/UserGroupMembers';
 import { Mentions } from './entities/Mentions';
 import { Reactions } from './entities/Reactions';
 import { Users } from './entities/Users';
@@ -63,6 +66,8 @@ import { Workspaces } from './entities/Workspaces';
         Reminders,
         MessageEdits,
         DMReads,
+        UserGroups,
+        UserGroupMembers,
         Users,
         WorkspaceMembers,
         Workspaces,
@@ -82,6 +87,7 @@ import { Workspaces } from './entities/Workspaces';
     GifsModule,
     SavedModule,
     ScheduledModule,
+    GroupsModule,
     MentionsModule,
     FilesModule,
   ],

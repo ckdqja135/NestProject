@@ -10,6 +10,7 @@ import ThreadsButton from '@components/ThreadsButton';
 import QuickSwitcher from '@components/QuickSwitcher';
 import ShortcutsModal from '@components/ShortcutsModal';
 import ScheduledModal from '@components/ScheduledModal';
+import GroupsModal from '@components/GroupsModal';
 import Menu from '@components/Menu';
 import SearchModal from '@components/SearchModal';
 import useSocket from '@hooks/useSocket';
@@ -89,6 +90,7 @@ const Workspace = () => {
   }, [theme]);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showScheduled, setShowScheduled] = useState(false);
+  const [showGroups, setShowGroups] = useState(false);
 
   // 전역 단축키: Ctrl/⌘+K 빠른 이동, Ctrl/⌘+/ 단축키 보기
   useEffect(() => {
@@ -652,6 +654,18 @@ const Workspace = () => {
                     </li>
                   )}
                   <li>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setShowWorkspaceModal(false);
+                        setShowGroups(true);
+                      }}
+                    >
+                      사용자 그룹
+                    </button>
+                  </li>
+                  <li>
                     <button type="button" role="menuitem" onClick={onClickInviteWorkspace}>
                       워크스페이스에 사용자 초대
                     </button>
@@ -692,6 +706,15 @@ const Workspace = () => {
         />
       )}
       <ShortcutsModal show={showShortcuts} onCloseModal={() => setShowShortcuts(false)} />
+      {workspace && userData && (
+        <GroupsModal
+          show={showGroups}
+          workspace={workspace}
+          me={userData}
+          isOwner={currentWorkspace?.OwnerId === userData.id}
+          onCloseModal={() => setShowGroups(false)}
+        />
+      )}
       {workspace && (
         <ScheduledModal show={showScheduled} workspace={workspace} onCloseModal={() => setShowScheduled(false)} />
       )}

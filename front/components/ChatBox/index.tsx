@@ -12,6 +12,8 @@ import autosize from 'autosize';
 import { avatarUrl } from '@utils/avatar';
 import React, { FC, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Mention, SuggestionDataItem } from 'react-mentions';
+import { useParams } from 'react-router';
+import useGroups from '@hooks/useGroups';
 
 interface Props {
   onSubmitForm: (e: any) => void;
@@ -48,6 +50,9 @@ const ChatBox: FC<Props> = ({
   onEditLast,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // 채널에서는 사용자 그룹(@디자인팀)도 멘션할 수 있다
+  const { workspace } = useParams<{ workspace?: string }>();
+  const { data: groups } = useGroups(allowBroadcast ? workspace : undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const onChangeFile = useCallback(
@@ -118,6 +123,16 @@ const ChatBox: FC<Props> = ({
           </EachMention>
         );
       }
+      const group = groups?.find((g) => `g${g.id}` === member.id);
+      if (group) {
+        return (
+          <EachMention focus={focus}>
+            <span className="broadcast">👥</span>
+            <span>{highlightedDisplay}</span>
+            <small>그룹 · {group.Members.length}명</small>
+          </EachMention>
+        );
+      }
       const user = data?.find((v) => v.id === member.id);
       if (!user) {
         return null;
@@ -129,15 +144,16 @@ const ChatBox: FC<Props> = ({
         </EachMention>
       );
     },
-    [data],
+    [data, groups],
   );
 
   const suggestions = useMemo(
     () => [
       ...(data?.map((v) => ({ id: v.id, display: v.nickname })) || []),
+      ...(allowBroadcast ? (groups || []).map((g) => ({ id: `g${g.id}`, display: g.name })) : []),
       ...(allowBroadcast ? BROADCASTS.map(({ id, display }) => ({ id, display })) : []),
     ],
-    [data, allowBroadcast],
+    [data, allowBroadcast, groups],
   );
 
   return (

@@ -29,14 +29,15 @@ export class SessionIoAdapter extends IoAdapter {
     this.middlewares.forEach((middleware) =>
       server.engine.use(onlyForHandshake(middleware)),
     );
-    // 로그인하지 않은 연결은 거부
+    // 로그인하지 않은 연결은 거부.
+    // 웹소켓 업그레이드 요청의 res 는 진짜 HTTP 응답이 아니어서 res.end() 를 부르면
+    // (express-session 이 감싼 end 때문에) 서버가 죽는다. 에러를 넘겨 engine.io 가 연결을 끊게 한다.
     server.engine.use(
       onlyForHandshake((req, res, next) => {
         if ((req as any).user) {
           next();
         } else {
-          res.writeHead(401);
-          res.end();
+          next(new Error('로그인이 필요합니다.'));
         }
       }),
     );

@@ -14,12 +14,14 @@ const PollModal: FC<Props> = ({ show, onCloseModal, onCreate }) => {
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
   const [error, setError] = useState('');
+  const [single, setSingle] = useState(false);
 
   useEffect(() => {
     if (show) {
       setQuestion('');
       setOptions(['', '']);
       setError('');
+      setSingle(false);
     }
   }, [show]);
 
@@ -39,7 +41,7 @@ const PollModal: FC<Props> = ({ show, onCloseModal, onCreate }) => {
       setError('같은 선택지가 있습니다.');
       return;
     }
-    onCreate({ q: question.trim(), o: filled });
+    onCreate(single ? { q: question.trim(), o: filled, m: false } : { q: question.trim(), o: filled });
     onCloseModal();
   };
 
@@ -48,7 +50,7 @@ const PollModal: FC<Props> = ({ show, onCloseModal, onCreate }) => {
       show={show}
       onCloseModal={onCloseModal}
       title="투표 만들기"
-      description="선택지 번호 이모지로 투표합니다. 여러 개를 고를 수 있어요."
+      description="선택지 번호 이모지로 투표합니다. 올린 사람은 나중에 투표를 마감할 수 있어요."
     >
       <form onSubmit={onSubmit}>
         <Field>
@@ -99,6 +101,12 @@ const PollModal: FC<Props> = ({ show, onCloseModal, onCreate }) => {
               ＋ 선택지 추가
             </button>
           )}
+        </Field>
+        <Field>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 'normal', cursor: 'pointer' }}>
+            <input type="checkbox" checked={single} onChange={(e) => setSingle(e.target.checked)} />
+            하나만 고르기
+          </label>
         </Field>
         {error && <FormError role="alert">{error}</FormError>}
         <Actions>

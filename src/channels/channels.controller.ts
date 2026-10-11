@@ -391,4 +391,15 @@ export class ChannelsController {
   ) {
     return this.channelsService.getEditHistory(url, name, chatId, user.id);
   }
+
+  @ApiOperation({ summary: '투표 마감 (투표를 올린 사람만)' })
+  @Post(':name/chats/:chatId/poll/close')
+  closePoll(
+    @Param('url') url: string,
+    @Param('name') name: string,
+    @Param('chatId', ParseIntPipe) chatId: number,
+    @User() user: Users,
+  ) {
+    return this.channelsService.closePoll(url, name, chatId, user.id);
+  }
 }

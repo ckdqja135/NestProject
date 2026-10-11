@@ -12,6 +12,7 @@ import { ChannelChats } from '../entities/ChannelChats';
 import { Reactions } from '../entities/Reactions';
 import { MessageEdits } from '../entities/MessageEdits';
 import { toVersions } from '../common/edit-history';
+import { checkPollVote, parsePoll, toPollContent } from '../common/poll';
 import { Users } from '../entities/Users';
 import { WorkspaceMembers } from '../entities/WorkspaceMembers';
 import { WorkspacesService } from '../workspaces/workspaces.service';
@@ -460,6 +461,22 @@ export class ChannelsService {
   ) {
     const channel = await this.findWritableChannel(url, name, myId);
     const chat = await this.findChatInChannel(channel, chatId);
+    // 투표 메시지: 마감됐으면 막고, 하나만 고르는 투표면 내 다른 선택을 지운다
+    const mine = await this.reactionsRepository.find({
+      where: { ChatId: chat.id, UserId: myId },
+    });
+    const replaced = checkPollVote(
+      chat.content,
+      emoji,
+      mine.map((r) => r.emoji),
+    );
+    if (replaced.length) {
+      await this.reactionsRepository.delete({
+        ChatId: chat.id,
+        UserId: myId,
+        emoji: In(replaced),
+      });
+    }
     const existing = await this.reactionsRepository.findOne({
       where: { ChatId: chat.id, UserId: myId, emoji },
     });
@@ -683,5 +700,24 @@ export class ChannelsService {
       order: { id: 'ASC' },
     });
     return toVersions(chat, edits);
+  }
+
+  // 투표 마감 (투표를 올린 사람만). 내용 수정이 아니므로 수정 내역·(수정됨)을 남기지 않는다
+  async closePoll(url: string, name: string, chatId: number, myId: number) {
+    const channel = await this.findWritableChannel(url, name, myId);
+    const chat = await this.findChatInChannel(channel, chatId);
+    const poll = parsePoll(chat.content);
+    if (!poll) {
+      throw new BadRequestException('투표 메시지가 아닙니다.');
+    }
+    if (chat.UserId !== myId) {
+      throw new ForbiddenException('투표를 올린 사람만 마감할 수 있습니다.');
+    }
+    await this.channelChatsRepository.update(chat.id, {
+      content: toPollContent({ ...poll, c: true }),
+    });
+    const updated = await this.findChatWithRelations(chat.id);
+    this.emitToChannel(url, channel.id, 'messageUpdated', updated);
+    return updated;
   }
 }

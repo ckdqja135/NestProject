@@ -187,6 +187,14 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
     canAct && isMine && !!actions?.onEdit && !gifUrl && !fileMeta && !poll && !isLegacyUpload(data.content);
   const canRemind = canAct && !!workspace;
 
+  // 투표 마감 (올린 사람만): 수정 내역 주소와 같은 경로 아래의 poll/close
+  const onClosePoll = () => {
+    axios
+      .post(historyUrl.replace(/\/history$/, '/poll/close'))
+      .then(() => toast.info('투표를 마감했습니다.', { position: 'bottom-center' }))
+      .catch((error) => toast.error(getErrorMessage(error), { position: 'bottom-center' }));
+  };
+
   // 리마인더: 정한 시각에 이 메시지를 다시 알려준다
   const onRemind = (date: Date) => {
     setShowReminder(false);
@@ -298,6 +306,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
             myId={myId}
             members={members}
             onVote={canReact ? (emoji) => onPickEmoji(emoji) : undefined}
+            onClosePoll={isMine && canAct && historyUrl ? onClosePoll : undefined}
           />
         ) : (
           <div className={fileMeta ? 'attachment' : 'message-body'}>{result}</div>

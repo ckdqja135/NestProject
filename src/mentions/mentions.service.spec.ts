@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ChannelMembers } from '../entities/ChannelMembers';
 import { Mentions } from '../entities/Mentions';
+import { UserGroupMembers } from '../entities/UserGroupMembers';
 import { EventsGateway } from '../events/events.gateway';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { onlineMap } from '../events/onlineMap';
@@ -20,6 +21,12 @@ describe('MentionsService', () => {
   };
   const channelMembersRepository = { find: jest.fn() };
   const eventsGateway = { emitToUser: jest.fn() };
+  const groupQb: Record<string, jest.Mock> = {};
+  ['innerJoin', 'where', 'select'].forEach((m) => {
+    groupQb[m] = jest.fn(() => groupQb);
+  });
+  groupQb.getRawMany = jest.fn().mockResolvedValue([]);
+  const groupMembersRepository = { createQueryBuilder: jest.fn(() => groupQb) };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -30,6 +37,10 @@ describe('MentionsService', () => {
         {
           provide: getRepositoryToken(ChannelMembers),
           useValue: channelMembersRepository,
+        },
+        {
+          provide: getRepositoryToken(UserGroupMembers),
+          useValue: groupMembersRepository,
         },
         { provide: WorkspacesService, useValue: {} },
         { provide: EventsGateway, useValue: eventsGateway },
@@ -125,6 +136,27 @@ describe('MentionsService', () => {
     expect(
       mentionsRepository.save.mock.calls.map(([m]) => m.ReceiverId),
     ).toEqual([3]);
+  });
+
+  it('그룹 멘션은 그룹 멤버 중 채널 멤버에게 알린다', async () => {
+    groupQb.getRawMany.mockResolvedValueOnce([{ UserId: 2 }, { UserId: 3 }]);
+    channelMembersRepository.find.mockResolvedValue([{ UserId: 2 }]);
+    mentionsRepository.save.mockResolvedValue({ id: 1 });
+    await service.handleNewChat('shlack', 1, {
+      id: 9,
+      ChannelId: 4,
+      UserId: 1,
+      content: '@[디자인팀](g5) 확인 부탁',
+    } as any);
+    expect(groupQb.where).toHaveBeenCalledWith(
+      'member.GroupId IN (:...groupIds)',
+      {
+        groupIds: [5],
+      },
+    );
+    expect(
+      mentionsRepository.save.mock.calls.map(([m]) => m.ReceiverId),
+    ).toEqual([2]);
   });
 
   it('멘션이 없으면 아무것도 하지 않는다', async () => {

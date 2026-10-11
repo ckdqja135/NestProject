@@ -5,6 +5,8 @@ export const MAX_POLL_OPTIONS = POLL_EMOJIS.length;
 export interface Poll {
   q: string;
   o: string[];
+  m?: boolean; // false 면 하나만 고를 수 있다 (없으면 여러 개)
+  c?: boolean; // true 면 마감 (서버의 투표 마감 API 로만 바뀐다)
 }
 
 export const toPollContent = (poll: Poll) => `poll:${JSON.stringify(poll)}`;

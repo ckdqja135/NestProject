@@ -17,10 +17,34 @@ const Box = styled.div`
     font-weight: 700;
   }
 
+  & > .question > .closed {
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: var(--bg-hover);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: normal;
+  }
+
   & > .total {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
     margin-top: 6px;
     font-size: 12px;
     color: var(--text-muted);
+
+    & > .close-poll {
+      margin-left: auto;
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
+      background: var(--bg);
+      color: var(--text);
+      padding: 2px 8px;
+      font-size: 12px;
+      cursor: pointer;
+    }
   }
 `;
 
@@ -80,10 +104,12 @@ interface Props {
   myId?: number;
   members?: IUser[];
   onVote?: (emoji: string) => void; // 없으면 결과만 보여준다
+  onClosePoll?: () => void; // 투표를 올린 사람에게만 '투표 마감'
 }
 
 // 투표 메시지: 선택지를 누르면 그 번호 이모지로 리액션 (여러 개 고를 수 있고, 다시 누르면 취소)
-const PollView: FC<Props> = ({ poll, reactions = [], myId, members, onVote }) => {
+const PollView: FC<Props> = ({ poll, reactions = [], myId, members, onVote, onClosePoll }) => {
+  const canVote = !!onVote && !poll.c;
   const nameOf = (id: number) => members?.find((m) => m.id === id)?.nickname || '알 수 없음';
   const votes = poll.o.map((_, index) => reactions.filter((r) => r.emoji === POLL_EMOJIS[index]));
   const voters = new Set(votes.flat().map((r) => r.UserId));
@@ -91,7 +117,10 @@ const PollView: FC<Props> = ({ poll, reactions = [], myId, members, onVote }) =>
 
   return (
     <Box role="group" aria-label={`투표: ${poll.q}`}>
-      <div className="question">📊 {poll.q}</div>
+      <div className="question">
+        📊 {poll.q}
+        {poll.c && <span className="closed">마감됨</span>}
+      </div>
       {poll.o.map((option, index) => {
         const optionVotes = votes[index];
         const mine = optionVotes.some((r) => r.UserId === myId);
@@ -100,7 +129,7 @@ const PollView: FC<Props> = ({ poll, reactions = [], myId, members, onVote }) =>
             key={index}
             type="button"
             className={mine ? 'mine' : undefined}
-            disabled={!onVote}
+            disabled={!canVote}
             aria-pressed={mine}
             title={
               optionVotes.length ? optionVotes.map((r) => nameOf(r.UserId)).join(', ') : '아직 아무도 고르지 않았어요'
@@ -114,7 +143,16 @@ const PollView: FC<Props> = ({ poll, reactions = [], myId, members, onVote }) =>
           </Option>
         );
       })}
-      <div className="total">{voters.size}명 참여 · 선택지를 다시 누르면 취소</div>
+      <div className="total">
+        {voters.size}명 참여
+        {!poll.c && (poll.m === false ? ' · 하나만 고를 수 있어요' : ' · 여러 개 고를 수 있어요')}
+        {canVote && ' · 다시 누르면 취소'}
+        {onClosePoll && !poll.c && (
+          <button type="button" className="close-poll" onClick={onClosePoll}>
+            투표 마감
+          </button>
+        )}
+      </div>
     </Box>
   );
 };

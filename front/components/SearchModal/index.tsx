@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { Filters, MoreButton } from '@components/SearchModal/styles';
 import getErrorMessage from '@utils/getErrorMessage';
 import { describeContent } from '@utils/gif';
+import { plainMentions } from '@utils/mention';
 import axios from 'axios';
 import dayjs from 'dayjs';
 import React, { FC, useCallback, useState } from 'react';
@@ -17,7 +18,7 @@ interface Props {
 
 // 멘션 마크업(@[닉네임](id))을 읽기 좋은 형태로 바꾸고, 검색어를 강조한다
 const highlight = (content: string, keyword: string) => {
-  const text = describeContent(content).replace(/@\[(.+?)]\((\d+?)\)/g, '@$1');
+  const text = plainMentions(describeContent(content));
   const lower = text.toLowerCase();
   const target = keyword.toLowerCase();
   const parts: (string | JSX.Element)[] = [];
