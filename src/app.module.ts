@@ -2,6 +2,7 @@ import { MiddlewareConsumer, Module } from '@nestjs/common';
 import { SavedModule } from './saved/saved.module';
 import { ScheduledModule } from './scheduled/scheduled.module';
 import { GroupsModule } from './groups/groups.module';
+import { MailModule } from './mail/mail.module';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { rateLimitPerMinute } from './security';
@@ -88,6 +89,7 @@ import { Workspaces } from './entities/Workspaces';
     SavedModule,
     ScheduledModule,
     GroupsModule,
+    MailModule,
     MentionsModule,
     FilesModule,
   ],

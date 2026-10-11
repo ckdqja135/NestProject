@@ -10,6 +10,7 @@ import { Reminders } from '../entities/Reminders';
 import { ScheduledMessages } from '../entities/ScheduledMessages';
 import { EventsGateway } from '../events/events.gateway';
 import { WorkspacesService } from '../workspaces/workspaces.service';
+import { MailService } from '../mail/mail.service';
 import { ScheduledService } from './scheduled.service';
 
 describe('ScheduledService', () => {
@@ -23,7 +24,9 @@ describe('ScheduledService', () => {
     find: jest.fn(),
     save: jest.fn(),
     delete: jest.fn(),
+    update: jest.fn(),
   };
+  const mailService = { isEnabled: jest.fn(() => false), send: jest.fn() };
   const workspacesService = {
     findWorkspaceByUrl: jest.fn(),
     assertMember: jest.fn(),
@@ -57,6 +60,7 @@ describe('ScheduledService', () => {
         { provide: ChannelsService, useValue: channelsService },
         { provide: DmsService, useValue: dmsService },
         { provide: EventsGateway, useValue: eventsGateway },
+        { provide: MailService, useValue: mailService },
       ],
     }).compile();
     service = module.get(ScheduledService);
@@ -169,6 +173,42 @@ describe('ScheduledService', () => {
       'scheduledFailed',
       { content: '나간 채널', reason: '채널에 참여한 뒤 이용할 수 있습니다.' },
     );
+  });
+
+  it('접속해 있지 않으면 메일 설정이 있을 때 이메일로 한 번만 알린다', async () => {
+    mailService.isEnabled.mockReturnValue(true);
+    eventsGateway.isOnline.mockReturnValue(false);
+    const reminder = {
+      id: 5,
+      UserId: 7,
+      emailedAt: null,
+      User: { email: 'a@t.com' },
+      Workspace: { url: 'shlack' },
+      Chat: { id: 9, content: '@[bob](2) 확인', Channel: { name: '일반' } },
+      DM: null,
+    };
+    remindersRepository.find.mockResolvedValue([reminder]);
+    await service.tick();
+    expect(remindersRepository.update).toHaveBeenCalledWith(5, {
+      emailedAt: expect.any(Date),
+    });
+    expect(mailService.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'a@t.com',
+        subject: '[슐랙] 리마인더: #일반',
+        text: expect.stringContaining('@bob 확인'),
+      }),
+    );
+    expect(remindersRepository.delete).not.toHaveBeenCalled();
+
+    // 이미 보냈으면 다시 보내지 않는다
+    jest.clearAllMocks();
+    remindersRepository.find.mockResolvedValue([
+      { ...reminder, emailedAt: new Date() },
+    ]);
+    await service.tick();
+    expect(mailService.send).not.toHaveBeenCalled();
+    mailService.isEnabled.mockReturnValue(false);
   });
 
   it('리마인더는 접속해 있을 때만 알리고, 아니면 다음으로 미룬다', async () => {

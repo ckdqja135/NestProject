@@ -4,7 +4,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { ChannelChats } from '../entities/ChannelChats';
 import { DMs } from '../entities/DMs';
 import { WorkspacesService } from '../workspaces/workspaces.service';
-import { escapeLike, SearchService } from './search.service';
+import { escapeLike, SearchService, startOfDay } from './search.service';
 
 const createQueryBuilderMock = (result: unknown[]) => {
   const qb: Record<string, jest.Mock> = {};
@@ -101,5 +101,16 @@ describe('SearchService', () => {
     expect(chatsQb.skip).toHaveBeenCalledWith(30);
     expect(result.chats).toHaveLength(30);
     expect(result.hasMoreChats).toBe(true);
+  });
+
+  it('기간 필터의 하루 경계를 사용자 시간대로 계산한다', () => {
+    // 한국(UTC+9, getTimezoneOffset = -540): 10월 11일 0시 = 10월 10일 15시 UTC
+    expect(startOfDay('2026-10-11', -540).toISOString()).toBe(
+      '2026-10-10T15:00:00.000Z',
+    );
+    expect(startOfDay('2026-10-11', 0).toISOString()).toBe(
+      '2026-10-11T00:00:00.000Z',
+    );
+    expect(Number.isNaN(startOfDay('2026-13-99', -540).getTime())).toBe(true);
   });
 });

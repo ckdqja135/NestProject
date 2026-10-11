@@ -18,6 +18,7 @@ import { Reminders } from '../entities/Reminders';
 import { ScheduledMessages } from '../entities/ScheduledMessages';
 import { EventsGateway } from '../events/events.gateway';
 import { WorkspacesService } from '../workspaces/workspaces.service';
+import { MailService } from '../mail/mail.service';
 
 const TICK_MS = 15_000;
 const MIN_DELAY_MS = 10_000; // 너무 가까운 시각은 그냥 보내면 되므로 막는다
@@ -44,6 +45,7 @@ export class ScheduledService implements OnModuleInit, OnModuleDestroy {
     private channelsService: ChannelsService,
     private dmsService: DmsService,
     private eventsGateway: EventsGateway,
+    private mailService: MailService,
   ) {}
 
   onModuleInit() {
@@ -255,6 +257,7 @@ export class ScheduledService implements OnModuleInit, OnModuleDestroy {
       where: { remindAt: LessThanOrEqual(now) },
       relations: [
         'Workspace',
+        'User',
         'Chat',
         'Chat.Channel',
         'Chat.User',
@@ -265,8 +268,14 @@ export class ScheduledService implements OnModuleInit, OnModuleDestroy {
     });
     for (const reminder of due) {
       const url = reminder.Workspace.url;
-      // 접속해 있지 않으면 다음에 접속했을 때 알린다
+      // 접속해 있지 않으면 (메일 설정이 있을 때) 이메일로 한 번 알리고, 다음에 접속했을 때 앱에서도 알린다
       if (!this.eventsGateway.isOnline(url, reminder.UserId)) {
+        if (!reminder.emailedAt && this.mailService.isEnabled()) {
+          await this.remindersRepository.update(reminder.id, {
+            emailedAt: new Date(),
+          });
+          await this.mailService.send(this.reminderMail(reminder));
+        }
         continue;
       }
       await this.remindersRepository.delete(reminder.id);
@@ -277,5 +286,42 @@ export class ScheduledService implements OnModuleInit, OnModuleDestroy {
       });
       this.eventsGateway.emitToUser(url, reminder.UserId, 'scheduledChanged');
     }
+  }
+
+  private reminderMail(reminder: Reminders) {
+    const url = reminder.Workspace.url;
+    const chat = reminder.Chat;
+    const dm = reminder.DM;
+    const content = (chat || dm)?.content || '';
+    const preview = (
+      content.startsWith('file:') ||
+      content.startsWith('gif:') ||
+      content.startsWith('poll:')
+        ? '(첨부·GIF·투표 메시지)'
+        : content.replace(/@\[(.+?)]\((\d+|channel|here|g\d+)\)/g, '@$1')
+    ).slice(0, 300);
+    const where = chat
+      ? `#${chat.Channel?.name}`
+      : `${dm?.Sender?.nickname}님과의 DM`;
+    const path = chat
+      ? `/workspace/${url}/channel/${encodeURIComponent(
+          chat.Channel?.name || '',
+        )}?${
+          chat.ParentId
+            ? `message=${chat.ParentId}&reply=${chat.id}`
+            : `message=${chat.id}`
+        }`
+      : `/workspace/${url}/dm/${
+          dm?.SenderId === reminder.UserId ? dm?.ReceiverId : dm?.SenderId
+        }?message=${dm?.id}`;
+    const appUrl = (process.env.APP_URL || 'http://localhost:3090').replace(
+      /\/$/,
+      '',
+    );
+    return {
+      to: reminder.User.email,
+      subject: `[슐랙] 리마인더: ${where}`,
+      text: `요청하신 리마인더입니다.\n\n${where}\n> ${preview}\n\n메시지 보기: ${appUrl}${path}\n`,
+    };
   }
 }

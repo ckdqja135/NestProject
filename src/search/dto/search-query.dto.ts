@@ -51,4 +51,17 @@ export class SearchQueryDto {
   @Max(100)
   @ApiProperty({ required: false, description: '페이지 (1부터)' })
   public page?: number;
+
+  // 브라우저의 new Date().getTimezoneOffset() (분). 기간 필터의 하루 경계를 사용자 시간대로 계산한다
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(-840)
+  @Max(840)
+  @ApiProperty({
+    required: false,
+    example: -540,
+    description: '시간대 (UTC 와의 차이, 분)',
+  })
+  public tz?: number;
 }

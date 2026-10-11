@@ -15,6 +15,21 @@ export interface SearchFilters {
   after?: string;
   before?: string;
   page?: number;
+  tz?: number;
+}
+
+// 'YYYY-MM-DD' 의 0시를 그 사용자 시간대(tz: getTimezoneOffset 분) 기준으로. tz 가 없으면 서버 시간대
+export function startOfDay(date: string, tz?: number) {
+  if (tz === undefined) {
+    return new Date(`${date}T00:00:00`);
+  }
+  const [y, m, d] = date.split('-').map(Number);
+  const local = new Date(Date.UTC(y, m - 1, d));
+  // 2026-13-99 처럼 넘치는 날짜는 Date.UTC 가 다음 달로 넘겨 버리므로 직접 확인한다
+  if (local.getUTCMonth() !== m - 1 || local.getUTCDate() !== d) {
+    return new Date(NaN);
+  }
+  return new Date(local.getTime() + tz * 60 * 1000);
 }
 
 // LIKE 패턴에서 와일드카드로 해석되는 문자를 이스케이프
@@ -49,9 +64,9 @@ export class SearchService {
     const skip = (page - 1) * SEARCH_LIMIT;
     // 한 개 더 가져와서 다음 페이지가 있는지 알아낸다
     const take = SEARCH_LIMIT + 1;
-    const after = filters.after ? new Date(`${filters.after}T00:00:00`) : null;
+    const after = filters.after ? startOfDay(filters.after, filters.tz) : null;
     const before = filters.before
-      ? new Date(new Date(`${filters.before}T00:00:00`).getTime() + DAY)
+      ? new Date(startOfDay(filters.before, filters.tz).getTime() + DAY)
       : null;
     if (
       (after && Number.isNaN(after.getTime())) ||

@@ -73,6 +73,10 @@ const SearchModal: FC<Props> = ({ workspace, myId }) => {
           params[key] = value;
         }
       });
+      // 기간은 내 시간대의 날짜로 계산하도록 시간대를 함께 보낸다
+      if (nextFilters.after || nextFilters.before) {
+        params.tz = new Date().getTimezoneOffset();
+      }
       axios
         .get<ISearchResult>(`/api/workspaces/${workspace}/search`, { params })
         .then(({ data }) =>

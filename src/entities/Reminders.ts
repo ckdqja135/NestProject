@@ -34,6 +34,10 @@ export class Reminders {
   @Column('datetime', { name: 'remindAt' })
   remindAt: Date;
 
+  // 접속해 있지 않아 이메일로 알린 시각 (한 번만 보낸다)
+  @Column('datetime', { name: 'emailedAt', nullable: true })
+  emailedAt: Date | null;
+
   @CreateDateColumn()
   createdAt: Date;
 
