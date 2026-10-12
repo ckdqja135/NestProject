@@ -25,6 +25,10 @@ const getSessionUser = (
   socket: Socket,
 ): { id: number; nickname: string } | undefined => (socket.request as any).user;
 
+const CALL_TYPES = ['invite', 'accept', 'decline', 'busy', 'signal', 'hangup'];
+// SDP·ICE 신호 하나의 최대 크기 (보통 수 KB)
+const MAX_CALL_SIGNAL = 20_000;
+
 @WebSocketGateway({
   namespace: /\/ws-.+/,
   cors: { origin: corsOrigin, credentials: true },
@@ -155,6 +159,52 @@ export class EventsGateway
       fileId: data.fileId,
       requesterId: user.id,
     });
+  }
+
+  // 1:1 통화(허들) 신호 중계: 서버는 음성·화면 내용을 받지 않고, 연결에 필요한 신호만 상대에게 전달한다
+  // type: invite(전화 걸기) accept decline busy signal(SDP·ICE) hangup
+  @SubscribeMessage('call')
+  handleCall(
+    @MessageBody()
+    data: { type: string; to: number; callId: string; data?: unknown },
+    @ConnectedSocket() socket: Socket,
+  ) {
+    const user = getSessionUser(socket);
+    const namespace = socket.nsp.name;
+    if (
+      !user ||
+      !onlineMap[namespace]?.[socket.id] ||
+      !data ||
+      !CALL_TYPES.includes(data.type) ||
+      !Number.isInteger(data.to) ||
+      data.to === user.id ||
+      typeof data.callId !== 'string' ||
+      data.callId.length > 64 ||
+      JSON.stringify(data.data ?? null).length > MAX_CALL_SIGNAL
+    ) {
+      return;
+    }
+    const targets = this.socketsOf(namespace, data.to);
+    if (!targets.length) {
+      // 상대가 접속해 있지 않으면 건 사람에게 알린다
+      if (data.type === 'invite') {
+        socket.emit('call', {
+          type: 'unavailable',
+          from: data.to,
+          callId: data.callId,
+        });
+      }
+      return;
+    }
+    targets.forEach((target) =>
+      target.emit('call', {
+        type: data.type,
+        from: user.id,
+        fromName: user.nickname,
+        callId: data.callId,
+        data: data.data,
+      }),
+    );
   }
 
   // 보낸 사람 기기에도 파일이 없을 때 요청한 사람에게 알린다

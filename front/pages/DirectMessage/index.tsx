@@ -25,6 +25,7 @@ import ConversationIntro from '@components/ConversationIntro';
 import useOnlineList from '@hooks/useOnlineList';
 import { DragOver, HeaderButton, Layout } from '@pages/Channel/styles';
 import PinnedPanel from '@components/PinnedPanel';
+import { useCall } from '@components/Call/CallProvider';
 import { Header, Container } from '@pages/DirectMessage/styles';
 import { IChat, IDM, IReaction } from '@typings/db';
 import { createTempId, cursorPageKey, isTempId, removeChatFromPages, updateChatInPages } from '@utils/chatPages';
@@ -68,6 +69,7 @@ const DirectMessage = () => {
   const scrollbarRef = useRef<Scrollbars>(null);
   const [dragOver, setDragOver] = useState(false);
   const [showPinned, setShowPinned] = useState(false);
+  const { startCall, inCall } = useCall();
 
   // 입력창이 비어 있을 때 ↑ : 내 마지막 (글) 메시지를 수정
   const onEditLast = useCallback(() => {
@@ -421,7 +423,17 @@ const DirectMessage = () => {
               )}
             </small>
           </div>
-          <div style={{ marginLeft: 'auto' }}>
+          <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'row', gap: 4 }}>
+            {!isSelf && (
+              <HeaderButton
+                type="button"
+                onClick={() => startCall(userData)}
+                disabled={!isOnline || inCall}
+                title={isOnline ? '음성 통화 (화면 공유 가능)' : '상대가 접속해 있지 않습니다'}
+              >
+                📞 통화
+              </HeaderButton>
+            )}
             <HeaderButton
               type="button"
               className={showPinned ? 'active' : undefined}

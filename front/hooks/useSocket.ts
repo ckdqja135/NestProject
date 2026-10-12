@@ -2,7 +2,8 @@ import { useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 // 배포 시에는 같은 서버(same origin)
-const backUrl = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3002';
+// 개발 중에는 백엔드(3002)에 직접 붙는다. 페이지와 같은 호스트를 써야 같은 로그인 쿠키가 실린다
+const backUrl = process.env.NODE_ENV === 'production' ? '' : `http://${window.location.hostname}:3002`;
 
 const sockets: { [key: string]: Socket } = {};
 // 워크스페이스별 마지막 온라인 목록 (나중에 마운트된 화면도 바로 쓸 수 있게 캐시)

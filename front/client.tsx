@@ -13,7 +13,7 @@ import { initTheme } from '@utils/theme';
 initTheme();
 
 axios.defaults.withCredentials = true;
-axios.defaults.baseURL = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3090'; // 배포 시에는 같은 서버(same origin)
+axios.defaults.baseURL = ''; // 지금 보고 있는 주소 기준 (개발 서버는 /api 를 백엔드로 넘겨준다)
 console.log('env', process.env.NODE_ENV === 'production');
 render(
   <BrowserRouter>

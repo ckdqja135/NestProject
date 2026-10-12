@@ -37,6 +37,7 @@ import StorageModal from '@components/StorageModal';
 import ProfileModal from '@components/ProfileModal';
 import StatusModal from '@components/StatusModal';
 import WorkspaceSettingsModal from '@components/WorkspaceSettingsModal';
+import CallProvider from '@components/Call/CallProvider';
 import { moveChannelKeys, moveWorkspaceKeys } from '@utils/storageKeys';
 import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
@@ -131,7 +132,7 @@ const Workspace = () => {
   }, [location.pathname]);
   const locationRef = useRef(location.pathname);
   locationRef.current = decodeURIComponent(location.pathname);
-  const { mutate: revalidateMembers } = useSWR<IUser[]>(
+  const { data: membersData, mutate: revalidateMembers } = useSWR<IUser[]>(
     userData ? `/api/workspaces/${workspace}/members` : null,
     fetcher,
   );
@@ -503,7 +504,7 @@ const Workspace = () => {
   }
 
   return (
-    <div>
+    <CallProvider socket={socket} members={membersData}>
       <Header>
         <NavToggle
           type="button"
@@ -857,7 +858,7 @@ const Workspace = () => {
         onCloseModal={onCloseModal}
         setShowInviteWorkspaceModal={setShowInviteWorkspaceModal}
       />
-    </div>
+    </CallProvider>
   );
 };
 
