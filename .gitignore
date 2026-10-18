@@ -124,3 +124,5 @@ lerna-debug.log*
 
 # 할 일 메모는 로컬에만
 TODO.md
+# API 명세는 로컬에만
+API.md
