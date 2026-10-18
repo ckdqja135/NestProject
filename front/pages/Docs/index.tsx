@@ -1,6 +1,7 @@
 import { IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
 import React from 'react';
+import { BookOpen, House, Library, Trash2 } from 'lucide-react';
 import { NavLink, Route, Switch, useParams, useRouteMatch } from 'react-router-dom';
 import useSWR from 'swr';
 import DocPage from './DocPage';
@@ -23,16 +24,16 @@ const Docs = () => {
       <Main>
         <MobileNav aria-label="Docs 빠른 메뉴">
           <NavLink exact to={home} activeClassName="active">
-            🏠 홈
+            <House size={14} /> 홈
           </NavLink>
           <NavLink to={`${home}/wiki`} activeClassName="active">
-            📚 Wiki
+            <BookOpen size={14} /> Wiki
           </NavLink>
           <NavLink to={`${home}/mine`} activeClassName="active">
-            🗂 내 문서
+            <Library size={14} /> 내 문서
           </NavLink>
           <NavLink to={`${home}/trash`} activeClassName="active">
-            🗑 휴지통
+            <Trash2 size={14} /> 휴지통
           </NavLink>
         </MobileNav>
         <Switch>

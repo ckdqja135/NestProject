@@ -2,6 +2,7 @@ import { ICalendarEvent, IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
 import axios from 'axios';
 import dayjs, { Dayjs } from 'dayjs';
+import { Bot, ChevronLeft, ChevronRight, Plus, UserPlus, X } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -143,6 +144,10 @@ const Calendar = () => {
           type="button"
           onClick={() => setDraft({})}
           style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
             width: '100%',
             height: 36,
             marginBottom: 14,
@@ -154,13 +159,13 @@ const Calendar = () => {
             cursor: 'pointer',
           }}
         >
-          ＋ 일정 만들기
+          <Plus size={16} /> 일정 만들기
         </button>
         <MiniCalendar cursor={cursor} marked={marked} onPick={(day) => setCursor(day)} />
         <h4>
           내 캘린더
           <button type="button" onClick={() => setShowFollow(true)}>
-            + 동료 캘린더
+            <UserPlus size={13} /> 동료 캘린더
           </button>
         </h4>
         {calendars.map((user) => (
@@ -190,14 +195,14 @@ const Calendar = () => {
                   axios.delete(`${base}/follows/${user.id}`).then(() => refreshFollows());
                 }}
               >
-                ×
+                <X size={14} />
               </button>
             )}
           </label>
         ))}
         {bot && (
           <Link className="bot" to={`/workspace/${workspace}/dm/${bot.id}`} title="일정 알림이 오는 대화">
-            🤖 캘린더 어시스턴트
+            <Bot size={16} /> 캘린더 어시스턴트
           </Link>
         )}
       </Side>
@@ -207,10 +212,10 @@ const Calendar = () => {
             오늘
           </button>
           <button type="button" className="btn" onClick={() => move(-1)} aria-label="이전">
-            ‹
+            <ChevronLeft size={16} />
           </button>
           <button type="button" className="btn" onClick={() => move(1)} aria-label="다음">
-            ›
+            <ChevronRight size={16} />
           </button>
           <h2 className="title">{title}</h2>
           <div className="views" role="group" aria-label="보기">
@@ -227,7 +232,7 @@ const Calendar = () => {
             ))}
           </div>
           <button type="button" className="btn primary" onClick={() => setDraft({})}>
-            ＋ 일정
+            <Plus size={14} /> 일정
           </button>
         </Toolbar>
         {view === 'month' ? (

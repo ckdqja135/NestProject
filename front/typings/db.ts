@@ -160,7 +160,7 @@ export interface ICustomEmoji {
 export interface IDocListItem {
   id: number;
   title: string;
-  type: 'doc' | 'wiki' | 'slides';
+  type: 'doc' | 'wiki' | 'slides' | 'sheet';
   visibility: 'private' | 'workspace';
   folderId: number | null;
   parentId: number | null;
@@ -180,7 +180,7 @@ export interface IDocListItem {
 export interface IDoc {
   id: number;
   title: string;
-  type: 'doc' | 'wiki' | 'slides';
+  type: 'doc' | 'wiki' | 'slides' | 'sheet';
   content: string;
   visibility: 'private' | 'workspace';
   FolderId: number | null;

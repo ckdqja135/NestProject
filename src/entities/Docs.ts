@@ -16,7 +16,8 @@ import { Users } from './Users';
 import { Workspaces } from './Workspaces';
 
 // 문서. 내용은 마크다운 글로만 저장한다 (파일을 서버에 두지 않음)
-// type: doc(문서) wiki(위키 페이지, 워크스페이스 전체 공개, 페이지 트리) slides(--- 로 나눈 슬라이드)
+// type: doc(마크다운 문서) wiki(위키 페이지, 워크스페이스 전체 공개, 페이지 트리)
+//       slides(슬라이드, 내용은 쪽·글상자·도형 JSON) sheet(스프레드시트, 내용은 셀 JSON)
 @Index('WorkspaceId', ['WorkspaceId'], {})
 @Entity({ name: 'docs' })
 export class Docs {
@@ -27,7 +28,7 @@ export class Docs {
   WorkspaceId: number;
 
   @Column('varchar', { name: 'type', length: 10, default: 'doc' })
-  type: 'doc' | 'wiki' | 'slides';
+  type: 'doc' | 'wiki' | 'slides' | 'sheet';
 
   @Column('varchar', { name: 'title', length: 200 })
   title: string;

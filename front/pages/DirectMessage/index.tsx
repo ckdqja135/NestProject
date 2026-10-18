@@ -417,7 +417,7 @@ const DirectMessage = () => {
               {isSelf
                 ? '나에게 보내는 메모'
                 : userData.bot
-                ? '🤖 봇 · 일정 초대·변경·알림을 보내 드려요'
+                ? '봇 · 일정 초대·변경·알림을 보내 드려요'
                 : isOnline
                 ? userData.away
                   ? '○ 자리 비움'

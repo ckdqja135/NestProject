@@ -3,11 +3,19 @@ import { Actions } from '@components/ModalForm/styles';
 import { ICalendarEvent, IUser, RsvpStatus } from '@typings/db';
 import { avatarUrl } from '@utils/avatar';
 import axios from 'axios';
+import { Bell, CircleCheck, CircleX, Clock, Crown, Hourglass, Lock, MapPin, Pencil, Trash2 } from 'lucide-react';
 import React, { FC, useState } from 'react';
 import { toast } from 'react-toastify';
 import { calBase, toastError } from './api';
 import { Detail } from './styles';
-import { eventColor, fmtWhen, REMINDERS, STATUS_ICON, STATUS_LABEL } from './utils';
+import { eventColor, fmtWhen, REMINDERS, STATUS_LABEL } from './utils';
+
+const STATUS_ICON = {
+  accepted: <CircleCheck size={14} color="#12a06b" />,
+  declined: <CircleX size={14} color="#e0405a" />,
+  pending: <Hourglass size={14} />,
+  owner: <Crown size={14} color="#d4a20f" />,
+} as const;
 
 interface Props {
   show: boolean;
@@ -77,14 +85,24 @@ const EventDetailModal: FC<Props> = ({ show, workspace, event, me, follows, onCl
               marginRight: 8,
             }}
           />
-          🕒 {fmtWhen(event)}
+          <Clock size={15} /> {fmtWhen(event)}
         </p>
         {!event.masked && (
           <>
-            {event.location && <p>📍 {event.location}</p>}
-            {event.visibility === 'private' && <p>🔒 비공개 — 참석자 외에는 '바쁨' 으로만 보입니다.</p>}
+            {event.location && (
+              <p>
+                <MapPin size={15} /> {event.location}
+              </p>
+            )}
+            {event.visibility === 'private' && (
+              <p>
+                <Lock size={15} /> 비공개 — 참석자 외에는 '바쁨' 으로만 보입니다.
+              </p>
+            )}
             {reminder && event.reminderMinutes !== null && event.reminderMinutes !== undefined && (
-              <p>⏰ {reminder} 알림</p>
+              <p>
+                <Bell size={15} /> {reminder} 알림
+              </p>
             )}
             {event.description && <p className="desc">{event.description}</p>}
             <p>
@@ -121,7 +139,7 @@ const EventDetailModal: FC<Props> = ({ show, workspace, event, me, follows, onCl
                   disabled={busy}
                   onClick={() => rsvp('accepted')}
                 >
-                  ✅ 참석
+                  <CircleCheck size={15} /> 참석
                 </button>
                 <button
                   type="button"
@@ -129,7 +147,7 @@ const EventDetailModal: FC<Props> = ({ show, workspace, event, me, follows, onCl
                   disabled={busy}
                   onClick={() => rsvp('declined')}
                 >
-                  ❌ 불참
+                  <CircleX size={15} /> 불참
                 </button>
               </div>
             )}
@@ -138,10 +156,10 @@ const EventDetailModal: FC<Props> = ({ show, workspace, event, me, follows, onCl
         {isOwner && (
           <Actions>
             <button type="button" onClick={remove}>
-              🗑 지우기
+              <Trash2 size={15} /> 지우기
             </button>
             <button type="button" className="primary" onClick={() => onEdit(event)}>
-              ✏️ 고치기
+              <Pencil size={15} /> 고치기
             </button>
           </Actions>
         )}

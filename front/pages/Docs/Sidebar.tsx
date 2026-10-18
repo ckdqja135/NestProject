@@ -1,10 +1,11 @@
 import { IDocFolder, IDocListItem, IWikiPage } from '@typings/db';
 import fetcher from '@utils/fetcher';
-import { DOC_TYPE_INFO } from '@utils/docTemplates';
 import React, { FC, useCallback, useMemo, useState } from 'react';
+import { BookOpen, ChevronDown, ChevronRight, Folder, FolderPlus, House, Library, Trash2 } from 'lucide-react';
 import { NavLink, useHistory } from 'react-router-dom';
 import useSWR from 'swr';
 import { docPath, docsBase, useDocsChanged } from './api';
+import DocIcon from './DocIcon';
 import FolderModal from './FolderModal';
 import { Sidebar } from './styles';
 
@@ -48,10 +49,10 @@ const WikiTree: FC<{ workspace: string; pages: IWikiPage[] }> = ({ workspace, pa
                   setOpen((v) => ({ ...v, [page.id]: !v[page.id] }));
                 }}
               >
-                {open[page.id] ? '▾' : '▸'}
+                {open[page.id] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
               </span>
             ) : (
-              <span style={{ visibility: 'hidden' }}>▸</span>
+              <span style={{ width: 14, flex: 'none' }} />
             )}
             <span className="label">{page.title}</span>
           </NavLink>
@@ -77,7 +78,7 @@ const FolderTree: FC<{ workspace: string; folders: IDocFolder[] }> = ({ workspac
           style={{ paddingLeft: 10 + depth * 14 }}
           title={folder.name}
         >
-          📁 <span className="label">{folder.name}</span>
+          <Folder size={16} /> <span className="label">{folder.name}</span>
         </NavLink>
         {renderLevel(folder.id, depth + 1)}
       </React.Fragment>
@@ -123,10 +124,10 @@ const DocsSidebar: FC<Props> = ({ workspace }) => {
         />
       </form>
       <NavLink className="item" activeClassName="active" exact to={home}>
-        🏠 <span className="label">홈</span>
+        <House size={16} /> <span className="label">홈</span>
       </NavLink>
       <NavLink className="item" activeClassName="active" exact to={`${home}/wiki`}>
-        📚 <span className="label">Wiki</span>
+        <BookOpen size={16} /> <span className="label">Wiki</span>
       </NavLink>
       {wiki && <WikiTree workspace={workspace} pages={wiki} />}
 
@@ -140,27 +141,27 @@ const DocsSidebar: FC<Props> = ({ workspace }) => {
             to={docPath(workspace, doc.id)}
             title={doc.title}
           >
-            {DOC_TYPE_INFO[doc.type].icon} <span className="label">{doc.title}</span>
+            <DocIcon type={doc.type} /> <span className="label">{doc.title}</span>
           </NavLink>
         ))
       ) : (
-        <p className="empty">문서에서 ☆ 를 누르면 여기에 고정됩니다.</p>
+        <p className="empty">문서에서 별표를 누르면 여기에 고정됩니다.</p>
       )}
 
       <h4>
         내 문서 라이브러리
         <button type="button" onClick={() => setShowNewFolder(true)} title="새 폴더" aria-label="새 폴더">
-          +
+          <FolderPlus size={15} />
         </button>
       </h4>
       <NavLink className="item" activeClassName="active" exact to={`${home}/mine`}>
-        🗂 <span className="label">내 문서 전체</span>
+        <Library size={16} /> <span className="label">내 문서 전체</span>
       </NavLink>
       {folders && <FolderTree workspace={workspace} folders={folders} />}
 
       <div className="bottom">
         <NavLink className="item" activeClassName="active" to={`${home}/trash`}>
-          🗑 <span className="label">휴지통</span>
+          <Trash2 size={16} /> <span className="label">휴지통</span>
         </NavLink>
       </div>
       <FolderModal

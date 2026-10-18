@@ -394,8 +394,7 @@ export const AppNav = styled.div`
     text-decoration: none;
 
     & .icon {
-      font-size: 20px;
-      line-height: 1.2;
+      margin-bottom: 2px;
     }
 
     &:hover {

@@ -6,6 +6,7 @@ import fetcher from '@utils/fetcher';
 import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
 import React, { FC, useEffect, useState } from 'react';
+import { Building2, Lock } from 'lucide-react';
 import useSWR from 'swr';
 import { docsBase } from './api';
 import { ShareList } from './styles';
@@ -62,10 +63,15 @@ const ShareDocModal: FC<Props> = ({ show, workspace, doc, me, onCloseModal, onCh
           <ChoiceList>
             {(
               [
-                ['private', '🔒 나와 공유한 사람만', '아래에 추가한 사람만 볼 수 있습니다.'],
-                ['workspace', '🏢 워크스페이스 모두', '워크스페이스 멤버 모두가 보고 고칠 수 있습니다.'],
+                ['private', <Lock key="l" size={14} />, '나와 공유한 사람만', '아래에 추가한 사람만 볼 수 있습니다.'],
+                [
+                  'workspace',
+                  <Building2 key="b" size={14} />,
+                  '워크스페이스 모두',
+                  '워크스페이스 멤버 모두가 보고 고칠 수 있습니다.',
+                ],
               ] as const
-            ).map(([value, label, hint]) => (
+            ).map(([value, icon, label, hint]) => (
               <label key={value} className={doc.visibility === value ? 'selected' : undefined}>
                 <input
                   type="radio"
@@ -75,7 +81,9 @@ const ShareDocModal: FC<Props> = ({ show, workspace, doc, me, onCloseModal, onCh
                   onChange={() => run(axios.patch(`${base}/settings`, { visibility: value }))}
                 />
                 <span>
-                  <strong>{label}</strong>
+                  <strong style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {icon} {label}
+                  </strong>
                   <small>{hint}</small>
                 </span>
               </label>

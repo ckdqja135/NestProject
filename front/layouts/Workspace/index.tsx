@@ -43,6 +43,7 @@ import CallProvider from '@components/Call/CallProvider';
 import { moveChannelKeys, moveWorkspaceKeys } from '@utils/storageKeys';
 import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
+import { CalendarDays, FileText, MessageSquare } from 'lucide-react';
 import { avatarUrl } from '@utils/avatar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router';
@@ -365,7 +366,7 @@ const Workspace = () => {
   // 누군가 나에게 문서를 공유하면 알린다 (누르면 문서를 연다)
   useEffect(() => {
     const onDocShared = (data: { id: number; title: string; role: 'view' | 'edit' }) => {
-      toast.info(`📄 '${data.title}' 문서를 ${data.role === 'edit' ? '고칠' : '볼'} 수 있게 공유받았습니다.`, {
+      toast.info(`'${data.title}' 문서를 ${data.role === 'edit' ? '고칠' : '볼'} 수 있게 공유받았습니다.`, {
         position: 'bottom-center',
         onClick: () => history.push(`/workspace/${workspace}/docs/d/${data.id}`),
       });
@@ -692,21 +693,24 @@ const Workspace = () => {
               className={section === 'messenger' ? 'active' : undefined}
               aria-current={section === 'messenger' ? 'page' : undefined}
             >
-              <span className="icon">💬</span>메신저
+              <MessageSquare className="icon" size={20} />
+              메신저
             </Link>
             <Link
               to={`/workspace/${workspace}/docs`}
               className={section === 'docs' ? 'active' : undefined}
               aria-current={section === 'docs' ? 'page' : undefined}
             >
-              <span className="icon">📄</span>Docs
+              <FileText className="icon" size={20} />
+              Docs
             </Link>
             <Link
               to={`/workspace/${workspace}/calendar`}
               className={section === 'calendar' ? 'active' : undefined}
               aria-current={section === 'calendar' ? 'page' : undefined}
             >
-              <span className="icon">📅</span>캘린더
+              <CalendarDays className="icon" size={20} />
+              캘린더
             </Link>
           </AppNav>
           {userData?.Workspaces.map((ws) => {

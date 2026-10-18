@@ -1,14 +1,32 @@
 import { IDocFolder, IDocListItem, IUser } from '@typings/db';
 import { avatarUrl } from '@utils/avatar';
-import { DOC_TEMPLATES, DOC_TYPE_INFO } from '@utils/docTemplates';
+import { DOC_TEMPLATES, DOC_TYPE_INFO, DocType } from '@utils/docTemplates';
 import fetcher from '@utils/fetcher';
 import axios from 'axios';
 import dayjs from 'dayjs';
 import React, { FC, useCallback, useEffect, useState } from 'react';
+import {
+  ArchiveRestore,
+  BookOpen,
+  Ellipsis,
+  Folder,
+  FolderCog,
+  FolderPlus,
+  LayoutGrid,
+  LayoutTemplate,
+  List,
+  Lock,
+  Pencil,
+  Plus,
+  Star,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import useSWR, { mutate as mutateKey } from 'swr';
 import { createDoc, docPath, docsBase, toastError, useDocsChanged } from './api';
+import DocIcon from './DocIcon';
 import FolderModal from './FolderModal';
 import { Cards, DocGrid, DocTable, DropMenu, Empty, HomeWrap, RowMenuButton, Tabs } from './styles';
 
@@ -61,7 +79,7 @@ const useDropdown = () => {
 
 // 홈 위쪽 카드. 펼침 메뉴는 버튼의 형제로 둔다 (button 안에 button 은 둘 수 없다)
 const Card: FC<{
-  icon: string;
+  icon: React.ReactNode;
   title: string;
   hint: string;
   onClick: (e: React.MouseEvent) => void;
@@ -128,7 +146,7 @@ const DocsHome: FC<Props> = ({ mode, me }) => {
     }
   };
 
-  const newDoc = (type: 'doc' | 'wiki' | 'slides', title?: string, content?: string) =>
+  const newDoc = (type: DocType, title?: string, content?: string) =>
     createDoc(workspace, { type, title, content, folderId: type !== 'wiki' ? folderId : undefined }, go);
 
   const toggleFavorite = (doc: IDocListItem) =>
@@ -181,22 +199,42 @@ const DocsHome: FC<Props> = ({ mode, me }) => {
     if (doc.type === 'wiki') {
       return 'Wiki';
     }
-    return doc.folderName ? `📁 ${doc.folderName}` : doc.ownerId === me.id ? '내 문서' : '—';
+    return doc.folderName ? (
+      <span className="where">
+        <Folder size={14} /> {doc.folderName}
+      </span>
+    ) : doc.ownerId === me.id ? (
+      '내 문서'
+    ) : (
+      '—'
+    );
   };
 
   const open = (doc: IDocListItem) => mode !== 'trash' && go(docPath(workspace, doc.id));
 
-  let heading = '홈';
+  let heading: React.ReactNode = '홈';
   if (mode === 'home' && q) {
     heading = `'${q}' 검색 결과`;
   } else if (mode === 'mine') {
     heading = '내 문서 전체';
   } else if (mode === 'folder') {
-    heading = folder ? `📁 ${folder.name}` : '폴더';
+    heading = (
+      <>
+        <Folder size={22} /> {folder ? folder.name : '폴더'}
+      </>
+    );
   } else if (mode === 'trash') {
-    heading = '🗑 휴지통';
+    heading = (
+      <>
+        <Trash2 size={22} /> 휴지통
+      </>
+    );
   } else if (mode === 'wiki') {
-    heading = '📚 Wiki';
+    heading = (
+      <>
+        <BookOpen size={22} color="#7c5cd6" /> Wiki
+      </>
+    );
   }
 
   // 폴더 경로 (상위 폴더 → 현재)
@@ -218,27 +256,27 @@ const DocsHome: FC<Props> = ({ mode, me }) => {
           aria-label={`${doc.title} 메뉴`}
           aria-haspopup="menu"
         >
-          ⋯
+          <Ellipsis size={16} />
         </RowMenuButton>
         {dropdown.open === key && (
           <DropMenu role="menu" style={{ left: 'auto', right: 0, minWidth: 180 }}>
             {mode === 'trash' ? (
               <>
                 <button type="button" role="menuitem" onClick={() => restore(doc)}>
-                  ↩ 되살리기
+                  <ArchiveRestore size={15} /> 되살리기
                 </button>
                 <button type="button" role="menuitem" onClick={() => removeForever(doc)}>
-                  ✖ 완전히 지우기
+                  <X size={15} /> 완전히 지우기
                 </button>
               </>
             ) : (
               <>
                 <button type="button" role="menuitem" onClick={() => toggleFavorite(doc)}>
-                  {doc.favorite ? '★ 고정 해제' : '☆ 고정하기'}
+                  <Star size={15} /> {doc.favorite ? '고정 해제' : '고정하기'}
                 </button>
                 {doc.ownerId === me.id && (
                   <button type="button" role="menuitem" onClick={() => trash(doc)}>
-                    🗑 휴지통으로 옮기기
+                    <Trash2 size={15} /> 휴지통으로 옮기기
                   </button>
                 )}
               </>
@@ -296,23 +334,23 @@ const DocsHome: FC<Props> = ({ mode, me }) => {
         <Cards>
           {mode === 'wiki' ? (
             <Card
-              icon="📚"
+              icon={<BookOpen size={24} color="#7c5cd6" />}
               title="새 위키 페이지"
               hint="워크스페이스 모두가 보고 고칠 수 있습니다"
               onClick={() => newDoc('wiki')}
             />
           ) : (
             <Card
-              icon="➕"
+              icon={<Plus size={24} color="#1264a3" />}
               title="새로 만들기"
-              hint="문서 · 슬라이드 · 위키"
+              hint="문서 · 슬라이드 · 시트 · 위키"
               onClick={dropdown.toggle('new')}
               menu={
                 dropdown.open === 'new' && (
                   <DropMenu role="menu">
                     {(Object.keys(DOC_TYPE_INFO) as (keyof typeof DOC_TYPE_INFO)[]).map((type) => (
                       <button type="button" role="menuitem" key={type} onClick={() => newDoc(type)}>
-                        <span>{DOC_TYPE_INFO[type].icon}</span>
+                        <DocIcon type={type} size={18} />
                         <span>
                           {DOC_TYPE_INFO[type].label}
                           <small>{DOC_TYPE_INFO[type].description}</small>
@@ -325,7 +363,7 @@ const DocsHome: FC<Props> = ({ mode, me }) => {
             />
           )}
           <Card
-            icon="🧩"
+            icon={<LayoutTemplate size={24} color="#e8891d" />}
             title="템플릿"
             hint="회의록, 주간 보고, 발표 자료…"
             onClick={dropdown.toggle('template')}
@@ -339,7 +377,7 @@ const DocsHome: FC<Props> = ({ mode, me }) => {
                       key={t.key}
                       onClick={() => newDoc(t.type, t.title(), t.content())}
                     >
-                      <span>{t.icon}</span>
+                      <t.Icon size={18} color={DOC_TYPE_INFO[t.type].color} style={{ flex: 'none' }} />
                       <span>
                         {t.name}
                         <small>{t.description}</small>
@@ -352,7 +390,7 @@ const DocsHome: FC<Props> = ({ mode, me }) => {
           />
           {mode !== 'wiki' && (
             <Card
-              icon="📁"
+              icon={<FolderPlus size={24} color="#12a06b" />}
               title="새 폴더"
               hint={folder ? `'${folder.name}' 안에 만들기` : '내 문서 라이브러리에 만들기'}
               onClick={() => setFolderModal('new')}
@@ -360,7 +398,7 @@ const DocsHome: FC<Props> = ({ mode, me }) => {
           )}
           {mode === 'folder' && folder && (
             <Card
-              icon="⚙️"
+              icon={<FolderCog size={24} color="#6b7280" />}
               title="폴더 관리"
               hint="이름 바꾸기 · 지우기"
               onClick={dropdown.toggle('folder')}
@@ -368,10 +406,10 @@ const DocsHome: FC<Props> = ({ mode, me }) => {
                 dropdown.open === 'folder' && (
                   <DropMenu role="menu">
                     <button type="button" role="menuitem" onClick={() => setFolderModal('rename')}>
-                      ✏️ 이름 바꾸기
+                      <Pencil size={15} /> 이름 바꾸기
                     </button>
                     <button type="button" role="menuitem" onClick={deleteFolder}>
-                      🗑 폴더 지우기
+                      <Trash2 size={15} /> 폴더 지우기
                     </button>
                   </DropMenu>
                 )
@@ -406,7 +444,7 @@ const DocsHome: FC<Props> = ({ mode, me }) => {
             aria-label="목록으로 보기"
             title="목록"
           >
-            ☰
+            <List size={15} />
           </button>
           <button
             type="button"
@@ -415,7 +453,7 @@ const DocsHome: FC<Props> = ({ mode, me }) => {
             aria-label="격자로 보기"
             title="격자"
           >
-            ▦
+            <LayoutGrid size={15} />
           </button>
         </div>
       </Tabs>
@@ -430,16 +468,22 @@ const DocsHome: FC<Props> = ({ mode, me }) => {
         <DocGrid>
           {subFolders.map((f) => (
             <button type="button" key={`f${f.id}`} onClick={() => go(`/workspace/${workspace}/docs/folder/${f.id}`)}>
-              <span className="icon">📁</span>
+              <span className="icon">
+                <Folder size={30} color="#6b7280" />
+              </span>
               <strong>{f.name}</strong>
               <small>폴더</small>
             </button>
           ))}
           {docs.map((doc) => (
             <button type="button" key={doc.id} onClick={() => open(doc)} title={doc.title}>
-              <span className="icon">{DOC_TYPE_INFO[doc.type].icon}</span>
+              <span className="icon">
+                <DocIcon type={doc.type} size={30} />
+              </span>
               <strong>
-                {doc.favorite ? '★ ' : ''}
+                {doc.favorite && (
+                  <Star size={13} fill="#f2c94c" color="#d4a20f" style={{ marginRight: 4, verticalAlign: '-1px' }} />
+                )}
                 {doc.title}
               </strong>
               <small>
@@ -466,7 +510,9 @@ const DocsHome: FC<Props> = ({ mode, me }) => {
             {subFolders.map((f) => (
               <tr key={`f${f.id}`} onClick={() => go(`/workspace/${workspace}/docs/folder/${f.id}`)}>
                 <td>
-                  <span className="name">📁 {f.name}</span>
+                  <span className="name">
+                    <Folder size={16} color="#6b7280" /> {f.name}
+                  </span>
                 </td>
                 <td className="hide-mobile muted">{folder?.name}</td>
                 <td className="hide-mobile muted">나</td>
@@ -479,11 +525,11 @@ const DocsHome: FC<Props> = ({ mode, me }) => {
               <tr key={doc.id} onClick={() => open(doc)}>
                 <td title={doc.title}>
                   <span className="name">
-                    {DOC_TYPE_INFO[doc.type].icon} {doc.title}
-                    {doc.favorite && <span aria-label="고정됨">★</span>}
+                    <DocIcon type={doc.type} /> {doc.title}
+                    {doc.favorite && <Star size={13} fill="#f2c94c" color="#d4a20f" aria-label="고정됨" />}
                     {doc.visibility === 'private' && doc.type !== 'wiki' && (
                       <span className="muted" title="나와 공유한 사람만 볼 수 있습니다">
-                        🔒
+                        <Lock size={12} aria-label="비공개" />
                       </span>
                     )}
                   </span>

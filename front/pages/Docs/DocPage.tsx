@@ -1,8 +1,7 @@
 import useCustomEmojis from '@hooks/useCustomEmojis';
 import useSocket from '@hooks/useSocket';
 import { IDoc, IDocFolder, IUser, IWikiPage } from '@typings/db';
-import { renderDocMarkdown, splitSlides } from '@utils/docMarkdown';
-import { DOC_TYPE_INFO } from '@utils/docTemplates';
+import { renderDocMarkdown } from '@utils/docMarkdown';
 import fetcher from '@utils/fetcher';
 import axios from 'axios';
 import dayjs from 'dayjs';
@@ -12,20 +11,41 @@ import { toast } from 'react-toastify';
 import useSWR, { mutate as mutateKey } from 'swr';
 import { createDoc, docPath, docsBase, toastError } from './api';
 import ShareDocModal from './ShareDocModal';
-import SlidePresenter from './SlidePresenter';
 import {
-  Banner,
-  DocBody,
-  DropMenu,
-  EditorBody,
-  EditorHeader,
-  Empty,
-  Outline,
-  SlideFrame,
-  SlideList,
-  TitleInput,
-  Toolbar,
-} from './styles';
+  ArchiveRestore,
+  Bold,
+  Code,
+  CornerLeftUp,
+  Ellipsis,
+  Eye,
+  Folder,
+  FolderInput,
+  Heading1,
+  Heading2,
+  Heading3,
+  Image,
+  Italic,
+  List,
+  ListChecks,
+  ListOrdered,
+  Lock,
+  Minus,
+  Play,
+  Plus,
+  Quote,
+  SquareCode,
+  Star,
+  Strikethrough,
+  Table,
+  Trash2,
+  TriangleAlert,
+} from 'lucide-react';
+import DocIcon from './DocIcon';
+import SheetEditor from './sheet/SheetEditor';
+import SlidePresenter from './SlidePresenter';
+import { parseDeck } from './slides/model';
+import SlidesEditor from './slides/SlidesEditor';
+import { Banner, DocBody, DropMenu, EditorBody, EditorHeader, Empty, Outline, TitleInput, Toolbar } from './styles';
 
 type Mode = 'edit' | 'split' | 'view';
 type Status = 'saved' | 'unsaved' | 'saving' | 'error' | 'conflict';
@@ -41,25 +61,25 @@ const STATUS_TEXT: Record<Status, string> = {
 };
 
 // 빠른 삽입 도구: [보이는 글자, 설명, 앞, 뒤, 줄 단위]
-const TOOLS: [string, string, string, string, boolean][] = [
-  ['H1', '큰 제목', '# ', '', true],
-  ['H2', '중간 제목', '## ', '', true],
-  ['H3', '작은 제목', '### ', '', true],
-  ['B', '굵게', '**', '**', false],
-  ['I', '기울임', '_', '_', false],
-  ['S', '취소선', '~~', '~~', false],
-  ['</>', '코드', '`', '`', false],
-  ['•', '글머리 목록', '- ', '', true],
-  ['1.', '번호 목록', '1. ', '', true],
-  ['☑', '할 일 목록', '- [ ] ', '', true],
-  ['❝', '인용', '> ', '', true],
+const T = { size: 16, strokeWidth: 2 };
+const TOOLS: [React.ReactNode, string, string, string, boolean][] = [
+  [<Heading1 key="h1" {...T} />, '큰 제목', '# ', '', true],
+  [<Heading2 key="h2" {...T} />, '중간 제목', '## ', '', true],
+  [<Heading3 key="h3" {...T} />, '작은 제목', '### ', '', true],
+  [<Bold key="b" {...T} />, '굵게', '**', '**', false],
+  [<Italic key="i" {...T} />, '기울임', '_', '_', false],
+  [<Strikethrough key="s" {...T} />, '취소선', '~~', '~~', false],
+  [<Code key="c" {...T} />, '코드', '`', '`', false],
+  [<List key="ul" {...T} />, '글머리 목록', '- ', '', true],
+  [<ListOrdered key="ol" {...T} />, '번호 목록', '1. ', '', true],
+  [<ListChecks key="todo" {...T} />, '할 일 목록', '- [ ] ', '', true],
+  [<Quote key="q" {...T} />, '인용', '> ', '', true],
 ];
-
-const BLOCKS: [string, string, string][] = [
-  ['{ }', '코드 블록', '\n```\n코드\n```\n'],
-  ['▦', '표', '\n| 항목 | 내용 |\n| --- | --- |\n|  |  |\n'],
-  ['―', '구분선', '\n---\n'],
-  ['🖼', '이미지 (https 주소)', '\n![설명](https://)\n'],
+const BLOCKS: [React.ReactNode, string, string][] = [
+  [<SquareCode key="code" {...T} />, '코드 블록', '\n```\n코드\n```\n'],
+  [<Table key="table" {...T} />, '표', '\n| 항목 | 내용 |\n| --- | --- |\n|  |  |\n'],
+  [<Minus key="hr" {...T} />, '구분선', '\n---\n'],
+  [<Image key="img" {...T} />, '이미지 (https 주소)', '\n![설명](https://)\n'],
 ];
 
 interface Props {
@@ -93,6 +113,7 @@ const DocPage: FC<Props> = ({ me }) => {
   const [showShare, setShowShare] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [presenting, setPresenting] = useState<number | null>(null);
+  const [slideIndex, setSlideIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // 저장 상태: 서버 버전, 마지막으로 고친 횟수, 저장한 횟수
@@ -118,6 +139,7 @@ const DocPage: FC<Props> = ({ me }) => {
       editSeq.current = 0;
       savedSeq.current = 0;
       setMode(doc.canEdit && !doc.deletedAt ? (doc.content ? 'split' : 'edit') : 'view');
+      setSlideIndex(0);
       setStatus('saved');
     } else if (dirty()) {
       return;
@@ -275,11 +297,7 @@ const DocPage: FC<Props> = ({ me }) => {
   };
 
   const rendered = useMemo(() => renderDocMarkdown(content, workspace, emojis), [content, workspace, emojis]);
-  const slides = useMemo(
-    () =>
-      doc?.type === 'slides' ? splitSlides(content).map((s) => renderDocMarkdown(s, workspace, emojis).nodes) : [],
-    [doc?.type, content, workspace, emojis],
-  );
+  const deckSlides = useMemo(() => (doc?.type === 'slides' ? parseDeck(content).slides : []), [doc?.type, content]);
 
   // 위키 상위 페이지 경로
   const wikiCrumbs = useMemo(() => {
@@ -335,6 +353,8 @@ const DocPage: FC<Props> = ({ me }) => {
 
   const home = `/workspace/${workspace}/docs`;
   const isSlides = doc.type === 'slides';
+  const isSheet = doc.type === 'sheet';
+  const isMarkdown = !isSlides && !isSheet;
   const isOwner = doc.OwnerId === me.id;
   const editor = (
     <div className="pane">
@@ -349,11 +369,6 @@ const DocPage: FC<Props> = ({ me }) => {
             {label}
           </button>
         ))}
-        {isSlides && (
-          <button type="button" title="새 쪽" onClick={() => insertBlock('\n\n---\n\n# 새 쪽\n')}>
-            ＋ 쪽
-          </button>
-        )}
       </Toolbar>
       <textarea
         ref={textareaRef}
@@ -366,29 +381,12 @@ const DocPage: FC<Props> = ({ me }) => {
           }
         }}
         aria-label="문서 내용 (마크다운)"
-        placeholder={
-          isSlides
-            ? '# 첫 쪽 제목\n\n---\n\n## 둘째 쪽\n- 줄마다 --- 를 쓰면 쪽이 나뉩니다'
-            : '# 제목\n\n마크다운으로 쓰세요. **굵게** _기울임_ `코드`, - 목록, - [ ] 할 일, | 표 |'
-        }
+        placeholder={'# 제목\n\n마크다운으로 쓰세요. **굵게** _기울임_ `코드`, - 목록, - [ ] 할 일, | 표 |'}
         spellCheck={false}
       />
     </div>
   );
-  const preview = isSlides ? (
-    <div className="pane">
-      <SlideList>
-        {slides.map((nodes, index) => (
-          <SlideFrame key={index} onDoubleClick={() => setPresenting(index)} title="두 번 누르면 이 쪽부터 발표">
-            <DocBody>{nodes}</DocBody>
-            <span className="page">
-              {index + 1} / {slides.length}
-            </span>
-          </SlideFrame>
-        ))}
-      </SlideList>
-    </div>
-  ) : (
+  const preview = (
     <div className="pane">
       <DocBody>
         {rendered.nodes.length ? rendered.nodes : <p style={{ color: 'var(--text-faint)' }}>내용이 없습니다.</p>}
@@ -424,15 +422,26 @@ const DocPage: FC<Props> = ({ me }) => {
             </>
           ) : doc.Folder && isOwner ? (
             <>
-              <Link to={`${home}/folder/${doc.Folder.id}`}>📁 {doc.Folder.name}</Link>›
+              <Link to={`${home}/folder/${doc.Folder.id}`}>
+                <Folder size={13} style={{ verticalAlign: '-2px' }} /> {doc.Folder.name}
+              </Link>
+              ›
             </>
           ) : null}
-          <span>
-            {DOC_TYPE_INFO[doc.type].icon} {title}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <DocIcon type={doc.type} size={14} /> {title}
           </span>
         </div>
         <span className={`status${status === 'error' || status === 'conflict' ? ' error' : ''}`} role="status">
-          {canEdit ? STATUS_TEXT[status] : doc.deletedAt ? '휴지통에 있음' : '👁 보기 전용'}
+          {canEdit ? (
+            STATUS_TEXT[status]
+          ) : doc.deletedAt ? (
+            '휴지통에 있음'
+          ) : (
+            <>
+              <Eye size={13} style={{ verticalAlign: '-2px' }} /> 보기 전용
+            </>
+          )}
           {status === 'saved' && doc.LastEditor && (
             <>
               {' '}
@@ -440,22 +449,24 @@ const DocPage: FC<Props> = ({ me }) => {
             </>
           )}
         </span>
-        <div className="modes" role="group" aria-label="보기 방식">
-          {(canEdit ? (['edit', 'split', 'view'] as Mode[]) : (['view'] as Mode[])).map((m) => (
-            <button
-              key={m}
-              type="button"
-              className={mode === m ? 'active' : undefined}
-              onClick={() => setMode(m)}
-              aria-pressed={mode === m}
-            >
-              {{ edit: '편집', split: '나란히', view: '보기' }[m]}
-            </button>
-          ))}
-        </div>
+        {isMarkdown && (
+          <div className="modes" role="group" aria-label="보기 방식">
+            {(canEdit ? (['edit', 'split', 'view'] as Mode[]) : (['view'] as Mode[])).map((m) => (
+              <button
+                key={m}
+                type="button"
+                className={mode === m ? 'active' : undefined}
+                onClick={() => setMode(m)}
+                aria-pressed={mode === m}
+              >
+                {{ edit: '편집', split: '나란히', view: '보기' }[m]}
+              </button>
+            ))}
+          </div>
+        )}
         {isSlides && (
-          <button type="button" className="btn" onClick={() => setPresenting(0)}>
-            ▶ 발표
+          <button type="button" className="btn" onClick={() => setPresenting(slideIndex)} title="지금 쪽부터 발표">
+            <Play size={13} style={{ verticalAlign: '-2px' }} /> 발표
           </button>
         )}
         <button
@@ -465,10 +476,18 @@ const DocPage: FC<Props> = ({ me }) => {
           aria-pressed={doc.favorite}
           title={doc.favorite ? '고정 해제' : '왼쪽 목록에 고정'}
         >
-          {doc.favorite ? '★' : '☆'}
+          <Star
+            size={15}
+            style={{ verticalAlign: '-3px' }}
+            fill={doc.favorite ? '#f2c94c' : 'none'}
+            color={doc.favorite ? '#d4a20f' : 'currentColor'}
+          />
         </button>
         <button type="button" className="btn primary" onClick={() => setShowShare(true)}>
-          {doc.visibility === 'private' && doc.type !== 'wiki' ? '🔒 ' : ''}공유
+          {doc.visibility === 'private' && doc.type !== 'wiki' && (
+            <Lock size={12} style={{ verticalAlign: '-1px', marginRight: 4 }} />
+          )}
+          공유
         </button>
         <span style={{ position: 'relative' }}>
           <button
@@ -481,7 +500,7 @@ const DocPage: FC<Props> = ({ me }) => {
             aria-label="문서 메뉴"
             aria-haspopup="menu"
           >
-            ⋯
+            <Ellipsis size={16} style={{ verticalAlign: '-3px' }} />
           </button>
           {showMenu && (
             <DropMenu role="menu" style={{ left: 'auto', right: 0 }} onMouseLeave={() => setShowMenu(false)}>
@@ -491,7 +510,7 @@ const DocPage: FC<Props> = ({ me }) => {
                   role="menuitem"
                   onClick={() => createDoc(workspace, { type: 'wiki', parentId: doc.id }, (p) => history.push(p))}
                 >
-                  ➕ 하위 페이지 추가
+                  <Plus size={15} /> 하위 페이지 추가
                 </button>
               )}
               {doc.type !== 'wiki' && isOwner && (
@@ -502,7 +521,7 @@ const DocPage: FC<Props> = ({ me }) => {
                       role="menuitem"
                       onClick={() => settings({ folderId: null }, '폴더 밖으로 옮겼습니다.')}
                     >
-                      ⤴ 폴더 밖으로 옮기기
+                      <CornerLeftUp size={15} /> 폴더 밖으로 옮기기
                     </button>
                   )}
                   {(folders || [])
@@ -514,7 +533,7 @@ const DocPage: FC<Props> = ({ me }) => {
                         role="menuitem"
                         onClick={() => settings({ folderId: f.id }, `'${f.name}' 폴더로 옮겼습니다.`)}
                       >
-                        📁 {f.name} 로 옮기기
+                        <FolderInput size={15} /> {f.name} 로 옮기기
                       </button>
                     ))}
                 </>
@@ -525,12 +544,12 @@ const DocPage: FC<Props> = ({ me }) => {
                   role="menuitem"
                   onClick={() => settings({ parentId: null }, '맨 위 페이지로 옮겼습니다.')}
                 >
-                  ⤴ 맨 위 페이지로 옮기기
+                  <CornerLeftUp size={15} /> 맨 위 페이지로 옮기기
                 </button>
               )}
               {doc.canManage && !doc.deletedAt && (
                 <button type="button" role="menuitem" onClick={trash}>
-                  🗑 휴지통으로 옮기기
+                  <Trash2 size={15} /> 휴지통으로 옮기기
                 </button>
               )}
             </DropMenu>
@@ -540,17 +559,17 @@ const DocPage: FC<Props> = ({ me }) => {
 
       {doc.deletedAt && (
         <Banner role="alert">
-          🗑 휴지통에 있는 문서입니다.
+          <Trash2 size={16} /> 휴지통에 있는 문서입니다.
           {isOwner && (
             <button type="button" onClick={restore}>
-              되살리기
+              <ArchiveRestore size={13} style={{ verticalAlign: '-2px' }} /> 되살리기
             </button>
           )}
         </Banner>
       )}
       {status === 'conflict' && (
         <Banner role="alert">
-          ⚠️ 다른 사람이 먼저 이 문서를 고쳤습니다.
+          <TriangleAlert size={16} color="#e8891d" /> 다른 사람이 먼저 이 문서를 고쳤습니다.
           <button type="button" onClick={reloadLatest}>
             최신 내용 불러오기 (내 수정 버림)
           </button>
@@ -568,20 +587,34 @@ const DocPage: FC<Props> = ({ me }) => {
         aria-label="문서 제목"
         placeholder="제목"
       />
-      <EditorBody>
-        {mode !== 'view' && editor}
-        {mode !== 'edit' && preview}
-        {mode === 'view' && !isSlides && rendered.headings.length > 1 && (
-          <Outline aria-label="목차">
-            <strong>목차</strong>
-            {rendered.headings.map((h) => (
-              <a key={h.id} href={`#${h.id}`} style={{ paddingLeft: (h.level - 1) * 10 }}>
-                {h.text}
-              </a>
-            ))}
-          </Outline>
-        )}
-      </EditorBody>
+      {isSlides && (
+        <SlidesEditor
+          value={content}
+          readOnly={!canEdit}
+          workspace={workspace}
+          emojis={emojis}
+          current={slideIndex}
+          onCurrentChange={setSlideIndex}
+          onChange={(next) => onEdit({ content: next })}
+        />
+      )}
+      {isSheet && <SheetEditor value={content} readOnly={!canEdit} onChange={(next) => onEdit({ content: next })} />}
+      {isMarkdown && (
+        <EditorBody>
+          {mode !== 'view' && editor}
+          {mode !== 'edit' && preview}
+          {mode === 'view' && rendered.headings.length > 1 && (
+            <Outline aria-label="목차">
+              <strong>목차</strong>
+              {rendered.headings.map((h) => (
+                <a key={h.id} href={`#${h.id}`} style={{ paddingLeft: (h.level - 1) * 10 }}>
+                  {h.text}
+                </a>
+              ))}
+            </Outline>
+          )}
+        </EditorBody>
+      )}
       <ShareDocModal
         show={showShare}
         workspace={workspace}
@@ -590,10 +623,12 @@ const DocPage: FC<Props> = ({ me }) => {
         onCloseModal={() => setShowShare(false)}
         onChanged={() => mutate()}
       />
-      {presenting !== null && slides.length > 0 && (
+      {presenting !== null && deckSlides.length > 0 && (
         <SlidePresenter
-          slides={slides}
-          start={Math.min(presenting, slides.length - 1)}
+          slides={deckSlides}
+          start={Math.min(presenting, deckSlides.length - 1)}
+          workspace={workspace}
+          emojis={emojis}
           onClose={() => setPresenting(null)}
         />
       )}

@@ -5,6 +5,7 @@ import { avatarUrl } from '@utils/avatar';
 import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
 import dayjs, { Dayjs } from 'dayjs';
+import { Lock } from 'lucide-react';
 import React, { FC, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { calBase } from './api';
@@ -302,7 +303,7 @@ const EventModal: FC<Props> = ({ show, workspace, me, members, draft, onClose, o
                 checked={visibility === 'private'}
                 onChange={() => setVisibility('private')}
               />
-              🔒 비공개 (참석자 외에는 '바쁨' 으로만)
+              <Lock size={13} style={{ marginTop: 2 }} /> 비공개 (참석자 외에는 '바쁨' 으로만)
             </label>
           </Field>
         </Row>

@@ -112,7 +112,6 @@ export const REMINDERS: [number | null, string][] = [
 ];
 
 export const STATUS_LABEL = { accepted: '참석', declined: '불참', pending: '응답 없음', owner: '주최' } as const;
-export const STATUS_ICON = { accepted: '✅', declined: '❌', pending: '⏳', owner: '👑' } as const;
 
 // 같은 시간대에 겹치는 일정을 옆으로 나란히 놓는다: 일정 id → (몇 번째 칸, 칸 수)
 export function layoutColumns(events: ICalendarEvent[]) {

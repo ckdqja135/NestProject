@@ -29,6 +29,9 @@ export const Side = styled.aside`
     color: var(--text-muted);
 
     & button {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
       margin-left: auto;
       border: none;
       background: transparent;
@@ -61,6 +64,7 @@ export const Side = styled.aside`
     }
 
     & .remove {
+      display: inline-flex;
       border: none;
       background: transparent;
       color: var(--text-faint);
@@ -94,6 +98,7 @@ export const MiniCal = styled.div`
     font-weight: 700;
 
     & button {
+      display: inline-flex;
       border: none;
       background: transparent;
       color: var(--text-muted);
@@ -179,6 +184,9 @@ export const Toolbar = styled.header`
   }
 
   & button.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     height: 30px;
     padding: 0 10px;
     border: 1px solid var(--border-strong);
@@ -503,8 +511,15 @@ export const Detail = styled.div`
   }
 
   & p {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     margin: 4px 0;
     font-size: 14px;
+  }
+
+  & p.desc {
+    display: block;
   }
 
   & .desc {
@@ -531,6 +546,9 @@ export const Detail = styled.div`
       }
 
       & small {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
         color: var(--text-muted);
       }
     }
@@ -542,6 +560,9 @@ export const Detail = styled.div`
     margin-top: 14px;
 
     & button {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       height: 34px;
       padding: 0 14px;
       border: 1px solid var(--border-strong);

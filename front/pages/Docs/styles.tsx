@@ -125,6 +125,9 @@ export const HomeWrap = styled.div`
   }
 
   & > h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     margin: 0 0 16px;
     font-size: 22px;
   }
@@ -159,7 +162,7 @@ export const Cards = styled.div`
     }
 
     & .icon {
-      font-size: 26px;
+      display: inline-flex;
     }
 
     & strong {
@@ -188,6 +191,7 @@ export const DropMenu = styled.div`
 
   & > button {
     display: flex;
+    align-items: center;
     gap: 10px;
     width: 100%;
     padding: 8px 14px;
@@ -331,6 +335,12 @@ export const DocTable = styled.table`
     color: var(--text-muted);
   }
 
+  & .where {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
   ${MOBILE} {
     & .hide-mobile {
       display: none;
@@ -374,7 +384,7 @@ export const DocGrid = styled.div`
     }
 
     & .icon {
-      font-size: 30px;
+      display: inline-flex;
     }
 
     & strong {
@@ -444,6 +454,9 @@ export const EditorHeader = styled.header`
   }
 
   & button.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     height: 30px;
     padding: 0 10px;
     border: 1px solid var(--border-strong);
@@ -548,6 +561,9 @@ export const Toolbar = styled.div`
   border-bottom: 1px solid var(--border);
 
   & button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     min-width: 30px;
     height: 28px;
     padding: 0 6px;
@@ -742,49 +758,6 @@ export const DocBody = styled.article`
   }
 `;
 
-// 슬라이드: 16:9 카드
-export const SlideFrame = styled.div`
-  position: relative;
-  aspect-ratio: 16 / 9;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 6% 8%;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--bg);
-  overflow: hidden;
-  font-size: clamp(12px, 1.6vw, 22px);
-
-  & article {
-    max-width: none;
-    font-size: inherit;
-  }
-
-  & h1 {
-    font-size: 2.4em;
-    border: none;
-  }
-
-  & h2 {
-    font-size: 1.8em;
-    border: none;
-  }
-
-  & > .page {
-    position: absolute;
-    right: 14px;
-    bottom: 10px;
-    font-size: 12px;
-    color: var(--text-faint);
-  }
-`;
-
-export const SlideList = styled.div`
-  display: grid;
-  gap: 16px;
-  margin-top: 12px;
-`;
-
 // 발표 모드 (전체 화면)
 export const Presenter = styled.div`
   position: fixed;
@@ -795,32 +768,45 @@ export const Presenter = styled.div`
   justify-content: center;
   background: #111;
 
-  & > div {
-    width: min(96vw, calc(96vh * 16 / 9));
-  }
-
-  & > div > div {
-    border: none;
-    border-radius: 0;
-    font-size: clamp(14px, 2.2vw, 40px);
+  & > .stage {
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
   }
 
   & > .controls {
     position: fixed;
-    bottom: 16px;
+    bottom: 14px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
+    align-items: center;
     gap: 8px;
-    width: auto;
+    opacity: 0.35;
+    transition: opacity 0.2s;
+
+    &:hover {
+      opacity: 1;
+    }
+
+    & .page {
+      color: #ddd;
+      font-size: 13px;
+    }
 
     & button {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
       border: none;
       border-radius: 6px;
       background: rgba(255, 255, 255, 0.15);
       color: white;
-      padding: 6px 12px;
+      padding: 6px 10px;
       cursor: pointer;
+
+      &:disabled {
+        opacity: 0.4;
+      }
     }
   }
 `;

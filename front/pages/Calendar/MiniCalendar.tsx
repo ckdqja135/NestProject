@@ -1,4 +1,5 @@
 import dayjs, { Dayjs } from 'dayjs';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import React, { FC, useEffect, useState } from 'react';
 import { MiniCal } from './styles';
 import { monthGrid, WEEKDAYS } from './utils';
@@ -19,11 +20,11 @@ const MiniCalendar: FC<Props> = ({ cursor, marked, onPick }) => {
     <MiniCal aria-label="작은 달력">
       <div className="head">
         <button type="button" onClick={() => setMonth((m) => m.subtract(1, 'month'))} aria-label="이전 달">
-          ‹
+          <ChevronLeft size={16} />
         </button>
         <span>{month.format('YYYY년 M월')}</span>
         <button type="button" onClick={() => setMonth((m) => m.add(1, 'month'))} aria-label="다음 달">
-          ›
+          <ChevronRight size={16} />
         </button>
       </div>
       <div className="grid">

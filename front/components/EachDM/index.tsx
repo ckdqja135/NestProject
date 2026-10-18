@@ -7,6 +7,7 @@ import { draftKey, loadDraft } from '@hooks/useDraft';
 import React, { useEffect, useReducer, useRef, VFC } from 'react';
 import { useParams } from 'react-router';
 import { NavLink, useLocation } from 'react-router-dom';
+import { Bot } from 'lucide-react';
 import useSWR from 'swr';
 
 interface Props {
@@ -73,8 +74,13 @@ const EachDM: VFC<Props> = ({ member, isOnline }) => {
   return (
     <NavLink key={member.id} activeClassName="selected" to={`/workspace/${workspace}/dm/${member.id}`}>
       {member.bot ? (
-        <span className="bot-icon" title="봇" aria-label="봇" style={{ marginRight: 6 }}>
-          🤖
+        <span
+          className="bot-icon"
+          title="봇"
+          aria-label="봇"
+          style={{ display: 'inline-flex', marginRight: 6, verticalAlign: '-3px' }}
+        >
+          <Bot size={16} />
         </span>
       ) : (
         <i
