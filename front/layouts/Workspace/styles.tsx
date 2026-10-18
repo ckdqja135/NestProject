@@ -370,3 +370,42 @@ export const WorkspaceButton = styled.button`
     box-shadow: 0 0 0 2px white;
   }
 `;
+
+// 왼쪽 줄 맨 위: 메신저·Docs 같은 화면 사이를 오가는 메뉴
+export const AppNav = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgb(82, 38, 83);
+
+  & > a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 52px;
+    padding: 5px 0 4px;
+    border-radius: 10px;
+    color: rgb(207, 195, 207);
+    font-size: 11px;
+    text-decoration: none;
+
+    & .icon {
+      font-size: 20px;
+      line-height: 1.2;
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    &.active {
+      background: rgba(255, 255, 255, 0.22);
+      color: white;
+      font-weight: 700;
+    }
+  }
+`;

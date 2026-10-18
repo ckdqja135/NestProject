@@ -194,3 +194,14 @@ export function renderMarkdown(content: string, workspace: string, emojis: Recor
   }
   return nodes;
 }
+
+// 문서(Docs) 렌더러가 줄 안의 문법(굵게, 링크, 멘션, 커스텀 이모지 …)을 같은 규칙으로 그리도록 내보낸다
+export function renderInlineMarkdown(
+  text: string,
+  workspace: string,
+  keyPrefix: string,
+  emojis: Record<string, string> = {},
+): ReactNode[] {
+  customEmojis = emojis;
+  return renderInline(text, workspace, keyPrefix);
+}

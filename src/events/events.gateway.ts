@@ -11,7 +11,7 @@ import {
 import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Namespace, Server, Socket } from 'socket.io';
+import { Namespace, Socket } from 'socket.io';
 import { ChannelChats } from '../entities/ChannelChats';
 import { ChannelMembers } from '../entities/ChannelMembers';
 import { DMs } from '../entities/DMs';
@@ -54,7 +54,7 @@ export class EventsGateway
     private dmsRepository: Repository<DMs>,
   ) {}
 
-  afterInit(server: Server | Namespace) {
+  afterInit() {
     this.logger.log('websocket gateway initialized');
   }
 

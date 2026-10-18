@@ -154,3 +154,59 @@ export interface ICustomEmoji {
   image: string; // data URL
   CreatorId: number | null;
 }
+
+// Docs: 목록 한 줄 (내용 없이)
+export interface IDocListItem {
+  id: number;
+  title: string;
+  type: 'doc' | 'wiki' | 'slides';
+  visibility: 'private' | 'workspace';
+  folderId: number | null;
+  parentId: number | null;
+  ownerId: number | null;
+  ownerName: string | null;
+  ownerEmail: string | null;
+  ownerAvatarStyle: string | null;
+  folderName: string | null;
+  favorite: boolean;
+  createdAt: string;
+  updatedAt: string;
+  viewedAt: string | null;
+  deletedAt: string | null;
+}
+
+// Docs: 문서 하나 (내용·권한 포함)
+export interface IDoc {
+  id: number;
+  title: string;
+  type: 'doc' | 'wiki' | 'slides';
+  content: string;
+  visibility: 'private' | 'workspace';
+  FolderId: number | null;
+  ParentId: number | null;
+  OwnerId: number | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+  Owner: IUser | null;
+  LastEditor: IUser | null;
+  Folder: IDocFolder | null;
+  Shares: { UserId: number; role: 'view' | 'edit'; User: IUser }[];
+  canEdit: boolean;
+  canManage: boolean;
+  favorite: boolean;
+}
+
+export interface IDocFolder {
+  id: number;
+  name: string;
+  ParentId: number | null;
+}
+
+export interface IWikiPage {
+  id: number;
+  title: string;
+  ParentId: number | null;
+  updatedAt: string;
+}

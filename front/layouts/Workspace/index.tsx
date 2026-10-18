@@ -18,6 +18,7 @@ import SearchModal from '@components/SearchModal';
 import useSocket from '@hooks/useSocket';
 import Channel from '@pages/Channel';
 import DirectMessage from '@pages/DirectMessage';
+import Docs from '@pages/Docs';
 import { IChannel, IChat, IDM, IUser, IWorkspace } from '@typings/db';
 import fetcher from '@utils/fetcher';
 import {
@@ -50,6 +51,7 @@ import useSWR, { mutate } from 'swr';
 
 import {
   AddButton,
+  AppNav,
   Channels,
   Chats,
   Header,
@@ -132,6 +134,16 @@ const Workspace = () => {
   }, [location.pathname]);
   const locationRef = useRef(location.pathname);
   locationRef.current = decodeURIComponent(location.pathname);
+  // 지금 보고 있는 화면 (왼쪽 메뉴). 메신저로 돌아가면 마지막으로 보던 채널·DM 을 연다
+  const section = /^\/workspace\/[^/]+\/docs(\/|$)/.test(location.pathname) ? 'docs' : 'messenger';
+  const lastMessengerPath = useRef<{ workspace?: string; path: string }>({ path: '' });
+  if (section === 'messenger' && /\/(channel|dm)\//.test(location.pathname)) {
+    lastMessengerPath.current = { workspace, path: location.pathname };
+  }
+  const messengerPath =
+    lastMessengerPath.current.workspace === workspace && lastMessengerPath.current.path
+      ? lastMessengerPath.current.path
+      : `/workspace/${workspace}/channel/일반`;
   const { data: membersData, mutate: revalidateMembers } = useSWR<IUser[]>(
     userData ? `/api/workspaces/${workspace}/members` : null,
     fetcher,
@@ -347,6 +359,20 @@ const Workspace = () => {
       socket?.off('membersChanged', onMembersChanged);
     };
   }, [socket, workspace, userData, revalidateChannels, revalidateUser, revalidateMembers, history, moveToWorkspaceUrl]);
+
+  // 누군가 나에게 문서를 공유하면 알린다 (누르면 문서를 연다)
+  useEffect(() => {
+    const onDocShared = (data: { id: number; title: string; role: 'view' | 'edit' }) => {
+      toast.info(`📄 '${data.title}' 문서를 ${data.role === 'edit' ? '고칠' : '볼'} 수 있게 공유받았습니다.`, {
+        position: 'bottom-center',
+        onClick: () => history.push(`/workspace/${workspace}/docs/d/${data.id}`),
+      });
+    };
+    socket?.on('docShared', onDocShared);
+    return () => {
+      socket?.off('docShared', onDocShared);
+    };
+  }, [socket, workspace, history]);
 
   // 서버가 중계한 파일을 이 기기의 브라우저 저장소에 보관한다 (서버에는 저장되지 않음)
   useEffect(() => {
@@ -658,6 +684,22 @@ const Workspace = () => {
       </Header>
       <WorkspaceWrapper>
         <Workspaces className={navOpen ? 'open' : undefined}>
+          <AppNav aria-label="화면 메뉴">
+            <Link
+              to={messengerPath}
+              className={section === 'messenger' ? 'active' : undefined}
+              aria-current={section === 'messenger' ? 'page' : undefined}
+            >
+              <span className="icon">💬</span>메신저
+            </Link>
+            <Link
+              to={`/workspace/${workspace}/docs`}
+              className={section === 'docs' ? 'active' : undefined}
+              aria-current={section === 'docs' ? 'page' : undefined}
+            >
+              <span className="icon">📄</span>Docs
+            </Link>
+          </AppNav>
           {userData?.Workspaces.map((ws) => {
             const isActive = ws.url === workspace;
             return (
@@ -679,103 +721,106 @@ const Workspace = () => {
           </AddButton>
         </Workspaces>
         {navOpen && <NavBackdrop onClick={() => setNavOpen(false)} />}
-        <Channels className={navOpen ? 'open' : undefined}>
-          <WorkspaceName onClick={toggleWorkspaceModal} aria-haspopup="menu" aria-expanded={showWorkspaceModal}>
-            {userData?.Workspaces.find((v) => v.url === workspace)?.name}
-          </WorkspaceName>
-          <MenuScroll>
-            <Menu
-              show={showWorkspaceModal}
-              onCloseModal={toggleWorkspaceModal}
-              style={{ top: 100, left: 76, minWidth: 0 }}
-              closeButton={false}
-            >
-              <WorkspaceModal>
-                <header>
-                  <span className="ws-icon">{currentWorkspace?.name.slice(0, 1).toUpperCase()}</span>
-                  <div>
-                    <strong>{currentWorkspace?.name}</strong>
-                    <small>{currentWorkspace?.url}</small>
-                  </div>
-                </header>
-                <ul role="menu">
-                  <li>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setShowWorkspaceModal(false);
-                        setShowMembersModal(true);
-                      }}
-                    >
-                      멤버 보기 · 관리
-                    </button>
-                  </li>
-                  {currentWorkspace && userData && currentWorkspace.OwnerId === userData.id && (
+        {section === 'messenger' && (
+          <Channels className={navOpen ? 'open' : undefined}>
+            <WorkspaceName onClick={toggleWorkspaceModal} aria-haspopup="menu" aria-expanded={showWorkspaceModal}>
+              {userData?.Workspaces.find((v) => v.url === workspace)?.name}
+            </WorkspaceName>
+            <MenuScroll>
+              <Menu
+                show={showWorkspaceModal}
+                onCloseModal={toggleWorkspaceModal}
+                style={{ top: 100, left: 76, minWidth: 0 }}
+                closeButton={false}
+              >
+                <WorkspaceModal>
+                  <header>
+                    <span className="ws-icon">{currentWorkspace?.name.slice(0, 1).toUpperCase()}</span>
+                    <div>
+                      <strong>{currentWorkspace?.name}</strong>
+                      <small>{currentWorkspace?.url}</small>
+                    </div>
+                  </header>
+                  <ul role="menu">
                     <li>
                       <button
                         type="button"
                         role="menuitem"
                         onClick={() => {
                           setShowWorkspaceModal(false);
-                          setShowWorkspaceSettings(true);
+                          setShowMembersModal(true);
                         }}
                       >
-                        워크스페이스 설정
+                        멤버 보기 · 관리
                       </button>
                     </li>
-                  )}
-                  <li>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setShowWorkspaceModal(false);
-                        setShowGroups(true);
-                      }}
-                    >
-                      사용자 그룹
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setShowWorkspaceModal(false);
-                        setShowEmojis(true);
-                      }}
-                    >
-                      커스텀 이모지
-                    </button>
-                  </li>
-                  <li>
-                    <button type="button" role="menuitem" onClick={onClickInviteWorkspace}>
-                      워크스페이스에 사용자 초대
-                    </button>
-                  </li>
-                  <li>
-                    <button type="button" role="menuitem" onClick={onClickAddChannel}>
-                      채널 만들기
-                    </button>
-                  </li>
-                  <li className="divider" role="separator" />
-                  <li>
-                    <button type="button" role="menuitem" className="danger" onClick={onLogOut}>
-                      {userData?.nickname ? `${userData.nickname} 로그아웃` : '로그아웃'}
-                    </button>
-                  </li>
-                </ul>
-              </WorkspaceModal>
-            </Menu>
-            <ChannelList />
-            <DMList />
-          </MenuScroll>
-        </Channels>
+                    {currentWorkspace && userData && currentWorkspace.OwnerId === userData.id && (
+                      <li>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setShowWorkspaceModal(false);
+                            setShowWorkspaceSettings(true);
+                          }}
+                        >
+                          워크스페이스 설정
+                        </button>
+                      </li>
+                    )}
+                    <li>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setShowWorkspaceModal(false);
+                          setShowGroups(true);
+                        }}
+                      >
+                        사용자 그룹
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setShowWorkspaceModal(false);
+                          setShowEmojis(true);
+                        }}
+                      >
+                        커스텀 이모지
+                      </button>
+                    </li>
+                    <li>
+                      <button type="button" role="menuitem" onClick={onClickInviteWorkspace}>
+                        워크스페이스에 사용자 초대
+                      </button>
+                    </li>
+                    <li>
+                      <button type="button" role="menuitem" onClick={onClickAddChannel}>
+                        채널 만들기
+                      </button>
+                    </li>
+                    <li className="divider" role="separator" />
+                    <li>
+                      <button type="button" role="menuitem" className="danger" onClick={onLogOut}>
+                        {userData?.nickname ? `${userData.nickname} 로그아웃` : '로그아웃'}
+                      </button>
+                    </li>
+                  </ul>
+                </WorkspaceModal>
+              </Menu>
+              <ChannelList />
+              <DMList />
+            </MenuScroll>
+          </Channels>
+        )}
         <Chats>
           <Switch>
             <Route path="/workspace/:workspace/channel/:channel" component={Channel} />
             <Route path="/workspace/:workspace/dm/:id" component={DirectMessage} />
+            <Route path="/workspace/:workspace/docs" component={Docs} />
           </Switch>
         </Chats>
       </WorkspaceWrapper>

@@ -31,7 +31,9 @@ export class AuthService {
     }
     const result = await bcrypt.compare(password, user.password);
     if (result) {
-      const { password, ...userWithoutPassword } = user;
+      // 비밀번호 해시는 응답에서 뺀다
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password: _hash, ...userWithoutPassword } = user;
       return userWithoutPassword;
     }
     return null;

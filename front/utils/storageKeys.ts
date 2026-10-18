@@ -27,7 +27,8 @@ const isAppKey = (key: string) =>
   key === 'shlack-thread-reads' ||
   key === 'shlack-theme' ||
   key === 'shlack-draft-times' ||
-  key === 'shlack-recent-emojis';
+  key === 'shlack-recent-emojis' ||
+  key === 'shlack-docs-view';
 
 // 워크스페이스 주소가 바뀌면 그 워크스페이스의 읽은 시각(`주소-채널`)과 임시 저장 글을 새 주소로 옮긴다
 export const moveWorkspaceKeys = (oldUrl: string, newUrl: string) => {

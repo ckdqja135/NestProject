@@ -17,6 +17,10 @@ import { ReadMarkers } from './src/entities/ReadMarkers';
 import { Drafts } from './src/entities/Drafts';
 import { Webhooks } from './src/entities/Webhooks';
 import { CustomEmojis } from './src/entities/CustomEmojis';
+import { Docs } from './src/entities/Docs';
+import { DocFolders } from './src/entities/DocFolders';
+import { DocShares } from './src/entities/DocShares';
+import { DocUserStates } from './src/entities/DocUserStates';
 import { Mentions } from './src/entities/Mentions';
 import { Reactions } from './src/entities/Reactions';
 import { Users } from './src/entities/Users';
@@ -51,6 +55,10 @@ const options: DataSourceOptions & SeederOptions = {
     Drafts,
     Webhooks,
     CustomEmojis,
+    Docs,
+    DocFolders,
+    DocShares,
+    DocUserStates,
     Users,
     WorkspaceMembers,
     Workspaces,
