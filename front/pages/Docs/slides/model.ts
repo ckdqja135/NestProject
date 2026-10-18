@@ -4,11 +4,49 @@ import { splitSlides } from '@utils/docMarkdown';
 export const W = 960;
 export const H = 540;
 
-export type ShapeKind = 'rect' | 'round' | 'ellipse' | 'triangle' | 'arrow' | 'line';
+export type ShapeKind =
+  | 'rect'
+  | 'round'
+  | 'ellipse'
+  | 'triangle'
+  | 'arrow'
+  | 'line'
+  | 'diamond'
+  | 'pentagon'
+  | 'hexagon'
+  | 'star'
+  | 'callout'
+  | 'chevron'
+  | 'plus'
+  | 'parallelogram';
+
+export type Anim = 'none' | 'fade' | 'up' | 'left' | 'zoom';
+export type Transition = 'none' | 'fade' | 'slide' | 'zoom';
+export type FontKey = 'sans' | 'serif' | 'mono' | 'round';
+export const FONTS: Record<FontKey, { name: string; css: string }> = {
+  sans: { name: '고딕', css: "-apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif" },
+  serif: { name: '명조', css: "'AppleMyungjo', 'Nanum Myeongjo', 'Batang', serif" },
+  round: { name: '둥근', css: "'Apple SD Gothic Neo', 'NanumSquareRound', 'Noto Sans KR', sans-serif" },
+  mono: { name: '고정폭', css: 'Monaco, Menlo, Consolas, monospace' },
+};
+
+export interface TableData {
+  rows: string[][];
+  header?: boolean; // 첫 행을 머리글로
+  headerBg?: string;
+  border?: string;
+}
+
+export interface ChartSpec {
+  type: 'column' | 'bar' | 'line' | 'area' | 'pie';
+  // 탭으로 나눈 표: 첫 행 계열 이름, 첫 열 항목
+  data: string;
+  title?: string;
+}
 
 export interface SlideElement {
   id: string;
-  type: 'text' | 'shape' | 'image';
+  type: 'text' | 'shape' | 'image' | 'table' | 'chart';
   x: number;
   y: number;
   w: number;
@@ -26,8 +64,21 @@ export interface SlideElement {
   fill?: string;
   stroke?: string;
   strokeWidth?: number;
+  dash?: 'solid' | 'dashed' | 'dotted';
+  radius?: number; // 둥근 모서리 (도형·그림)
   // 이미지 (https 주소 또는 작게 줄인 data: 그림)
   src?: string;
+  // 공통 모양
+  rot?: number; // 회전 (도)
+  opacity?: number; // 0~1
+  shadow?: boolean;
+  font?: FontKey;
+  underline?: boolean;
+  strike?: boolean;
+  lineHeight?: number;
+  anim?: Anim; // 발표할 때 나타나는 효과 (누를 때마다 차례로)
+  table?: TableData;
+  chart?: ChartSpec;
 }
 
 export interface Slide {
@@ -35,6 +86,8 @@ export interface Slide {
   background: string;
   elements: SlideElement[];
   notes?: string;
+  transition?: Transition;
+  hidden?: boolean; // 발표할 때 건너뛰기
 }
 
 export interface Theme {
@@ -165,8 +218,10 @@ export const parseDeck = (content: string): Deck => {
           id: typeof s.id === 'string' ? s.id : newId(),
           background: typeof s.background === 'string' ? s.background : '#ffffff',
           notes: typeof s.notes === 'string' ? s.notes : undefined,
+          transition: typeof s.transition === 'string' ? s.transition : undefined,
+          hidden: s.hidden === true ? true : undefined,
           elements: s.elements
-            .filter((e) => e && ['text', 'shape', 'image'].includes(e.type))
+            .filter((e) => e && ['text', 'shape', 'image', 'table', 'chart'].includes(e.type))
             .map((e) => ({
               ...e,
               id: typeof e.id === 'string' ? e.id : newId(),
@@ -229,3 +284,35 @@ export const shrinkImage = (
     };
     img.src = url;
   });
+
+// 회전한 상자의 네 꼭짓점을 감싸는 사각형 (스마트 가이드·여러 개 고르기에 쓴다)
+export const bounds = (els: Pick<SlideElement, 'x' | 'y' | 'w' | 'h'>[]) => {
+  const x1 = Math.min(...els.map((e) => e.x));
+  const y1 = Math.min(...els.map((e) => e.y));
+  const x2 = Math.max(...els.map((e) => e.x + e.w));
+  const y2 = Math.max(...els.map((e) => e.y + e.h));
+  return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
+};
+
+export const newTable = (rows = 3, cols = 3): TableData => ({
+  rows: Array.from({ length: rows }, (_, r) =>
+    Array.from({ length: cols }, (_, c) => (r === 0 ? `제목 ${c + 1}` : '')),
+  ),
+  header: true,
+  headerBg: '#1264a3',
+  border: '#c7ccd1',
+});
+
+export const parseChartData = (text: string) => {
+  const rows = text
+    .trim()
+    .split('\n')
+    .map((line) => line.split('\t'));
+  return rows.map((row, r) =>
+    row.map((v, c) => {
+      if (r === 0 || c === 0) return v.trim() || null;
+      const n = Number(v.replace(/,/g, ''));
+      return v.trim() !== '' && Number.isFinite(n) ? n : null;
+    }),
+  );
+};

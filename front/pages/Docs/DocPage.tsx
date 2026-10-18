@@ -590,6 +590,7 @@ const DocPage: FC<Props> = ({ me }) => {
       {isSlides && (
         <SlidesEditor
           value={content}
+          title={title}
           readOnly={!canEdit}
           workspace={workspace}
           emojis={emojis}
@@ -598,7 +599,9 @@ const DocPage: FC<Props> = ({ me }) => {
           onChange={(next) => onEdit({ content: next })}
         />
       )}
-      {isSheet && <SheetEditor value={content} readOnly={!canEdit} onChange={(next) => onEdit({ content: next })} />}
+      {isSheet && (
+        <SheetEditor value={content} title={title} readOnly={!canEdit} onChange={(next) => onEdit({ content: next })} />
+      )}
       {isMarkdown && (
         <EditorBody>
           {mode !== 'view' && editor}

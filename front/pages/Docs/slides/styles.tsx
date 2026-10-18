@@ -326,3 +326,85 @@ export const Stage = styled.div`
     color: var(--text-muted);
   }
 `;
+
+export const SubBar = styled(Bar)`
+  border-top: none;
+  background: var(--bg);
+
+  & input[type='range'] {
+    width: 70px;
+  }
+
+  & .label {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin: 0 2px 0 4px;
+  }
+`;
+
+export const CtxMenu = styled(Menu)`
+  position: absolute;
+  top: auto;
+  left: auto;
+  z-index: 60;
+
+  & hr {
+    margin: 4px 0;
+    border: none;
+    border-top: 1px solid var(--border);
+  }
+
+  & .key {
+    margin-left: auto;
+    color: var(--text-faint);
+    font-size: 11px;
+  }
+`;
+
+export const ShapeGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(5, 36px);
+  gap: 4px;
+  padding: 6px 8px;
+
+  & button {
+    width: 36px !important;
+    height: 36px !important;
+    padding: 0 !important;
+    justify-content: center !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 6px !important;
+  }
+`;
+
+export const TableEditor = styled.table`
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  z-index: 6;
+  background: var(--bg);
+
+  & td {
+    padding: 0;
+    border: 1px solid #1264a3;
+  }
+
+  & input {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 2px 6px;
+    border: none;
+    background: transparent;
+    color: #1d1c1d;
+    font: inherit;
+    outline: none;
+
+    &:focus {
+      background: rgba(18, 100, 163, 0.08);
+    }
+  }
+`;
