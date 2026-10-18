@@ -43,6 +43,7 @@ const ShareDocModal: FC<Props> = ({ show, workspace, doc, me, onCloseModal, onCh
     ? (members || []).filter(
         (m) =>
           m.id !== doc.OwnerId &&
+          !m.bot &&
           !shared.has(m.id) &&
           (m.nickname.toLowerCase().includes(keyword) || m.email.toLowerCase().includes(keyword)),
       )

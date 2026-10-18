@@ -72,17 +72,23 @@ const EachDM: VFC<Props> = ({ member, isOnline }) => {
 
   return (
     <NavLink key={member.id} activeClassName="selected" to={`/workspace/${workspace}/dm/${member.id}`}>
-      <i
-        className={`c-icon p-channel_sidebar__presence_icon p-channel_sidebar__presence_icon--dim_enabled c-presence ${
-          active ? 'c-presence--active c-icon--presence-online' : 'c-icon--presence-offline'
-        }`}
-        title={active ? '온라인' : isOnline ? '자리 비움' : '오프라인'}
-        aria-hidden="true"
-        data-qa="presence_indicator"
-        data-qa-presence-self="false"
-        data-qa-presence-active="false"
-        data-qa-presence-dnd="false"
-      />
+      {member.bot ? (
+        <span className="bot-icon" title="봇" aria-label="봇" style={{ marginRight: 6 }}>
+          🤖
+        </span>
+      ) : (
+        <i
+          className={`c-icon p-channel_sidebar__presence_icon p-channel_sidebar__presence_icon--dim_enabled c-presence ${
+            active ? 'c-presence--active c-icon--presence-online' : 'c-icon--presence-offline'
+          }`}
+          title={active ? '온라인' : isOnline ? '자리 비움' : '오프라인'}
+          aria-hidden="true"
+          data-qa="presence_indicator"
+          data-qa-presence-self="false"
+          data-qa-presence-active="false"
+          data-qa-presence-dnd="false"
+        />
+      )}
       <span className={count && count > 0 ? 'bold' : undefined}>{member.nickname}</span>
       {member.id === userData?.id && <span> (나)</span>}
       {!isViewing && workspace && loadDraft(draftKey(workspace, `dm:${member.id}`)) && (

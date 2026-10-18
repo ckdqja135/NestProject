@@ -14,12 +14,26 @@ import { toVersions } from '../common/edit-history';
 import { checkPollVote, parsePoll, toPollContent } from '../common/poll';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { EventsGateway } from '../events/events.gateway';
+import { BotsService } from '../bots/bots.service';
 import { onlineMap } from '../events/onlineMap';
 import { toFileContent, toFileMeta } from '../common/upload';
 
 function getKeysByValue(object: Record<string, number>, value: number) {
   return Object.keys(object).filter((key) => object[key] === value);
 }
+
+// 봇에게 DM 을 보내면 돌려주는 안내
+const botReply = (url: string) => {
+  const appUrl = (process.env.APP_URL || 'http://localhost:3090').replace(
+    /\/$/,
+    '',
+  );
+  return [
+    '안녕하세요, 캘린더 어시스턴트입니다 🤖',
+    '일정 초대·변경·취소와 시작 전 알림을 여기로 보내 드려요. 제게 보낸 메시지에는 답하지 못해요.',
+    `일정 만들기: ${appUrl}/workspace/${url}/calendar`,
+  ].join('\n');
+};
 
 @Injectable()
 export class DmsService {
@@ -33,6 +47,7 @@ export class DmsService {
     private dmReadsRepository: Repository<DMReads>,
     private workspacesService: WorkspacesService,
     private eventsGateway: EventsGateway,
+    private botsService: BotsService,
   ) {}
 
   private async findWorkspace(url: string, otherId: number, myId: number) {
@@ -135,7 +150,18 @@ export class DmsService {
     myId: number,
   ) {
     const workspace = await this.findWorkspace(url, id, myId);
-    return this.saveAndBroadcast(url, workspace.id, content, id, myId);
+    const saved = await this.saveAndBroadcast(
+      url,
+      workspace.id,
+      content,
+      id,
+      myId,
+    );
+    // 봇에게 보낸 메시지에는 안내 답장
+    if (await this.botsService.isBot(id)) {
+      await this.saveAndBroadcast(url, workspace.id, botReply(url), myId, id);
+    }
+    return saved;
   }
 
   // 파일 전송: DM 에는 파일 정보만 저장하고, 파일 내용은 디스크에 쓰지 않고 두 사람의 접속 중인 탭으로 중계한다

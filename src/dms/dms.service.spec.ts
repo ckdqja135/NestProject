@@ -6,6 +6,7 @@ import { DMReactions } from '../entities/DMReactions';
 import { MessageEdits } from '../entities/MessageEdits';
 import { DMReads } from '../entities/DMReads';
 import { EventsGateway } from '../events/events.gateway';
+import { BotsService } from '../bots/bots.service';
 import { onlineMap } from '../events/onlineMap';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { DmsService } from './dms.service';
@@ -53,6 +54,13 @@ describe('DmsService', () => {
         { provide: getRepositoryToken(DMReads), useValue: dmReadsRepository },
         { provide: WorkspacesService, useValue: workspacesService },
         { provide: EventsGateway, useValue: eventsGateway },
+        {
+          provide: BotsService,
+          useValue: {
+            isBot: jest.fn().mockResolvedValue(false),
+            ensureMember: jest.fn().mockResolvedValue(77),
+          },
+        },
       ],
     }).compile();
 

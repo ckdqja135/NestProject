@@ -12,6 +12,7 @@ import { Users } from '../entities/Users';
 import { WorkspaceMembers } from '../entities/WorkspaceMembers';
 import { Workspaces } from '../entities/Workspaces';
 import { EventsGateway } from '../events/events.gateway';
+import { BotsService } from '../bots/bots.service';
 import { WorkspacesService } from './workspaces.service';
 
 describe('WorkspacesService', () => {
@@ -55,6 +56,13 @@ describe('WorkspacesService', () => {
         { provide: getRepositoryToken(Users), useValue: {} },
         { provide: DataSource, useValue: {} },
         { provide: EventsGateway, useValue: eventsGateway },
+        {
+          provide: BotsService,
+          useValue: {
+            isBot: jest.fn().mockResolvedValue(false),
+            ensureMember: jest.fn().mockResolvedValue(77),
+          },
+        },
       ],
     }).compile();
 

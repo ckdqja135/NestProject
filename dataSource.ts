@@ -19,6 +19,9 @@ import { Webhooks } from './src/entities/Webhooks';
 import { CustomEmojis } from './src/entities/CustomEmojis';
 import { Docs } from './src/entities/Docs';
 import { DocFolders } from './src/entities/DocFolders';
+import { CalendarEvents } from './src/entities/CalendarEvents';
+import { CalendarAttendees } from './src/entities/CalendarAttendees';
+import { CalendarFollows } from './src/entities/CalendarFollows';
 import { DocShares } from './src/entities/DocShares';
 import { DocUserStates } from './src/entities/DocUserStates';
 import { Mentions } from './src/entities/Mentions';
@@ -57,6 +60,9 @@ const options: DataSourceOptions & SeederOptions = {
     CustomEmojis,
     Docs,
     DocFolders,
+    CalendarEvents,
+    CalendarAttendees,
+    CalendarFollows,
     DocShares,
     DocUserStates,
     Users,

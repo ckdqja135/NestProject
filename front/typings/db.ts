@@ -8,6 +8,7 @@ export interface IUser {
   away?: boolean; // 자리 비움으로 표시
   theme?: 'system' | 'light' | 'dark' | null; // 계정에 저장한 화면 테마 (모든 기기 공통)
   notificationsPaused?: boolean; // 데스크톱 알림 일시 중지 (모든 기기 공통)
+  bot?: boolean; // 봇 계정 (캘린더 어시스턴트)
   Workspaces: IWorkspace[];
 }
 
@@ -209,4 +210,32 @@ export interface IWikiPage {
   title: string;
   ParentId: number | null;
   updatedAt: string;
+}
+
+// 캘린더
+export type RsvpStatus = 'pending' | 'accepted' | 'declined';
+
+export interface ICalendarAttendee {
+  UserId: number;
+  status: RsvpStatus;
+  User: IUser;
+}
+
+export interface ICalendarEvent {
+  id: number;
+  title: string;
+  description?: string | null;
+  location?: string | null;
+  startAt: string;
+  endAt: string;
+  allDay: boolean;
+  color: string | null;
+  visibility: 'public' | 'private';
+  reminderMinutes?: number | null;
+  OwnerId: number | null;
+  Owner?: IUser | null;
+  Attendees: ICalendarAttendee[];
+  masked: boolean; // 비공개 일정을 참석자 아닌 사람이 볼 때 ('바쁨')
+  calendars: number[]; // 이 일정이 속한 캘린더(사용자 id)
+  myStatus: 'owner' | RsvpStatus | null;
 }

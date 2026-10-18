@@ -19,6 +19,7 @@ import useSocket from '@hooks/useSocket';
 import Channel from '@pages/Channel';
 import DirectMessage from '@pages/DirectMessage';
 import Docs from '@pages/Docs';
+import Calendar from '@pages/Calendar';
 import { IChannel, IChat, IDM, IUser, IWorkspace } from '@typings/db';
 import fetcher from '@utils/fetcher';
 import {
@@ -135,7 +136,8 @@ const Workspace = () => {
   const locationRef = useRef(location.pathname);
   locationRef.current = decodeURIComponent(location.pathname);
   // 지금 보고 있는 화면 (왼쪽 메뉴). 메신저로 돌아가면 마지막으로 보던 채널·DM 을 연다
-  const section = /^\/workspace\/[^/]+\/docs(\/|$)/.test(location.pathname) ? 'docs' : 'messenger';
+  const sectionMatch = location.pathname.match(/^\/workspace\/[^/]+\/(docs|calendar)(\/|$)/);
+  const section = sectionMatch ? sectionMatch[1] : 'messenger';
   const lastMessengerPath = useRef<{ workspace?: string; path: string }>({ path: '' });
   if (section === 'messenger' && /\/(channel|dm)\//.test(location.pathname)) {
     lastMessengerPath.current = { workspace, path: location.pathname };
@@ -699,6 +701,13 @@ const Workspace = () => {
             >
               <span className="icon">📄</span>Docs
             </Link>
+            <Link
+              to={`/workspace/${workspace}/calendar`}
+              className={section === 'calendar' ? 'active' : undefined}
+              aria-current={section === 'calendar' ? 'page' : undefined}
+            >
+              <span className="icon">📅</span>캘린더
+            </Link>
           </AppNav>
           {userData?.Workspaces.map((ws) => {
             const isActive = ws.url === workspace;
@@ -821,6 +830,7 @@ const Workspace = () => {
             <Route path="/workspace/:workspace/channel/:channel" component={Channel} />
             <Route path="/workspace/:workspace/dm/:id" component={DirectMessage} />
             <Route path="/workspace/:workspace/docs" component={Docs} />
+            <Route path="/workspace/:workspace/calendar" component={Calendar} />
           </Switch>
         </Chats>
       </WorkspaceWrapper>

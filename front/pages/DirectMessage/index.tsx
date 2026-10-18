@@ -414,7 +414,15 @@ const DirectMessage = () => {
               {isSelf && <span className="me"> (나)</span>}
             </strong>
             <small className={isOnline && !userData.away ? 'online' : undefined}>
-              {isSelf ? '나에게 보내는 메모' : isOnline ? (userData.away ? '○ 자리 비움' : '● 온라인') : '○ 오프라인'}
+              {isSelf
+                ? '나에게 보내는 메모'
+                : userData.bot
+                ? '🤖 봇 · 일정 초대·변경·알림을 보내 드려요'
+                : isOnline
+                ? userData.away
+                  ? '○ 자리 비움'
+                  : '● 온라인'
+                : '○ 오프라인'}
               {(userData.statusEmoji || userData.statusText) && (
                 <span className="status">
                   {' · '}
@@ -424,7 +432,7 @@ const DirectMessage = () => {
             </small>
           </div>
           <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'row', gap: 4 }}>
-            {!isSelf && (
+            {!isSelf && !userData.bot && (
               <HeaderButton
                 type="button"
                 onClick={() => startCall(userData)}

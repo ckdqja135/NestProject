@@ -7,6 +7,8 @@ import { SyncModule } from './sync/sync.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { EmojisModule } from './emojis/emojis.module';
 import { DocsModule } from './docs/docs.module';
+import { BotsModule } from './bots/bots.module';
+import { CalendarModule } from './calendar/calendar.module';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { rateLimitPerMinute } from './security';
@@ -43,6 +45,9 @@ import { Webhooks } from './entities/Webhooks';
 import { CustomEmojis } from './entities/CustomEmojis';
 import { Docs } from './entities/Docs';
 import { DocFolders } from './entities/DocFolders';
+import { CalendarEvents } from './entities/CalendarEvents';
+import { CalendarAttendees } from './entities/CalendarAttendees';
+import { CalendarFollows } from './entities/CalendarFollows';
 import { DocShares } from './entities/DocShares';
 import { DocUserStates } from './entities/DocUserStates';
 import { Mentions } from './entities/Mentions';
@@ -87,6 +92,9 @@ import { Workspaces } from './entities/Workspaces';
         CustomEmojis,
         Docs,
         DocFolders,
+        CalendarEvents,
+        CalendarAttendees,
+        CalendarFollows,
         DocShares,
         DocUserStates,
         Users,
@@ -114,6 +122,8 @@ import { Workspaces } from './entities/Workspaces';
     WebhooksModule,
     EmojisModule,
     DocsModule,
+    BotsModule,
+    CalendarModule,
     MentionsModule,
     FilesModule,
   ],

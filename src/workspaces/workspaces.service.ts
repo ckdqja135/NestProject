@@ -12,6 +12,7 @@ import { WorkspaceMembers } from '../entities/WorkspaceMembers';
 import { ChannelMembers } from '../entities/ChannelMembers';
 import { Users } from '../entities/Users';
 import { EventsGateway } from '../events/events.gateway';
+import { BotsService } from '../bots/bots.service';
 
 @Injectable()
 export class WorkspacesService {
@@ -28,6 +29,7 @@ export class WorkspacesService {
     private usersRepository: Repository<Users>,
     private dataSource: DataSource,
     private eventsGateway: EventsGateway,
+    private botsService: BotsService,
   ) {}
 
   async findWorkspaceByUrl(url: string) {
@@ -83,6 +85,8 @@ export class WorkspacesService {
         .getRepository(ChannelMembers)
         .save({ UserId: myId, ChannelId: channel.id });
       await queryRunner.commitTransaction();
+      // 캘린더 어시스턴트 봇도 멤버로 (알림 DM 을 받을 수 있게)
+      await this.botsService.ensureMember(workspace.id).catch(() => undefined);
       return workspace;
     } catch (error) {
       await queryRunner.rollbackTransaction();
