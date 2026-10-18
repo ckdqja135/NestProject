@@ -121,3 +121,6 @@ lerna-debug.log*
 !.vscode/launch.json
 !.vscode/extensions.json
 
+
+# 할 일 메모는 로컬에만
+TODO.md
