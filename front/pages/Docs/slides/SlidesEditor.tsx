@@ -861,17 +861,28 @@ const SlidesEditor: FC<Props> = ({ value, readOnly, workspace, title, emojis, cu
   };
 
   // ── PDF (인쇄)
-  const printDeck = () => {
-    setPrinting(true);
-    window.setTimeout(() => {
-      // PDF 파일 이름은 문서 제목으로
-      const before = document.title;
-      document.title = title || '슬라이드';
-      window.print();
+  const printDeck = () => setPrinting(true);
+  // 인쇄용 화면을 그린 뒤 인쇄 창을 열고, 창을 닫으면(afterprint) 치운다.
+  // (print() 가 바로 돌아오는 브라우저에서도 빈 PDF 가 되지 않게)
+  useEffect(() => {
+    if (!printing) return undefined;
+    const before = document.title;
+    const done = () => {
       document.title = before;
       setPrinting(false);
+    };
+    window.addEventListener('afterprint', done);
+    const timer = window.setTimeout(() => {
+      // PDF 파일 이름은 문서 제목으로
+      document.title = title || '슬라이드';
+      window.print();
     }, 300);
-  };
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('afterprint', done);
+      document.title = before;
+    };
+  }, [printing, title]);
 
   const thumbScale = 150 / W;
   const isTextLike =
