@@ -41,7 +41,7 @@ const Wrapper = styled.div`
 
 interface Props {
   image?: string;
-  icon?: string;
+  icon?: React.ReactNode;
   title: string;
   description: React.ReactNode;
 }

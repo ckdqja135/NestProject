@@ -60,9 +60,12 @@ export function useToggleSaved(workspace: string) {
       return (saved ? axios.delete(url) : axios.put(url))
         .then(() => {
           mutate(savedKey(workspace));
-          toast.info(saved ? '저장을 취소했습니다.' : '메시지를 저장했습니다. 🔖 에서 모아 볼 수 있어요.', {
-            position: 'bottom-center',
-          });
+          toast.info(
+            saved ? '저장을 취소했습니다.' : '메시지를 저장했습니다. 위쪽 저장한 메시지에서 모아 볼 수 있어요.',
+            {
+              position: 'bottom-center',
+            },
+          );
         })
         .catch((error) => toast.error(getErrorMessage(error), { position: 'bottom-center' }));
     },

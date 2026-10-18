@@ -1,3 +1,4 @@
+import { Pin } from 'lucide-react';
 import Chat, { ChatActions } from '@components/Chat';
 import { EmptyText, Panel, PanelBody, PanelHeader } from '@components/SidePanel/styles';
 import { IChat, IDM } from '@typings/db';
@@ -33,7 +34,9 @@ const PinnedPanel: FC<Props> = ({ pinnedUrl, revalidateOn, myId, socket, actions
   return (
     <Panel aria-label="고정된 메시지">
       <PanelHeader>
-        <span>📌 고정된 메시지</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <Pin size={15} /> 고정된 메시지
+        </span>
         <button type="button" onClick={onClose} aria-label="고정 메시지 닫기">
           &times;
         </button>

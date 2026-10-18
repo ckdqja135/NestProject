@@ -1,3 +1,4 @@
+import { Clock } from 'lucide-react';
 import { AttachButton } from '@components/ChatBox/styles';
 import styled from '@emotion/styled';
 import { timePresets } from '@utils/timePresets';
@@ -123,7 +124,7 @@ const ScheduleButton: FC<Props> = ({ disabled, onSchedule }) => {
         aria-expanded={open}
         title={disabled ? '보낼 내용을 먼저 입력하세요' : '정한 시각에 보내기'}
       >
-        🕒 예약
+        <Clock size={14} /> 예약
       </AttachButton>
       {open && (
         <Menu role="menu" aria-label="보낼 시각">

@@ -63,6 +63,11 @@
           background: var(--bg);
           color: var(--text);
       }
+      /* SVG 아이콘(lucide)을 옆 글자와 같은 높이에 */
+      svg.lucide {
+          vertical-align: -0.16em;
+          flex-shrink: 0;
+      }
       :root[data-theme='dark'] {
           --sk_primary_foreground: 209, 210, 211;
           --sk_primary_background: 26, 29, 33;

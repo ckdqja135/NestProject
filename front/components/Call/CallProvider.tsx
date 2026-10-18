@@ -1,3 +1,4 @@
+import { Mic, MicOff, MonitorUp, Phone, Volume2 } from 'lucide-react';
 import { IUser } from '@typings/db';
 import { avatarUrl } from '@utils/avatar';
 import axios from 'axios';
@@ -373,10 +374,23 @@ const CallProvider: FC<PropsWithChildren<Props>> = ({ socket, members, children 
             <div>
               <strong>{peer.nickname}</strong>
               <small>
-                {phase === 'incoming' && '📞 전화가 왔습니다'}
-                {phase === 'outgoing' && '📞 거는 중...'}
+                {phase === 'incoming' && (
+                  <>
+                    <Phone size={12} /> 전화가 왔습니다
+                  </>
+                )}
+                {phase === 'outgoing' && (
+                  <>
+                    <Phone size={12} /> 거는 중...
+                  </>
+                )}
                 {phase === 'connecting' && '연결하는 중...'}
-                {phase === 'active' && `🔊 통화 중 ${time}${sharing ? ' · 화면 공유 중' : ''}`}
+                {phase === 'active' && (
+                  <>
+                    <Volume2 size={12} /> 통화 중 {time}
+                    {sharing ? ' · 화면 공유 중' : ''}
+                  </>
+                )}
               </small>
             </div>
           </div>
@@ -401,7 +415,15 @@ const CallProvider: FC<PropsWithChildren<Props>> = ({ socket, members, children 
                       onClick={toggleMute}
                       aria-pressed={muted}
                     >
-                      {muted ? '🔇 음소거됨' : '🎙 음소거'}
+                      {muted ? (
+                        <>
+                          <MicOff size={14} /> 음소거됨
+                        </>
+                      ) : (
+                        <>
+                          <Mic size={14} /> 음소거
+                        </>
+                      )}
                     </button>
                     {canShareScreen && (
                       <button
@@ -410,7 +432,13 @@ const CallProvider: FC<PropsWithChildren<Props>> = ({ socket, members, children 
                         onClick={toggleShare}
                         aria-pressed={sharing}
                       >
-                        {sharing ? '공유 중지' : '🖥 화면 공유'}
+                        {sharing ? (
+                          '공유 중지'
+                        ) : (
+                          <>
+                            <MonitorUp size={14} /> 화면 공유
+                          </>
+                        )}
                       </button>
                     )}
                   </>

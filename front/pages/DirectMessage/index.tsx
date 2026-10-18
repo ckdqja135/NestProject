@@ -1,3 +1,4 @@
+import { ChartBar, Phone, Pin } from 'lucide-react';
 import { ChatActions } from '@components/Chat';
 import ChatBox from '@components/ChatBox';
 import ChatList from '@components/ChatList';
@@ -439,7 +440,7 @@ const DirectMessage = () => {
                 disabled={!isOnline || inCall}
                 title={isOnline ? '음성 통화 (화면 공유 가능)' : '상대가 접속해 있지 않습니다'}
               >
-                📞 통화
+                <Phone size={14} /> 통화
               </HeaderButton>
             )}
             <HeaderButton
@@ -448,7 +449,7 @@ const DirectMessage = () => {
               onClick={() => setShowPinned((prev) => !prev)}
               title="고정된 메시지"
             >
-              📌 고정
+              <Pin size={14} /> 고정
             </HeaderButton>
           </div>
         </Header>
@@ -497,7 +498,7 @@ const DirectMessage = () => {
             <>
               <GifPicker onSelect={onSelectGif} />
               <AttachButton type="button" onClick={() => setShowPollModal(true)} title="투표 만들기">
-                📊 투표
+                <ChartBar size={14} /> 투표
               </AttachButton>
               <ScheduleButton disabled={!chat?.trim()} onSchedule={onSchedule} />
             </>

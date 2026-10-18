@@ -1,3 +1,4 @@
+import { CheckCheck } from 'lucide-react';
 import Chat, { ChatActions } from '@components/Chat';
 import { ChatZone, NewDivider, ReadReceipt, Section, StickyHeader } from '@components/ChatList/styles';
 import { IChat, IDM } from '@typings/db';
@@ -57,7 +58,11 @@ const ChatList: FC<Props> = ({
                     </NewDivider>
                   )}
                   <Chat data={chat} myId={myId} actions={actions} />
-                  {chat.id === readReceiptId && <ReadReceipt>✓ 읽음</ReadReceipt>}
+                  {chat.id === readReceiptId && (
+                    <ReadReceipt>
+                      <CheckCheck size={13} /> 읽음
+                    </ReadReceipt>
+                  )}
                 </React.Fragment>
               ))}
             </Section>

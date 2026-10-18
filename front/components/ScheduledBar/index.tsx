@@ -1,3 +1,4 @@
+import { Clock } from 'lucide-react';
 import styled from '@emotion/styled';
 import ScheduledModal from '@components/ScheduledModal';
 import useScheduled from '@hooks/useScheduled';
@@ -39,7 +40,7 @@ const ScheduledBar: FC<Props> = ({ workspace, channel, receiverId }) => {
     <>
       {count > 0 && (
         <Bar type="button" onClick={() => setShow(true)}>
-          🕒 이 대화에 예약된 메시지 {count}개 · 보기
+          <Clock size={14} style={{ verticalAlign: '-2px' }} /> 이 대화에 예약된 메시지 {count}개 · 보기
         </Bar>
       )}
       <ScheduledModal

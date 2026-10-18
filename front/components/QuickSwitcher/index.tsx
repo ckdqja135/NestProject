@@ -1,3 +1,4 @@
+import { Hash, Lock } from 'lucide-react';
 import Modal from '@components/Modal';
 import { IChannel, IUser } from '@typings/db';
 import { avatarUrl } from '@utils/avatar';
@@ -41,7 +42,7 @@ const QuickSwitcher: FC<Props> = ({ show, workspace, myId, onCloseModal }) => {
         label: c.name,
         path: `/workspace/${workspace}/channel/${c.name}`,
         hint: c.archived ? '보관된 채널' : '채널',
-        icon: <span className="icon">{c.private ? '🔒' : '#'}</span>,
+        icon: <span className="icon">{c.private ? <Lock size={14} /> : <Hash size={14} />}</span>,
       })),
       ...(members || []).map((m) => ({
         key: `u${m.id}`,

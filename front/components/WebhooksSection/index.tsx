@@ -1,3 +1,4 @@
+import { Bot } from 'lucide-react';
 import styled from '@emotion/styled';
 import { Field, TextInput } from '@components/ModalForm/styles';
 import fetcher from '@utils/fetcher';
@@ -112,7 +113,9 @@ const WebhooksSection: FC<Props> = ({ workspace, channel, disabled }) => {
         {webhooks?.map((webhook) => (
           <li key={webhook.id}>
             <div className="row">
-              <span className="name">🤖 {webhook.name}</span>
+              <span className="name">
+                <Bot size={14} style={{ verticalAlign: '-2px' }} /> {webhook.name}
+              </span>
               <button type="button" onClick={() => onCopy(webhook)}>
                 주소 복사
               </button>

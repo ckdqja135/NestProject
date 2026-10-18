@@ -66,7 +66,7 @@ const InviteChannelModal: FC<Props> = ({ show, onCloseModal }) => {
     <Modal
       show={show}
       onCloseModal={onCloseModal}
-      title={`${isPrivate ? '🔒 ' : '#'}${channel}에 사람 초대`}
+      title={`${isPrivate ? '' : '#'}${channel}에 사람 초대`}
       description="워크스페이스 멤버 중에서 이름이나 이메일로 찾아 초대하세요."
     >
       {serverError && <FormError role="alert">{serverError}</FormError>}

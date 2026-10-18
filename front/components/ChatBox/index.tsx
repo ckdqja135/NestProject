@@ -1,3 +1,4 @@
+import { Megaphone, Smile, Users } from 'lucide-react';
 import {
   AttachButton,
   ChatArea,
@@ -143,7 +144,9 @@ const ChatBox: FC<Props> = ({
       if (broadcast) {
         return (
           <EachMention focus={focus}>
-            <span className="broadcast">📣</span>
+            <span className="broadcast">
+              <Megaphone size={15} />
+            </span>
             <span>{highlightedDisplay}</span>
             <small>{broadcast.description}</small>
           </EachMention>
@@ -153,7 +156,9 @@ const ChatBox: FC<Props> = ({
       if (group) {
         return (
           <EachMention focus={focus}>
-            <span className="broadcast">👥</span>
+            <span className="broadcast">
+              <Users size={15} />
+            </span>
             <span>{highlightedDisplay}</span>
             <small>그룹 · {group.Members.length}명</small>
           </EachMention>
@@ -246,7 +251,7 @@ const ChatBox: FC<Props> = ({
               title="이모지 넣기"
               onClick={() => setShowEmoji((v) => !v)}
             >
-              😀
+              <Smile size={16} />
             </AttachButton>
             {showEmoji && (
               <div className="panel">

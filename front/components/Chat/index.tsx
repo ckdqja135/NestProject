@@ -1,3 +1,4 @@
+import { Bell, Bookmark, Bot, Link, MessageSquareReply, Pencil, Pin, SmilePlus, Trash2 } from 'lucide-react';
 import {
   ActionBar,
   ChatWrapper,
@@ -276,7 +277,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
       <div className="chat-img">
         {botName ? (
           <span className="bot-avatar" aria-hidden="true">
-            🤖
+            <Bot size={22} />
           </span>
         ) : (
           <img src={avatarUrl(user, 36)} alt={user.nickname} />
@@ -285,9 +286,17 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
       <div className="chat-text">
         {(data.pinned || isSaved) && (
           <PinnedLabel>
-            {data.pinned && '📌 고정됨'}
+            {data.pinned && (
+              <>
+                <Pin size={12} /> 고정됨
+              </>
+            )}
             {data.pinned && isSaved && ' · '}
-            {isSaved && <span className="saved">🔖 저장됨</span>}
+            {isSaved && (
+              <span className="saved">
+                <Bookmark size={12} /> 저장됨
+              </span>
+            )}
           </PinnedLabel>
         )}
         <div className="chat-user">
@@ -386,7 +395,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
         <ActionBar className="chat-actions">
           {canReact && (
             <button type="button" title="리액션 추가" aria-label="리액션 추가" onClick={() => setShowPicker((v) => !v)}>
-              😀
+              <SmilePlus size={16} />
             </button>
           )}
           {canReply && (
@@ -396,7 +405,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
               aria-label="스레드로 답글"
               onClick={() => actions?.onReply?.(channelChat!)}
             >
-              💬
+              <MessageSquareReply size={16} />
             </button>
           )}
           {canPin && (
@@ -406,7 +415,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
               aria-label={data.pinned ? '고정 해제' : '고정'}
               onClick={() => actions?.onTogglePin?.(data)}
             >
-              📌
+              <Pin size={16} />
             </button>
           )}
           {canSave && (
@@ -417,7 +426,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
               aria-pressed={isSaved}
               onClick={() => toggleSaved(isDM ? 'dms' : 'chats', data.id, isSaved)}
             >
-              🔖
+              <Bookmark size={16} fill={isSaved ? 'currentColor' : 'none'} />
             </button>
           )}
           {canRemind && (
@@ -431,22 +440,22 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
                 setShowReminder((v) => !v);
               }}
             >
-              ⏰
+              <Bell size={16} />
             </button>
           )}
           {canCopyLink && (
             <button type="button" title="메시지 링크 복사" aria-label="메시지 링크 복사" onClick={onCopyLink}>
-              🔗
+              <Link size={16} />
             </button>
           )}
           {canEdit && (
             <button type="button" title="수정" aria-label="수정" onClick={onStartEdit}>
-              ✏️
+              <Pencil size={16} />
             </button>
           )}
           {canDelete && (
             <button type="button" title="삭제" aria-label="삭제" onClick={() => setConfirmDelete(true)}>
-              🗑️
+              <Trash2 size={16} />
             </button>
           )}
           {showReminder && (

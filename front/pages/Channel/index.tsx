@@ -1,3 +1,4 @@
+import { Archive, Bell, BellOff, ChartBar, Hash, Lock, Pin, Settings } from 'lucide-react';
 import { ChatActions } from '@components/Chat';
 import ChatBox from '@components/ChatBox';
 import ChatList from '@components/ChatList';
@@ -486,10 +487,14 @@ const Channel = () => {
       <Container onDrop={onDrop} onDragOver={onDragOver} onDragLeave={onDragLeave}>
         <Header>
           <span className="name" title={channelData?.private ? '비공개 채널' : '공개 채널'}>
-            {channelData?.private ? '🔒 ' : '#'}
+            {channelData?.private ? <Lock size={15} className="ch-icon" /> : '#'}
             {channel}
           </span>
-          {channelData?.archived && <span className="archived">🗄 보관됨</span>}
+          {channelData?.archived && (
+            <span className="archived">
+              <Archive size={13} /> 보관됨
+            </span>
+          )}
           {channelData?.topic && (
             <button type="button" className="topic" title={channelData.topic} onClick={() => setShowSettings(true)}>
               {channelData.topic}
@@ -497,7 +502,7 @@ const Channel = () => {
           )}
           <div style={{ display: 'flex', flex: 1, justifyContent: 'flex-end', alignItems: 'center', gap: 4 }}>
             <HeaderButton type="button" onClick={() => setShowSettings(true)} title="채널 설정">
-              ⚙ 설정
+              <Settings size={14} /> 설정
             </HeaderButton>
             <HeaderButton
               type="button"
@@ -505,7 +510,7 @@ const Channel = () => {
               onClick={onTogglePinnedPanel}
               title="고정된 메시지"
             >
-              📌 고정
+              <Pin size={14} /> 고정
             </HeaderButton>
             <HeaderButton
               type="button"
@@ -514,7 +519,15 @@ const Channel = () => {
               title={channelData?.muted ? '알림 켜기' : '알림 끄기 (멘션은 계속 알림)'}
               aria-pressed={!!channelData?.muted}
             >
-              {channelData?.muted ? '🔕 알림 꺼짐' : '🔔 알림'}
+              {channelData?.muted ? (
+                <>
+                  <BellOff size={14} /> 알림 꺼짐
+                </>
+              ) : (
+                <>
+                  <Bell size={14} /> 알림
+                </>
+              )}
             </HeaderButton>
             {channel !== '일반' && (
               <HeaderButton type="button" onClick={onLeaveChannel} title="채널 나가기">
@@ -544,8 +557,8 @@ const Channel = () => {
           firstUnreadId={firstUnreadId}
           intro={
             <ConversationIntro
-              icon={channelData?.private ? '🔒' : '#'}
-              title={`${channelData?.private ? '🔒 ' : '#'}${channel} 채널의 시작`}
+              icon={channelData?.private ? <Lock size={28} /> : <Hash size={28} />}
+              title={`${channelData?.private ? '' : '#'}${channel} 채널의 시작`}
               description={
                 channelData?.private
                   ? '초대받은 멤버만 볼 수 있는 비공개 채널입니다.'
@@ -559,7 +572,7 @@ const Channel = () => {
         <PollModal show={showPollModal} onCloseModal={() => setShowPollModal(false)} onCreate={onCreatePoll} />
         {channelData?.archived ? (
           <ArchivedNotice role="status">
-            🗄 보관된 채널입니다. 메시지를 읽을 수만 있어요.
+            <Archive size={14} /> 보관된 채널입니다. 메시지를 읽을 수만 있어요.
             {canManage && (
               <button type="button" onClick={() => setShowSettings(true)}>
                 채널 설정
@@ -571,7 +584,7 @@ const Channel = () => {
             onSubmitForm={onSubmitForm}
             chat={chat}
             onChangeChat={onChangeChatWithTyping}
-            placeholder={`${channelData?.private ? '🔒' : '#'}${channel}에 메시지 보내기`}
+            placeholder={`${channelData?.private ? '' : '#'}${channel}에 메시지 보내기`}
             data={channelMembersData}
             allowBroadcast
             onEditLast={onEditLast}
@@ -583,7 +596,7 @@ const Channel = () => {
               <>
                 <GifPicker onSelect={onSelectGif} />
                 <AttachButton type="button" onClick={() => setShowPollModal(true)} title="투표 만들기">
-                  📊 투표
+                  <ChartBar size={14} /> 투표
                 </AttachButton>
                 <ScheduleButton disabled={!chat?.trim()} onSchedule={onSchedule} />
               </>

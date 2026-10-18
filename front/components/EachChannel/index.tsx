@@ -1,3 +1,4 @@
+import { Archive, BellOff, Hash, Lock, Pencil } from 'lucide-react';
 import useSocket from '@hooks/useSocket';
 import { IChannel, IChat, IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
@@ -75,21 +76,22 @@ const EachChannel: VFC<Props> = ({ channel, mentionCount = 0 }) => {
       to={`/workspace/${workspace}/channel/${channel.name}`}
     >
       <span className={!channel.muted && count !== undefined && count > 0 ? 'bold' : undefined}>
-        {channel.private ? '🔒' : '#'} {channel.name}
+        {channel.private ? <Lock size={13} className="ch-icon" /> : <Hash size={13} className="ch-icon" />}{' '}
+        {channel.name}
       </span>
       {!isViewing && workspace && loadDraft(draftKey(workspace, `channel:${channel.name}`)) && (
         <span className="draft-icon" title="쓰다 만 메시지가 있습니다" aria-label="임시 저장된 메시지">
-          ✏️
+          <Pencil size={13} />
         </span>
       )}
       {channel.archived && (
         <span className="muted-icon" title="보관된 채널" aria-label="보관된 채널">
-          🗄
+          <Archive size={13} />
         </span>
       )}
       {channel.muted && (
         <span className="muted-icon" title="알림 꺼짐" aria-label="알림 꺼짐">
-          🔕
+          <BellOff size={13} />
         </span>
       )}
       {mentionCount > 0 ? (

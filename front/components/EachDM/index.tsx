@@ -7,7 +7,7 @@ import { draftKey, loadDraft } from '@hooks/useDraft';
 import React, { useEffect, useReducer, useRef, VFC } from 'react';
 import { useParams } from 'react-router';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Bot } from 'lucide-react';
+import { Bot, Pencil } from 'lucide-react';
 import useSWR from 'swr';
 
 interface Props {
@@ -99,7 +99,7 @@ const EachDM: VFC<Props> = ({ member, isOnline }) => {
       {member.id === userData?.id && <span> (나)</span>}
       {!isViewing && workspace && loadDraft(draftKey(workspace, `dm:${member.id}`)) && (
         <span className="draft-icon" title="쓰다 만 메시지가 있습니다" aria-label="임시 저장된 메시지">
-          ✏️
+          <Pencil size={13} />
         </span>
       )}
       {member.statusEmoji && (

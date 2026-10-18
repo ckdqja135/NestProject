@@ -1,3 +1,4 @@
+import { Bookmark } from 'lucide-react';
 import styled from '@emotion/styled';
 import { BellButton, Dropdown, MentionItem, Wrapper } from '@components/MentionsButton/styles';
 import useSaved, { useToggleSaved } from '@hooks/useSaved';
@@ -72,7 +73,7 @@ const SavedButton: FC<Props> = ({ workspace, myId }) => {
         aria-expanded={open}
         title="저장한 메시지"
       >
-        🔖
+        <Bookmark size={18} />
       </BellButton>
       {open && (
         <Dropdown role="dialog" aria-label="저장한 메시지">
@@ -82,7 +83,7 @@ const SavedButton: FC<Props> = ({ workspace, myId }) => {
           <div className="list">
             {!data && <p className="empty">불러오는 중...</p>}
             {data?.length === 0 && (
-              <p className="empty">저장한 메시지가 없습니다. 메시지에 마우스를 올리고 🔖 를 눌러 저장하세요.</p>
+              <p className="empty">저장한 메시지가 없습니다. 메시지에 마우스를 올리고 저장(책갈피)을 눌러 보세요.</p>
             )}
             {data?.map((item) => {
               const message = item.Chat || item.DM;

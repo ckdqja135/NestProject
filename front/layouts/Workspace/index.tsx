@@ -43,7 +43,7 @@ import CallProvider from '@components/Call/CallProvider';
 import { moveChannelKeys, moveWorkspaceKeys } from '@utils/storageKeys';
 import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
-import { CalendarDays, FileText, MessageSquare } from 'lucide-react';
+import { Bell, BellOff, CalendarDays, FileText, Menu as MenuIcon, MessageSquare, SunMoon } from 'lucide-react';
 import { avatarUrl } from '@utils/avatar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router';
@@ -513,11 +513,21 @@ const Workspace = () => {
     });
   }, [permission, paused]);
   const notificationMenuLabel =
-    permission === 'granted'
-      ? paused
-        ? '🔔 데스크톱 알림 다시 켜기'
-        : '🔕 데스크톱 알림 일시 중지'
-      : '🔔 데스크톱 알림 켜기';
+    permission === 'granted' ? (
+      paused ? (
+        <>
+          <Bell size={15} /> 데스크톱 알림 다시 켜기
+        </>
+      ) : (
+        <>
+          <BellOff size={15} /> 데스크톱 알림 일시 중지
+        </>
+      )
+    ) : (
+      <>
+        <Bell size={15} /> 데스크톱 알림 켜기
+      </>
+    );
 
   const currentWorkspace = userData ? userData.Workspaces.find((v) => v.url === workspace) : undefined;
 
@@ -541,7 +551,7 @@ const Workspace = () => {
           aria-label={navOpen ? '채널 목록 닫기' : '채널 목록 열기'}
           aria-expanded={navOpen}
         >
-          ☰
+          <MenuIcon size={18} />
         </NavToggle>
         {userData && <SearchModal workspace={workspace} myId={userData.id} />}
         {userData && workspace && <ThreadsButton workspace={workspace} myId={userData.id} />}
@@ -669,7 +679,7 @@ const Workspace = () => {
                     </li>
                     <li>
                       <button type="button" role="menuitem" onClick={onCycleTheme} title="누를 때마다 바뀝니다">
-                        🌓 화면 테마: {THEME_LABELS[theme]}
+                        <SunMoon size={15} /> 화면 테마: {THEME_LABELS[theme]}
                       </button>
                     </li>
                     <li className="divider" role="separator" />

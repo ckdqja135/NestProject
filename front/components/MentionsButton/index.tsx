@@ -1,3 +1,4 @@
+import { AtSign } from 'lucide-react';
 import { BellButton, Dropdown, MentionItem, Wrapper } from '@components/MentionsButton/styles';
 import useMentions from '@hooks/useMentions';
 import { IMention } from '@typings/db';
@@ -69,7 +70,7 @@ const MentionsButton: FC<Props> = ({ workspace }) => {
         aria-expanded={open}
         title="멘션"
       >
-        🔔
+        <AtSign size={18} />
         {unread > 0 && <span className="count">{unread > 99 ? '99+' : unread}</span>}
       </BellButton>
       {open && (

@@ -50,7 +50,7 @@ const ScheduledModal: FC<Props> = ({ show, workspace, onCloseModal, filter }) =>
       <h3 style={{ margin: '0 0 8px', fontSize: 15 }}>예약된 메시지</h3>
       <FileList>
         {!scheduled && <p>불러오는 중...</p>}
-        {scheduled && items.length === 0 && <p>예약된 메시지가 없습니다. 입력창의 🕒 예약 으로 만들 수 있어요.</p>}
+        {scheduled && items.length === 0 && <p>예약된 메시지가 없습니다. 입력창의 '예약' 으로 만들 수 있어요.</p>}
         {items.map((item) => (
           <FileRow as="div" key={item.id}>
             <span className="info">
@@ -74,7 +74,7 @@ const ScheduledModal: FC<Props> = ({ show, workspace, onCloseModal, filter }) =>
         <>
           <h3 style={{ margin: '20px 0 8px', fontSize: 15 }}>리마인더</h3>
           <FileList>
-            {reminders?.length === 0 && <p>리마인더가 없습니다. 메시지의 ⏰ 로 만들 수 있어요.</p>}
+            {reminders?.length === 0 && <p>리마인더가 없습니다. 메시지의 '나중에 다시 알림' 으로 만들 수 있어요.</p>}
             {reminders?.map((item) => {
               const message = item.Chat || item.DM;
               return (

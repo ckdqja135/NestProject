@@ -1,3 +1,4 @@
+import { MessagesSquare } from 'lucide-react';
 import styled from '@emotion/styled';
 import { BellButton, Dropdown, MentionItem, Wrapper } from '@components/MentionsButton/styles';
 import useSocket from '@hooks/useSocket';
@@ -89,7 +90,7 @@ const ThreadsButton: FC<Props> = ({ workspace, myId }) => {
         aria-expanded={open}
         title="스레드"
       >
-        🧵
+        <MessagesSquare size={18} />
         {unread > 0 && <span className="count">{unread > 99 ? '99+' : unread}</span>}
       </BellButton>
       {open && (
@@ -100,7 +101,7 @@ const ThreadsButton: FC<Props> = ({ workspace, myId }) => {
           <div className="list">
             {!data && <p className="empty">불러오는 중...</p>}
             {data?.length === 0 && (
-              <p className="empty">참여한 스레드가 없습니다. 메시지에 💬 로 답글을 달아 보세요.</p>
+              <p className="empty">참여한 스레드가 없습니다. 메시지에 마우스를 올리고 '스레드로 답글'을 눌러 보세요.</p>
             )}
             {data?.map((thread) => (
               <MentionItem

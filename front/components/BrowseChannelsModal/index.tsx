@@ -59,7 +59,7 @@ const BrowseChannelsModal: FC<Props> = ({ show, workspace, onCloseModal }) => {
       show={show}
       onCloseModal={onCloseModal}
       title="채널 둘러보기"
-      description="공개 채널은 누구나 참여할 수 있습니다. 🔒 비공개 채널은 초대받아야 볼 수 있습니다."
+      description="공개 채널은 누구나 참여할 수 있습니다. 비공개 채널은 초대받아야 볼 수 있습니다."
     >
       <List>
         {!channels && <p>불러오는 중...</p>}

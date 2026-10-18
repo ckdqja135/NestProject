@@ -1,3 +1,4 @@
+import { Hash, Lock } from 'lucide-react';
 import Modal from '@components/Modal';
 import { Actions, ChoiceList, Field, FormError, InputGroup } from '@components/ModalForm/styles';
 import { IChannel } from '@typings/db';
@@ -84,7 +85,7 @@ const CreateChannelModal: FC<Props> = ({ show, onCloseModal, setShowCreateChanne
         <Field>
           <label htmlFor="channel">이름</label>
           <InputGroup className={nameError ? 'invalid' : undefined}>
-            <span>{isPrivate ? '🔒' : '#'}</span>
+            <span>{isPrivate ? <Lock size={15} /> : <Hash size={15} />}</span>
             <input
               id="channel"
               value={name}
@@ -131,7 +132,9 @@ const CreateChannelModal: FC<Props> = ({ show, onCloseModal, setShowCreateChanne
                 onChange={() => setIsPrivate(true)}
               />
               <span>
-                <strong>🔒 비공개</strong>
+                <strong style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <Lock size={14} /> 비공개
+                </strong>
                 <small>초대받은 사람만 채널을 보고 참여할 수 있습니다.</small>
               </span>
             </label>

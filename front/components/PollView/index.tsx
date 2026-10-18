@@ -1,3 +1,4 @@
+import { ChartBar } from 'lucide-react';
 import styled from '@emotion/styled';
 import { IReaction, IUser } from '@typings/db';
 import { Poll, POLL_EMOJIS } from '@utils/poll';
@@ -118,7 +119,8 @@ const PollView: FC<Props> = ({ poll, reactions = [], myId, members, onVote, onCl
   return (
     <Box role="group" aria-label={`투표: ${poll.q}`}>
       <div className="question">
-        📊 {poll.q}
+        <ChartBar size={16} style={{ verticalAlign: '-3px', marginRight: 4 }} />
+        {poll.q}
         {poll.c && <span className="closed">마감됨</span>}
       </div>
       {poll.o.map((option, index) => {

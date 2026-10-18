@@ -1,3 +1,4 @@
+import { FileText, Image } from 'lucide-react';
 import styled from '@emotion/styled';
 import ImageViewer from '@components/ImageViewer';
 import useLocalFile from '@hooks/useLocalFile';
@@ -223,7 +224,7 @@ const FileAttachment: FC<Props> = ({ meta, sentAt }) => {
     return (
       <Card>
         <span className="icon" aria-hidden="true">
-          📄
+          <FileText size={24} />
         </span>
         <span className="info">
           <b title={meta.name}>{meta.name}</b>
@@ -252,7 +253,7 @@ const FileAttachment: FC<Props> = ({ meta, sentAt }) => {
   return (
     <Card className="missing">
       <span className="icon" aria-hidden="true">
-        {isImageType(meta.type) ? '🖼️' : '📄'}
+        {isImageType(meta.type) ? <Image size={24} /> : <FileText size={24} />}
       </span>
       <span className="info">
         <b title={meta.name}>{meta.name}</b>
