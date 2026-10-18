@@ -8,7 +8,12 @@ import path from 'path';
 // API(/api), 소켓(/socket.io) 이 아닌 GET 요청은 index.html 로 보내 SPA 라우팅이 동작하게 한다.
 export function serveFrontend(app: NestExpressApplication) {
   const frontDir = path.resolve(
-    process.env.FRONT_DIR || path.join(process.cwd(), 'front'),
+    process.env.FRONT_DIR ||
+      [
+        path.join(process.cwd(), '..', 'front'),
+        path.join(process.cwd(), 'front'),
+      ].find((dir) => fs.existsSync(path.join(dir, 'index.html'))) ||
+      path.join(process.cwd(), '..', 'front'),
   );
   const indexHtml = path.join(frontDir, 'index.html');
   const distDir = path.join(frontDir, 'dist');

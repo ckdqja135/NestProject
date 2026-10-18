@@ -58,7 +58,8 @@ import { Workspaces } from './entities/Workspaces';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    // .env 는 backend/ 또는 저장소 맨 위(docker compose 와 같은 파일)에 둔다
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env', '../.env'] }),
     // IP 별 요청 수 제한 (로그인 등은 컨트롤러에서 더 엄격하게)
     ThrottlerModule.forRoot({
       throttlers: [{ ttl: 60_000, limit: rateLimitPerMinute }],

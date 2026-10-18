@@ -1,6 +1,7 @@
 import { DataSource, DataSourceOptions } from 'typeorm';
 import { SeederOptions } from 'typeorm-extension';
 import dotenv from 'dotenv';
+import path from 'path';
 import { ChannelChats } from './src/entities/ChannelChats';
 import { ChannelMembers } from './src/entities/ChannelMembers';
 import { Channels } from './src/entities/Channels';
@@ -30,7 +31,9 @@ import { Users } from './src/entities/Users';
 import { WorkspaceMembers } from './src/entities/WorkspaceMembers';
 import { Workspaces } from './src/entities/Workspaces';
 
-dotenv.config();
+// .env 는 backend/ 또는 저장소 맨 위 (먼저 찾은 값이 이긴다)
+dotenv.config({ path: path.join(__dirname, '.env') });
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 const options: DataSourceOptions & SeederOptions = {
   type: 'mariadb',
