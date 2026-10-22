@@ -1,110 +1,330 @@
+import { keyframes } from '@emotion/react';
 import styled from '@emotion/styled';
+import { MOBILE } from '@utils/media';
+
+const rise = keyframes`from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none }`;
+const spin = keyframes`to { transform: rotate(360deg) }`;
+const shake = keyframes`
+  20%, 60% { transform: translateX(-4px) }
+  40%, 80% { transform: translateX(4px) }
+`;
+
+// 로그인·회원가입 화면: 왼쪽 소개 패널 + 오른쪽 입력 카드
+export const AuthPage = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard', 'Noto Sans KR', 'Segoe UI',
+    'Malgun Gothic', sans-serif;
+
+  & input,
+  & button {
+    font-family: inherit;
+  }
+
+  ${MOBILE} {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+`;
+
+export const Brand = styled.aside`
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 48px 56px;
+  overflow: hidden;
+  color: #fff;
+  background: radial-gradient(circle at 15% 20%, rgba(236, 178, 46, 0.25), transparent 40%),
+    radial-gradient(circle at 85% 80%, rgba(54, 197, 240, 0.25), transparent 45%),
+    linear-gradient(150deg, #4a154b 0%, #3f0e40 55%, #2c0a2d 100%);
+
+  & .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.4px;
+  }
+
+  & h2 {
+    margin: 0 0 14px;
+    font-size: 40px;
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: -1px;
+  }
+
+  & .lead {
+    margin: 0 0 32px;
+    max-width: 420px;
+    font-size: 16px;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.78);
+  }
+
+  & ul {
+    display: grid;
+    gap: 14px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  & li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  & .icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(4px);
+  }
+
+  & footer {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  ${MOBILE} {
+    padding: 24px 20px;
+
+    & .intro,
+    & footer {
+      display: none;
+    }
+  }
+`;
+
+export const Panel = styled.main`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+
+  ${MOBILE} {
+    align-items: flex-start;
+    padding: 28px 16px 40px;
+  }
+`;
+
+export const Card = styled.div`
+  width: 100%;
+  max-width: 400px;
+  animation: ${rise} 0.35s ease-out;
+`;
 
 export const Header = styled.header`
-  text-align: center;
-  font-family: Slack-Larsseit, Helvetica Neue, Helvetica, Segoe UI, Tahoma, Arial, sans-serif;
-  font-weight: 700;
-  font-size: 48px;
-  line-height: 46px;
-  letter-spacing: -0.75px;
-  margin-top: 50px;
-  margin-bottom: 50px;
+  margin-bottom: 28px;
+
+  & h1 {
+    margin: 0 0 6px;
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.6px;
+    color: var(--text);
+  }
+
+  & p {
+    margin: 0;
+    font-size: 15px;
+    color: var(--text-muted);
+  }
 `;
 
 export const Form = styled.form`
-  margin: 0 auto;
-  width: 400px;
-  max-width: 400px;
+  display: grid;
+  gap: 18px;
 `;
 
 export const Label = styled.label`
-  margin-bottom: 16px;
+  display: block;
 
   & > span {
-    display: block;
-    text-align: left;
-    padding-bottom: 8px;
-    font-size: 15px;
-    cursor: pointer;
-    line-height: 1.46666667;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 13px;
     font-weight: 700;
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  & .field {
+    position: relative;
+    display: flex;
+    align-items: center;
+
+    & > svg {
+      position: absolute;
+      left: 13px;
+      color: var(--text-faint);
+      pointer-events: none;
+      transition: color 120ms;
+    }
+
+    &:focus-within > svg {
+      color: #1264a3;
+    }
+  }
+
+  & .toggle {
+    position: absolute;
+    right: 6px;
+    display: inline-flex;
+    padding: 6px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-faint);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--text);
+      background: var(--bg-hover);
+    }
+  }
+
+  & .hint {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+
+    &.bad {
+      color: #e01e5a;
+    }
+
+    &.good {
+      color: #2eb67d;
+    }
   }
 `;
 
 export const Input = styled.input`
-  border-radius: 4px;
-  --saf-0: rgba(var(--sk_foreground_high_solid, 134, 134, 134), 1);
-  border: 1px solid var(--saf-0);
-  transition: border 80ms ease-out, box-shadow 80ms ease-out;
-  box-sizing: border-box;
-  margin: 0 0 20px;
   width: 100%;
-  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
-  background-color: rgba(var(--sk_primary_background, 255, 255, 255), 1);
-  padding: 12px;
-  height: 44px;
-  padding-top: 11px;
-  padding-bottom: 13px;
-  font-size: 18px;
-  line-height: 1.33333333;
+  height: 46px;
+  box-sizing: border-box;
+  padding: 0 42px 0 40px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  outline: none;
+  transition: border-color 120ms, box-shadow 120ms;
+
+  &::placeholder {
+    color: var(--text-faint);
+  }
+
+  &:hover {
+    border-color: var(--text-faint);
+  }
 
   &:focus {
-    --saf-0: rgba(var(--sk_highlight, 18, 100, 163), 1);
-    box-shadow: 0 0 0 1px var(--saf-0), 0 0 0 5px rgba(29, 155, 209, 0.3);
+    border-color: #1264a3;
+    box-shadow: 0 0 0 4px rgba(29, 155, 209, 0.22);
+  }
+
+  &[aria-invalid='true'] {
+    border-color: #e01e5a;
+
+    &:focus {
+      box-shadow: 0 0 0 4px rgba(224, 30, 90, 0.18);
+    }
   }
 `;
 
 export const Button = styled.button`
-  margin-bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
-  max-width: 100%;
-  color: #fff;
-  background-color: #4a154b;
+  height: 46px;
+  margin-top: 4px;
   border: none;
-  font-size: 18px;
-  font-weight: 900;
-  height: 44px;
-  min-width: 96px;
-  padding: 0 16px 3px;
-  transition: all 80ms linear;
-  user-select: none;
-  outline: none;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #611f69 0%, #4a154b 100%);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
   cursor: pointer;
-  border-radius: 4px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 4px 14px rgba(74, 21, 75, 0.25);
+  transition: transform 80ms, box-shadow 120ms, opacity 120ms;
+  user-select: none;
 
-  &:hover {
-    background-color: rgba(74, 21, 75, 0.9);
-    border: none;
+  &:hover:not(:disabled) {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 6px 20px rgba(74, 21, 75, 0.35);
   }
-  &:focus {
-    --saf-0: rgba(var(--sk_highlight, 18, 100, 163), 1);
-    box-shadow: 0 0 0 1px var(--saf-0), 0 0 0 5px rgba(29, 155, 209, 0.3);
+
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(29, 155, 209, 0.35);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  & .spin {
+    animation: ${spin} 0.8s linear infinite;
   }
 `;
 
-export const Error = styled.div`
+const Notice = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+
+  & svg {
+    margin-top: 1px;
+  }
+`;
+
+export const Error = styled(Notice)`
   color: #e01e5a;
-  margin: 8px 0 16px;
-  font-weight: bold;
+  background: var(--bg-danger);
+  animation: ${shake} 0.35s ease-in-out;
 `;
 
-export const Success = styled.div`
-  color: #2eb67d;
-  font-weight: bold;
+export const Success = styled(Notice)`
+  color: #1e8a5a;
+  background: rgba(46, 182, 125, 0.12);
 `;
 
 export const LinkContainer = styled.p`
-  font-size: 13px;
+  margin: 24px 0 0;
+  font-size: 14px;
+  text-align: center;
   color: var(--text-muted);
-  margin: 0 auto 8px;
-  width: 400px;
-  max-width: 400px;
 
   & a {
     color: #1264a3;
-    text-decoration: none;
     font-weight: 700;
+    text-decoration: none;
 
     &:hover {
       text-decoration: underline;
