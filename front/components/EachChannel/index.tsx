@@ -1,4 +1,5 @@
-import { Archive, BellOff, Hash, Lock, Pencil } from 'lucide-react';
+import { Archive, BellOff, Hash, Headphones, Lock, Pencil } from 'lucide-react';
+import { useHuddle } from '@components/Huddle/HuddleProvider';
 import useSocket from '@hooks/useSocket';
 import { IChannel, IChat, IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
@@ -27,6 +28,8 @@ const EachChannel: VFC<Props> = ({ channel, mentionCount = 0 }) => {
   );
 
   const [socket] = useSocket(workspace);
+  const { huddles } = useHuddle();
+  const huddle = huddles[channel.id];
   // 다른 기기에서 읽으면 안 읽은 수를 다시 센다
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   useEffect(() => subscribeReadState(rerender), []);
@@ -82,6 +85,15 @@ const EachChannel: VFC<Props> = ({ channel, mentionCount = 0 }) => {
       {!isViewing && workspace && loadDraft(draftKey(workspace, `channel:${channel.name}`)) && (
         <span className="draft-icon" title="쓰다 만 메시지가 있습니다" aria-label="임시 저장된 메시지">
           <Pencil size={13} />
+        </span>
+      )}
+      {huddle && (
+        <span
+          className="huddle-icon"
+          title={`허들 진행 중 · ${huddle.members.length}명`}
+          aria-label={`허들 진행 중 ${huddle.members.length}명`}
+        >
+          <Headphones size={13} />
         </span>
       )}
       {channel.archived && (

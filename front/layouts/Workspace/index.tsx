@@ -2,6 +2,7 @@ import ChannelList from '@components/ChannelList';
 import CreateChannelModal from '@components/CreateChannelModal';
 import CreateWorkspaceModal from '@components/CreateWorkspaceModal';
 import DMList from '@components/DMList';
+import HuddleProvider from '@components/Huddle/HuddleProvider';
 import PinnedList from '@components/PinnedList';
 import InviteWorkspaceModal from '@components/InviteWorkspaceModal';
 import MembersModal from '@components/MembersModal';
@@ -555,399 +556,401 @@ const Workspace = () => {
 
   return (
     <CallProvider socket={socket} members={membersData}>
-      <Header>
-        <NavToggle
-          type="button"
-          onClick={() => setNavOpen((v) => !v)}
-          aria-label={navOpen ? '채널 목록 닫기' : '채널 목록 열기'}
-          aria-expanded={navOpen}
-        >
-          <MenuIcon size={18} />
-        </NavToggle>
-        {userData && <SearchModal workspace={workspace} myId={userData.id} />}
-        {userData && workspace && <ThreadsButton workspace={workspace} myId={userData.id} />}
-        {userData && workspace && <SavedButton workspace={workspace} myId={userData.id} />}
-        {userData && workspace && <MentionsButton workspace={workspace} />}
-        {userData && (
-          <RightMenu>
-            <button
-              type="button"
-              onClick={onClickUserProfile}
-              aria-label="내 프로필 메뉴"
-              aria-haspopup="menu"
-              aria-expanded={showUserMenu}
-              // 이미지가 아니라 버튼이 자리를 차지해야 키보드/스크린리더에서도 누를 수 있다
-              style={{
-                position: 'absolute',
-                top: 5,
-                right: 16,
-                width: 28,
-                height: 28,
-                border: 'none',
-                background: 'none',
-                padding: 0,
-                cursor: 'pointer',
-              }}
-            >
-              <ProfileImg src={avatarUrl(userData, 28)} alt="" style={{ position: 'static' }} />
-            </button>
-            {showUserMenu && (
-              <Menu
-                style={{ right: 8, top: 42, minWidth: 0 }}
-                show={showUserMenu}
-                onCloseModal={onClickUserProfile}
-                closeButton={false}
+      <HuddleProvider socket={socket} me={userData || undefined} members={membersData} channels={channelData}>
+        <Header>
+          <NavToggle
+            type="button"
+            onClick={() => setNavOpen((v) => !v)}
+            aria-label={navOpen ? '채널 목록 닫기' : '채널 목록 열기'}
+            aria-expanded={navOpen}
+          >
+            <MenuIcon size={18} />
+          </NavToggle>
+          {userData && <SearchModal workspace={workspace} myId={userData.id} />}
+          {userData && workspace && <ThreadsButton workspace={workspace} myId={userData.id} />}
+          {userData && workspace && <SavedButton workspace={workspace} myId={userData.id} />}
+          {userData && workspace && <MentionsButton workspace={workspace} />}
+          {userData && (
+            <RightMenu>
+              <button
+                type="button"
+                onClick={onClickUserProfile}
+                aria-label="내 프로필 메뉴"
+                aria-haspopup="menu"
+                aria-expanded={showUserMenu}
+                // 이미지가 아니라 버튼이 자리를 차지해야 키보드/스크린리더에서도 누를 수 있다
+                style={{
+                  position: 'absolute',
+                  top: 5,
+                  right: 16,
+                  width: 28,
+                  height: 28,
+                  border: 'none',
+                  background: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                }}
               >
-                <WorkspaceModal>
-                  <header>
-                    <img className="avatar" src={avatarUrl(userData, 72)} alt="" />
-                    <div>
-                      <strong>{userData.nickname}</strong>
-                      <small>{userData.email}</small>
-                      {userData.away ? (
-                        <small className="away">○ 자리 비움</small>
-                      ) : (
-                        <small className="online">● 온라인</small>
-                      )}
-                      {(userData.statusEmoji || userData.statusText) && (
-                        <small className="status" title={userData.statusText || undefined}>
-                          {userData.statusEmoji} {userData.statusText}
-                        </small>
-                      )}
-                    </div>
-                  </header>
-                  <ul role="menu">
-                    <li>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setShowUserMenu(false);
-                          setShowStatusModal(true);
-                        }}
-                      >
-                        {userData.statusEmoji || userData.statusText ? '상태 바꾸기' : '상태 설정'}
-                      </button>
-                    </li>
-                    <li>
-                      <button type="button" role="menuitem" onClick={onToggleAway}>
-                        {userData.away ? '온라인으로 표시' : '자리 비움으로 표시'}
-                      </button>
-                    </li>
-                    <li>
-                      <button type="button" role="menuitem" onClick={onToggleNotifications}>
-                        {notificationMenuLabel}
-                      </button>
-                    </li>
-                    <li className="divider" role="separator" />
-                    <li>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setShowUserMenu(false);
-                          setShowProfileModal(true);
-                        }}
-                      >
-                        프로필 설정
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setShowUserMenu(false);
-                          setShowStorageModal(true);
-                        }}
-                      >
-                        이 기기의 파일
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setShowUserMenu(false);
-                          setShowShortcuts(true);
-                        }}
-                      >
-                        키보드 단축키
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setShowUserMenu(false);
-                          setShowScheduled(true);
-                        }}
-                      >
-                        예약 메시지 · 리마인더
-                      </button>
-                    </li>
-                    <li>
-                      <button type="button" role="menuitem" onClick={onCycleTheme} title="누를 때마다 바뀝니다">
-                        <SunMoon size={15} /> 화면 테마: {THEME_LABELS[theme]}
-                      </button>
-                    </li>
-                    <li className="divider" role="separator" />
-                    <li>
-                      <button type="button" role="menuitem" className="danger" onClick={onLogOut}>
-                        로그아웃
-                      </button>
-                    </li>
-                  </ul>
-                </WorkspaceModal>
-              </Menu>
-            )}
-          </RightMenu>
-        )}
-      </Header>
-      <WorkspaceWrapper>
-        <Workspaces className={navOpen ? 'open' : undefined}>
-          <AppNav aria-label="화면 메뉴">
-            <Link
-              to={messengerPath}
-              className={section === 'messenger' ? 'active' : undefined}
-              aria-current={section === 'messenger' ? 'page' : undefined}
-            >
-              <MessageSquare className="icon" size={20} />
-              메신저
-            </Link>
-            <Link
-              to={`/workspace/${workspace}/docs`}
-              className={section === 'docs' ? 'active' : undefined}
-              aria-current={section === 'docs' ? 'page' : undefined}
-            >
-              <FileText className="icon" size={20} />
-              Docs
-            </Link>
-            <Link
-              to={`/workspace/${workspace}/calendar`}
-              className={section === 'calendar' ? 'active' : undefined}
-              aria-current={section === 'calendar' ? 'page' : undefined}
-            >
-              <CalendarDays className="icon" size={20} />
-              캘린더
-            </Link>
-            <Link
-              to={`/workspace/${workspace}/contacts`}
-              className={section === 'contacts' ? 'active' : undefined}
-              aria-current={section === 'contacts' ? 'page' : undefined}
-            >
-              <BookUser className="icon" size={20} />
-              연락처
-            </Link>
-          </AppNav>
-          {userData?.Workspaces.map((ws) => {
-            const isActive = ws.url === workspace;
-            return (
+                <ProfileImg src={avatarUrl(userData, 28)} alt="" style={{ position: 'static' }} />
+              </button>
+              {showUserMenu && (
+                <Menu
+                  style={{ right: 8, top: 42, minWidth: 0 }}
+                  show={showUserMenu}
+                  onCloseModal={onClickUserProfile}
+                  closeButton={false}
+                >
+                  <WorkspaceModal>
+                    <header>
+                      <img className="avatar" src={avatarUrl(userData, 72)} alt="" />
+                      <div>
+                        <strong>{userData.nickname}</strong>
+                        <small>{userData.email}</small>
+                        {userData.away ? (
+                          <small className="away">○ 자리 비움</small>
+                        ) : (
+                          <small className="online">● 온라인</small>
+                        )}
+                        {(userData.statusEmoji || userData.statusText) && (
+                          <small className="status" title={userData.statusText || undefined}>
+                            {userData.statusEmoji} {userData.statusText}
+                          </small>
+                        )}
+                      </div>
+                    </header>
+                    <ul role="menu">
+                      <li>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            setShowStatusModal(true);
+                          }}
+                        >
+                          {userData.statusEmoji || userData.statusText ? '상태 바꾸기' : '상태 설정'}
+                        </button>
+                      </li>
+                      <li>
+                        <button type="button" role="menuitem" onClick={onToggleAway}>
+                          {userData.away ? '온라인으로 표시' : '자리 비움으로 표시'}
+                        </button>
+                      </li>
+                      <li>
+                        <button type="button" role="menuitem" onClick={onToggleNotifications}>
+                          {notificationMenuLabel}
+                        </button>
+                      </li>
+                      <li className="divider" role="separator" />
+                      <li>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            setShowProfileModal(true);
+                          }}
+                        >
+                          프로필 설정
+                        </button>
+                      </li>
+                      <li>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            setShowStorageModal(true);
+                          }}
+                        >
+                          이 기기의 파일
+                        </button>
+                      </li>
+                      <li>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            setShowShortcuts(true);
+                          }}
+                        >
+                          키보드 단축키
+                        </button>
+                      </li>
+                      <li>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            setShowScheduled(true);
+                          }}
+                        >
+                          예약 메시지 · 리마인더
+                        </button>
+                      </li>
+                      <li>
+                        <button type="button" role="menuitem" onClick={onCycleTheme} title="누를 때마다 바뀝니다">
+                          <SunMoon size={15} /> 화면 테마: {THEME_LABELS[theme]}
+                        </button>
+                      </li>
+                      <li className="divider" role="separator" />
+                      <li>
+                        <button type="button" role="menuitem" className="danger" onClick={onLogOut}>
+                          로그아웃
+                        </button>
+                      </li>
+                    </ul>
+                  </WorkspaceModal>
+                </Menu>
+              )}
+            </RightMenu>
+          )}
+        </Header>
+        <WorkspaceWrapper>
+          <Workspaces className={navOpen ? 'open' : undefined}>
+            <AppNav aria-label="화면 메뉴">
               <Link
-                key={ws.id}
-                to={`/workspace/${ws.url}/channel/일반`}
-                title={ws.name}
-                aria-label={`${ws.name} 워크스페이스`}
-                aria-current={isActive ? 'page' : undefined}
+                to={messengerPath}
+                className={section === 'messenger' ? 'active' : undefined}
+                aria-current={section === 'messenger' ? 'page' : undefined}
               >
-                <WorkspaceButton as="span" className={isActive ? 'active' : undefined}>
-                  {ws.name.slice(0, 1).toUpperCase()}
-                </WorkspaceButton>
+                <MessageSquare className="icon" size={20} />
+                메신저
               </Link>
-            );
-          })}
-          <AddButton onClick={onClickCreateWorkspace} title="워크스페이스 만들기" aria-label="워크스페이스 만들기">
-            +
-          </AddButton>
-        </Workspaces>
-        {navOpen && <NavBackdrop onClick={() => setNavOpen(false)} />}
-        {section === 'messenger' && (
-          <Channels className={navOpen ? 'open' : undefined}>
-            <WorkspaceName onClick={toggleWorkspaceModal} aria-haspopup="menu" aria-expanded={showWorkspaceModal}>
-              {userData?.Workspaces.find((v) => v.url === workspace)?.name}
-            </WorkspaceName>
-            <MenuScroll>
-              <Menu
-                show={showWorkspaceModal}
-                onCloseModal={toggleWorkspaceModal}
-                style={{ top: 100, left: 76, minWidth: 0 }}
-                closeButton={false}
+              <Link
+                to={`/workspace/${workspace}/docs`}
+                className={section === 'docs' ? 'active' : undefined}
+                aria-current={section === 'docs' ? 'page' : undefined}
               >
-                <WorkspaceModal>
-                  <header>
-                    <span className="ws-icon">{currentWorkspace?.name.slice(0, 1).toUpperCase()}</span>
-                    <div>
-                      <strong>{currentWorkspace?.name}</strong>
-                      <small>{currentWorkspace?.url}</small>
-                    </div>
-                  </header>
-                  <ul role="menu">
-                    <li>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setShowWorkspaceModal(false);
-                          setShowMembersModal(true);
-                        }}
-                      >
-                        멤버 보기 · 관리
-                      </button>
-                    </li>
-                    {currentWorkspace && userData && currentWorkspace.OwnerId === userData.id && (
+                <FileText className="icon" size={20} />
+                Docs
+              </Link>
+              <Link
+                to={`/workspace/${workspace}/calendar`}
+                className={section === 'calendar' ? 'active' : undefined}
+                aria-current={section === 'calendar' ? 'page' : undefined}
+              >
+                <CalendarDays className="icon" size={20} />
+                캘린더
+              </Link>
+              <Link
+                to={`/workspace/${workspace}/contacts`}
+                className={section === 'contacts' ? 'active' : undefined}
+                aria-current={section === 'contacts' ? 'page' : undefined}
+              >
+                <BookUser className="icon" size={20} />
+                연락처
+              </Link>
+            </AppNav>
+            {userData?.Workspaces.map((ws) => {
+              const isActive = ws.url === workspace;
+              return (
+                <Link
+                  key={ws.id}
+                  to={`/workspace/${ws.url}/channel/일반`}
+                  title={ws.name}
+                  aria-label={`${ws.name} 워크스페이스`}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  <WorkspaceButton as="span" className={isActive ? 'active' : undefined}>
+                    {ws.name.slice(0, 1).toUpperCase()}
+                  </WorkspaceButton>
+                </Link>
+              );
+            })}
+            <AddButton onClick={onClickCreateWorkspace} title="워크스페이스 만들기" aria-label="워크스페이스 만들기">
+              +
+            </AddButton>
+          </Workspaces>
+          {navOpen && <NavBackdrop onClick={() => setNavOpen(false)} />}
+          {section === 'messenger' && (
+            <Channels className={navOpen ? 'open' : undefined}>
+              <WorkspaceName onClick={toggleWorkspaceModal} aria-haspopup="menu" aria-expanded={showWorkspaceModal}>
+                {userData?.Workspaces.find((v) => v.url === workspace)?.name}
+              </WorkspaceName>
+              <MenuScroll>
+                <Menu
+                  show={showWorkspaceModal}
+                  onCloseModal={toggleWorkspaceModal}
+                  style={{ top: 100, left: 76, minWidth: 0 }}
+                  closeButton={false}
+                >
+                  <WorkspaceModal>
+                    <header>
+                      <span className="ws-icon">{currentWorkspace?.name.slice(0, 1).toUpperCase()}</span>
+                      <div>
+                        <strong>{currentWorkspace?.name}</strong>
+                        <small>{currentWorkspace?.url}</small>
+                      </div>
+                    </header>
+                    <ul role="menu">
                       <li>
                         <button
                           type="button"
                           role="menuitem"
                           onClick={() => {
                             setShowWorkspaceModal(false);
-                            setShowWorkspaceSettings(true);
+                            setShowMembersModal(true);
                           }}
                         >
-                          워크스페이스 설정
+                          멤버 보기 · 관리
                         </button>
                       </li>
-                    )}
-                    <li>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setShowWorkspaceModal(false);
-                          setShowGroups(true);
-                        }}
-                      >
-                        사용자 그룹
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setShowWorkspaceModal(false);
-                          setShowEmojis(true);
-                        }}
-                      >
-                        커스텀 이모지
-                      </button>
-                    </li>
-                    <li>
-                      <button type="button" role="menuitem" onClick={onClickInviteWorkspace}>
-                        워크스페이스에 사용자 초대
-                      </button>
-                    </li>
-                    <li>
-                      <button type="button" role="menuitem" onClick={onClickAddChannel}>
-                        채널 만들기
-                      </button>
-                    </li>
-                    <li className="divider" role="separator" />
-                    <li>
-                      <button type="button" role="menuitem" className="danger" onClick={onLogOut}>
-                        {userData?.nickname ? `${userData.nickname} 로그아웃` : '로그아웃'}
-                      </button>
-                    </li>
-                  </ul>
-                </WorkspaceModal>
-              </Menu>
-              <PinnedList />
-              <ChannelList />
-              <DMList />
-            </MenuScroll>
-          </Channels>
+                      {currentWorkspace && userData && currentWorkspace.OwnerId === userData.id && (
+                        <li>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setShowWorkspaceModal(false);
+                              setShowWorkspaceSettings(true);
+                            }}
+                          >
+                            워크스페이스 설정
+                          </button>
+                        </li>
+                      )}
+                      <li>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setShowWorkspaceModal(false);
+                            setShowGroups(true);
+                          }}
+                        >
+                          사용자 그룹
+                        </button>
+                      </li>
+                      <li>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setShowWorkspaceModal(false);
+                            setShowEmojis(true);
+                          }}
+                        >
+                          커스텀 이모지
+                        </button>
+                      </li>
+                      <li>
+                        <button type="button" role="menuitem" onClick={onClickInviteWorkspace}>
+                          워크스페이스에 사용자 초대
+                        </button>
+                      </li>
+                      <li>
+                        <button type="button" role="menuitem" onClick={onClickAddChannel}>
+                          채널 만들기
+                        </button>
+                      </li>
+                      <li className="divider" role="separator" />
+                      <li>
+                        <button type="button" role="menuitem" className="danger" onClick={onLogOut}>
+                          {userData?.nickname ? `${userData.nickname} 로그아웃` : '로그아웃'}
+                        </button>
+                      </li>
+                    </ul>
+                  </WorkspaceModal>
+                </Menu>
+                <PinnedList />
+                <ChannelList />
+                <DMList />
+              </MenuScroll>
+            </Channels>
+          )}
+          <Chats>
+            <Switch>
+              <Route path="/workspace/:workspace/channel/:channel" component={Channel} />
+              <Route path="/workspace/:workspace/dm/:id" component={DirectMessage} />
+              <Route path="/workspace/:workspace/docs" component={Docs} />
+              <Route path="/workspace/:workspace/calendar" component={Calendar} />
+              <Route path="/workspace/:workspace/contacts/:view?" component={Contacts} />
+            </Switch>
+          </Chats>
+        </WorkspaceWrapper>
+        <CreateWorkspaceModal show={showCreateWorkspaceModal} onCloseModal={onCloseModal} />
+        <StorageModal show={showStorageModal} onCloseModal={() => setShowStorageModal(false)} />
+        {userData && workspace && (
+          <QuickSwitcher
+            show={showQuickSwitcher}
+            workspace={workspace}
+            myId={userData.id}
+            onCloseModal={() => setShowQuickSwitcher(false)}
+          />
         )}
-        <Chats>
-          <Switch>
-            <Route path="/workspace/:workspace/channel/:channel" component={Channel} />
-            <Route path="/workspace/:workspace/dm/:id" component={DirectMessage} />
-            <Route path="/workspace/:workspace/docs" component={Docs} />
-            <Route path="/workspace/:workspace/calendar" component={Calendar} />
-            <Route path="/workspace/:workspace/contacts/:view?" component={Contacts} />
-          </Switch>
-        </Chats>
-      </WorkspaceWrapper>
-      <CreateWorkspaceModal show={showCreateWorkspaceModal} onCloseModal={onCloseModal} />
-      <StorageModal show={showStorageModal} onCloseModal={() => setShowStorageModal(false)} />
-      {userData && workspace && (
-        <QuickSwitcher
-          show={showQuickSwitcher}
-          workspace={workspace}
-          myId={userData.id}
-          onCloseModal={() => setShowQuickSwitcher(false)}
+        <ShortcutsModal show={showShortcuts} onCloseModal={() => setShowShortcuts(false)} />
+        {workspace && userData && (
+          <CustomEmojiModal
+            show={showEmojis}
+            workspace={workspace}
+            me={userData}
+            isOwner={currentWorkspace?.OwnerId === userData.id}
+            onCloseModal={() => setShowEmojis(false)}
+          />
+        )}
+        {workspace && userData && (
+          <GroupsModal
+            show={showGroups}
+            workspace={workspace}
+            me={userData}
+            isOwner={currentWorkspace?.OwnerId === userData.id}
+            onCloseModal={() => setShowGroups(false)}
+          />
+        )}
+        {workspace && (
+          <ScheduledModal show={showScheduled} workspace={workspace} onCloseModal={() => setShowScheduled(false)} />
+        )}
+        {currentWorkspace && userData && currentWorkspace.OwnerId === userData.id && (
+          <WorkspaceSettingsModal
+            show={showWorkspaceSettings}
+            workspace={currentWorkspace}
+            myId={userData.id}
+            onCloseModal={() => setShowWorkspaceSettings(false)}
+            onUrlChanged={moveToWorkspaceUrl}
+          />
+        )}
+        {userData && (
+          <StatusModal
+            show={showStatusModal}
+            me={userData}
+            onCloseModal={() => setShowStatusModal(false)}
+            onUpdated={() => revalidateUser()}
+          />
+        )}
+        {userData && (
+          <ProfileModal
+            show={showProfileModal}
+            me={userData}
+            onCloseModal={() => setShowProfileModal(false)}
+            onUpdated={() => revalidateUser()}
+          />
+        )}
+        {currentWorkspace && userData && (
+          <MembersModal
+            show={showMembersModal}
+            onCloseModal={() => setShowMembersModal(false)}
+            workspace={currentWorkspace}
+            me={userData}
+            onInvite={() => {
+              setShowMembersModal(false);
+              setShowInviteWorkspaceModal(true);
+            }}
+          />
+        )}
+        <CreateChannelModal
+          show={showCreateChannelModal}
+          onCloseModal={onCloseModal}
+          setShowCreateChannelModal={setShowCreateChannelModal}
         />
-      )}
-      <ShortcutsModal show={showShortcuts} onCloseModal={() => setShowShortcuts(false)} />
-      {workspace && userData && (
-        <CustomEmojiModal
-          show={showEmojis}
-          workspace={workspace}
-          me={userData}
-          isOwner={currentWorkspace?.OwnerId === userData.id}
-          onCloseModal={() => setShowEmojis(false)}
+        <InviteWorkspaceModal
+          show={showInviteWorkspaceModal}
+          onCloseModal={onCloseModal}
+          setShowInviteWorkspaceModal={setShowInviteWorkspaceModal}
         />
-      )}
-      {workspace && userData && (
-        <GroupsModal
-          show={showGroups}
-          workspace={workspace}
-          me={userData}
-          isOwner={currentWorkspace?.OwnerId === userData.id}
-          onCloseModal={() => setShowGroups(false)}
-        />
-      )}
-      {workspace && (
-        <ScheduledModal show={showScheduled} workspace={workspace} onCloseModal={() => setShowScheduled(false)} />
-      )}
-      {currentWorkspace && userData && currentWorkspace.OwnerId === userData.id && (
-        <WorkspaceSettingsModal
-          show={showWorkspaceSettings}
-          workspace={currentWorkspace}
-          myId={userData.id}
-          onCloseModal={() => setShowWorkspaceSettings(false)}
-          onUrlChanged={moveToWorkspaceUrl}
-        />
-      )}
-      {userData && (
-        <StatusModal
-          show={showStatusModal}
-          me={userData}
-          onCloseModal={() => setShowStatusModal(false)}
-          onUpdated={() => revalidateUser()}
-        />
-      )}
-      {userData && (
-        <ProfileModal
-          show={showProfileModal}
-          me={userData}
-          onCloseModal={() => setShowProfileModal(false)}
-          onUpdated={() => revalidateUser()}
-        />
-      )}
-      {currentWorkspace && userData && (
-        <MembersModal
-          show={showMembersModal}
-          onCloseModal={() => setShowMembersModal(false)}
-          workspace={currentWorkspace}
-          me={userData}
-          onInvite={() => {
-            setShowMembersModal(false);
-            setShowInviteWorkspaceModal(true);
-          }}
-        />
-      )}
-      <CreateChannelModal
-        show={showCreateChannelModal}
-        onCloseModal={onCloseModal}
-        setShowCreateChannelModal={setShowCreateChannelModal}
-      />
-      <InviteWorkspaceModal
-        show={showInviteWorkspaceModal}
-        onCloseModal={onCloseModal}
-        setShowInviteWorkspaceModal={setShowInviteWorkspaceModal}
-      />
+      </HuddleProvider>
     </CallProvider>
   );
 };

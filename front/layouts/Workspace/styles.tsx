@@ -135,6 +135,13 @@ export const Channels = styled.nav`
     font-size: 11px;
   }
 
+  /* 허들이 진행 중인 채널 */
+  & .huddle-icon {
+    display: inline-flex;
+    margin-left: 6px;
+    color: #2eb67d;
+  }
+
   & .status-emoji {
     margin-left: 4px;
     font-size: 13px;

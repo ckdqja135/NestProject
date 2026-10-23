@@ -1,6 +1,7 @@
 import { Mic, MicOff, MonitorUp, Phone, Volume2 } from 'lucide-react';
 import { IUser } from '@typings/db';
 import { avatarUrl } from '@utils/avatar';
+import { getMediaSession, setMediaSession } from '@utils/mediaSession';
 import axios from 'axios';
 import React, {
   createContext,
@@ -72,6 +73,11 @@ const CallProvider: FC<PropsWithChildren<Props>> = ({ socket, members, children 
   const setPhaseBoth = (next: Phase) => {
     phaseRef.current = next;
     setPhase(next);
+    if (next === 'idle') {
+      if (getMediaSession() === 'call') setMediaSession(null);
+    } else {
+      setMediaSession('call');
+    }
   };
 
   const send = useCallback(
@@ -168,6 +174,10 @@ const CallProvider: FC<PropsWithChildren<Props>> = ({ socket, members, children 
       if (!socket || phaseRef.current !== 'idle') {
         return;
       }
+      if (getMediaSession() === 'huddle') {
+        toast.info('허들에서 나온 뒤에 전화를 걸 수 있습니다.', { position: 'bottom-center' });
+        return;
+      }
       const callId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       callIdRef.current = callId;
       peerRef.current = target;
@@ -207,8 +217,8 @@ const CallProvider: FC<PropsWithChildren<Props>> = ({ socket, members, children 
     const onCall = async (signal: CallSignal) => {
       const current = callIdRef.current;
       if (signal.type === 'invite') {
-        if (phaseRef.current !== 'idle') {
-          // 이미 통화 중이면 바쁘다고 알린다
+        if (phaseRef.current !== 'idle' || getMediaSession() === 'huddle') {
+          // 이미 통화·허들 중이면 바쁘다고 알린다
           send('busy', undefined, signal.from, signal.callId);
           return;
         }

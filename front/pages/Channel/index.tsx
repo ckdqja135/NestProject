@@ -1,4 +1,5 @@
-import { Archive, ArrowUpToLine, Bell, BellOff, ChartBar, Hash, Lock, Pin, Settings } from 'lucide-react';
+import { Archive, ArrowUpToLine, Bell, BellOff, ChartBar, Hash, Headphones, Lock, Pin, Settings } from 'lucide-react';
+import { useHuddle } from '@components/Huddle/HuddleProvider';
 import useSidebarPins from '@hooks/useSidebarPins';
 import { ChatActions } from '@components/Chat';
 import ChatBox from '@components/ChatBox';
@@ -27,7 +28,8 @@ import { formatWhen } from '@utils/timePresets';
 
 import useFileUpload from '@hooks/useFileUpload';
 import useTyping from '@hooks/useTyping';
-import { ArchivedNotice, Header, Container, DragOver, HeaderButton, Layout } from '@pages/Channel/styles';
+import { ArchivedNotice, Header, Container, DragOver, HeaderButton, HuddleBanner, Layout } from '@pages/Channel/styles';
+import { avatarUrl } from '@utils/avatar';
 import ChannelSettingsModal from '@components/ChannelSettingsModal';
 import { moveChannelKeys } from '@utils/storageKeys';
 import { IChannel, IChat, IDM, IReaction, IUser } from '@typings/db';
@@ -88,6 +90,9 @@ const Channel = () => {
   const [showInviteChannelModal, setShowInviteChannelModal] = useState(false);
   const [threadParentId, setThreadParentId] = useState<number | null>(null);
   const { isPinned, setPinned } = useSidebarPins(workspace);
+  const { huddles, current: huddleChannel, join: joinHuddle } = useHuddle();
+  const huddle = channelData ? huddles[channelData.id] : undefined;
+  const inHuddle = !!channelData && huddleChannel === channelData.id;
   const [showPinned, setShowPinned] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const scrollbarRef = useRef<Scrollbars>(null);
@@ -503,6 +508,19 @@ const Channel = () => {
             </button>
           )}
           <div style={{ display: 'flex', flex: 1, justifyContent: 'flex-end', alignItems: 'center', gap: 4 }}>
+            {channelData && !channelData.archived && (
+              <HeaderButton
+                type="button"
+                className={huddle ? 'live' : undefined}
+                onClick={() => joinHuddle(channelData.id)}
+                title={
+                  inHuddle ? '허들 크게 보기' : huddle ? '진행 중인 허들에 참여' : '이 채널에서 음성·화상 허들 시작'
+                }
+              >
+                <Headphones size={14} />{' '}
+                {inHuddle ? '허들 중' : huddle ? `허들 참여 · ${huddle.members.length}명` : '허들'}
+              </HeaderButton>
+            )}
             {channelData && (
               <HeaderButton
                 type="button"
@@ -559,6 +577,27 @@ const Channel = () => {
             </button>
           </div>
         </Header>
+        {huddle && !inHuddle && (
+          <HuddleBanner role="status">
+            <Headphones size={16} />
+            <span className="faces">
+              {huddle.members.slice(0, 4).map((m) => {
+                const user = channelMembersData?.find((u) => u.id === m.userId);
+                return user ? <img key={m.userId} src={avatarUrl(user, 44)} alt="" /> : null;
+              })}
+            </span>
+            <span className="text">
+              {huddle.members
+                .map((m) => channelMembersData?.find((u) => u.id === m.userId)?.nickname)
+                .filter(Boolean)
+                .join(', ')}{' '}
+              님이 허들 중이에요
+            </span>
+            <button type="button" onClick={() => channelData && joinHuddle(channelData.id)}>
+              참여하기
+            </button>
+          </HuddleBanner>
+        )}
         <ChatList
           scrollbarRef={scrollbarRef}
           isReachingEnd={isReachingEnd}

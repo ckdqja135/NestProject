@@ -126,4 +126,69 @@ export const HeaderButton = styled.button`
   &.active {
     background: var(--bg-hover);
   }
+
+  /* 허들이 진행 중인 채널 */
+  &.live {
+    border-color: #2eb67d;
+    background: #2eb67d;
+    color: white;
+
+    &:hover {
+      background: #25a06c;
+    }
+  }
+`;
+
+// 허들 진행 중 안내 (헤더 아래)
+export const HuddleBanner = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, #2eb67d 10%, var(--bg));
+  font-size: 13px;
+
+  & > svg {
+    color: #2eb67d;
+    flex: none;
+  }
+
+  & .faces {
+    display: flex;
+
+    & img {
+      width: 22px;
+      height: 22px;
+      margin-right: -6px;
+      border: 2px solid var(--bg);
+      border-radius: 6px;
+    }
+  }
+
+  & .text {
+    flex: 1;
+    min-width: 0;
+    margin-left: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  & button {
+    flex: none;
+    height: 28px;
+    padding: 0 12px;
+    border: none;
+    border-radius: 6px;
+    background: #2eb67d;
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+
+    &:hover {
+      background: #25a06c;
+    }
+  }
 `;

@@ -18,6 +18,7 @@ import { DMs } from '../entities/DMs';
 import { findFileMessage } from '../files/find-file-message';
 import { WorkspaceMembers } from '../entities/WorkspaceMembers';
 import { onlineMap } from './onlineMap';
+import { Huddle, HuddleMediaState, HuddleStore, huddleStore } from './huddles';
 import { corsOrigin, isAllowedOrigin } from '../security';
 
 // SessionIoAdapter 가 핸드셰이크 때 세션에서 꺼내 둔 로그인 사용자
@@ -68,12 +69,21 @@ export class EventsGateway
     }
     this.logger.log(`connected ${namespace} ${socket.id}`);
     socket.emit('hello', namespace);
+    // 참여 중인 채널에서 진행 중인 허들
+    socket.emit(
+      'huddleList',
+      huddleStore.list(namespace, this.channelIdsOf(socket)),
+    );
     socket.nsp.emit('onlineList', this.getOnlineList(namespace));
   }
 
   handleDisconnect(@ConnectedSocket() socket: Socket) {
     const namespace = socket.nsp.name;
     this.logger.log(`disconnected ${namespace} ${socket.id}`);
+    const left = huddleStore.leaveBySocket(namespace, socket.id);
+    if (left) {
+      this.broadcastHuddle(socket.nsp, left);
+    }
     if (onlineMap[namespace]?.[socket.id]) {
       delete onlineMap[namespace][socket.id];
       socket.nsp.emit('onlineList', this.getOnlineList(namespace));
@@ -207,6 +217,105 @@ export class EventsGateway
     );
   }
 
+  // 채널 허들(여러 명 통화): 참여·나가기·연결 신호 중계·마이크/카메라 상태.
+  // 서버는 음성·영상을 받지 않고, 누가 있는지와 브라우저끼리 연결하는 데 필요한 신호만 전달한다.
+  @SubscribeMessage('huddle')
+  handleHuddle(
+    @MessageBody()
+    data: {
+      type: 'join' | 'leave' | 'signal' | 'state';
+      channelId?: number;
+      to?: number;
+      data?: unknown;
+      state?: HuddleMediaState;
+    },
+    @ConnectedSocket() socket: Socket,
+  ) {
+    const user = getSessionUser(socket);
+    const namespace = socket.nsp.name;
+    if (!user || !onlineMap[namespace]?.[socket.id] || !data) {
+      return;
+    }
+    if (data.type === 'join') {
+      const channelId = Number(data.channelId);
+      // 참여 중인 채널의 허들에만 들어갈 수 있다
+      if (
+        !Number.isInteger(channelId) ||
+        !socket.rooms.has(`${namespace}-${channelId}`)
+      ) {
+        return;
+      }
+      const result = huddleStore.join(namespace, channelId, user.id, socket.id);
+      if (result === 'full') {
+        socket.emit('huddleError', { channelId, reason: 'full' });
+        return;
+      }
+      if (result.replacedSocketId) {
+        // 같은 사람이 다른 탭에서 들어오면 원래 탭은 허들에서 나간다
+        socket.nsp.sockets
+          .get(result.replacedSocketId)
+          ?.emit('huddleEnded', { reason: 'elsewhere' });
+      }
+      if (result.left) {
+        this.broadcastHuddle(socket.nsp, result.left);
+      }
+      socket.emit('huddleJoined', HuddleStore.view(result.huddle));
+      this.broadcastHuddle(socket.nsp, result.huddle);
+      return;
+    }
+    if (data.type === 'leave') {
+      const left = huddleStore.leaveBySocket(namespace, socket.id);
+      if (left) {
+        this.broadcastHuddle(socket.nsp, left);
+      }
+      return;
+    }
+    if (data.type === 'state') {
+      const huddle = huddleStore.setState(
+        namespace,
+        socket.id,
+        data.state || {},
+      );
+      if (huddle) {
+        this.broadcastHuddle(socket.nsp, huddle);
+      }
+      return;
+    }
+    if (data.type === 'signal') {
+      const mine = huddleStore.findBySocket(namespace, socket.id);
+      const target = mine?.huddle.members.get(Number(data.to));
+      if (
+        !mine ||
+        !target ||
+        target.userId === user.id ||
+        JSON.stringify(data.data ?? null).length > MAX_CALL_SIGNAL
+      ) {
+        return;
+      }
+      socket.nsp.sockets.get(target.socketId)?.emit('huddleSignal', {
+        channelId: mine.huddle.channelId,
+        from: user.id,
+        data: data.data,
+      });
+    }
+  }
+
+  // 허들 참여자가 바뀌면 그 채널 사람들에게 알린다 (아무도 없으면 끝난 것)
+  private broadcastHuddle(nsp: Namespace, huddle: Huddle) {
+    nsp
+      .to(`${nsp.name}-${huddle.channelId}`)
+      .emit('huddleUpdate', HuddleStore.view(huddle));
+  }
+
+  private channelIdsOf(socket: Socket) {
+    const prefix = `${socket.nsp.name}-`;
+    return new Set(
+      [...socket.rooms]
+        .filter((room) => room.startsWith(prefix))
+        .map((room) => Number(room.slice(prefix.length))),
+    );
+  }
+
   // 보낸 사람 기기에도 파일이 없을 때 요청한 사람에게 알린다
   @SubscribeMessage('fileMissing')
   handleFileMissing(
@@ -331,6 +440,13 @@ export class EventsGateway
     socket.rooms.forEach((room) => {
       if (room.startsWith(`${namespace}-`) && !rooms.has(room)) {
         socket.leave(room);
+        // 나간 채널의 허들에서도 뺀다
+        const channelId = Number(room.slice(namespace.length + 1));
+        const left = huddleStore.leaveChannel(namespace, channelId, user.id);
+        if (left) {
+          socket.emit('huddleEnded', { reason: 'removed' });
+          this.broadcastHuddle(socket.nsp, left);
+        }
       }
     });
     socket.join([...rooms]);
