@@ -26,7 +26,7 @@ const TYPES: Record<string, { Icon: LucideIcon; color: string; label: string }> 
 };
 
 // 메시지 속 문서 링크를 카드로: 지금 제목·종류를 보여 주고, 볼 수 없으면 그렇게 알린다
-const DocLinkCard: FC<{ workspace: string; id: number }> = ({ workspace, id }) => {
+const DocLinkCard: FC<{ workspace: string; id: number; row?: string }> = ({ workspace, id, row }) => {
   const { data, error } = useSWR<{ id: number; title: string; type: string }>(
     `/api/workspaces/${workspace}/docs/${id}/title`,
     fetcher,
@@ -51,12 +51,16 @@ const DocLinkCard: FC<{ workspace: string; id: number }> = ({ workspace, id }) =
   }
   const meta = TYPES[data.type] || TYPES.doc;
   return (
-    <Card to={`/workspace/${workspace}/docs/d/${id}`} className="doc-card" data-doc-card={id}>
+    <Card
+      to={`/workspace/${workspace}/docs/d/${id}${row ? `?row=${encodeURIComponent(row)}` : ''}`}
+      className="doc-card"
+      data-doc-card={id}
+    >
       <span className="icon" style={{ color: meta.color, background: `${meta.color}1f` }}>
         <meta.Icon size={18} />
       </span>
       <span className="text">
-        <small>{meta.label}</small>
+        <small>{row ? `${meta.label} 항목` : meta.label}</small>
         <b>{data.title}</b>
       </span>
       <span className="open">열기 →</span>

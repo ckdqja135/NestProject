@@ -17,6 +17,10 @@ export interface EventDraft {
   start?: Dayjs;
   end?: Dayjs;
   allDay?: boolean;
+  // 메시지로 일정을 만들 때 미리 채울 값
+  title?: string;
+  description?: string;
+  attendeeIds?: number[];
 }
 
 interface Props {
@@ -64,13 +68,13 @@ const EventModal: FC<Props> = ({ show, workspace, me, members, draft, onClose, o
       setVisibility(editing.visibility);
     } else {
       const s = draft?.start || dayjs().add(1, 'hour').startOf('hour');
-      setTitle('');
+      setTitle(draft?.title || '');
       setAllDay(!!draft?.allDay);
       setStart(s);
       setEnd(draft?.end || (draft?.allDay ? s : s.add(1, 'hour')));
       setLocation('');
-      setDescription('');
-      setAttendeeIds([]);
+      setDescription(draft?.description || '');
+      setAttendeeIds((draft?.attendeeIds || []).filter((id) => id !== me.id));
       setReminder(10);
       setColor(null);
       setVisibility('public');

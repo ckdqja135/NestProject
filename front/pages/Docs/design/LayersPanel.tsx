@@ -56,7 +56,8 @@ interface Props {
   editable: boolean;
   title: string;
   onTitle?: (title: string) => void;
-  sidebarHidden: boolean;
+  // null 이면 Docs 목록이 없는 화면 (단추를 보이지 않는다)
+  sidebarHidden: boolean | null;
   onToggleSidebar: () => void;
 }
 
@@ -253,15 +254,17 @@ const LayersPanel: FC<Props> = ({
   return (
     <LayersWrap>
       <div className="file">
-        <button
-          type="button"
-          className="icon-btn"
-          onClick={onToggleSidebar}
-          title={sidebarHidden ? 'Docs 목록 보이기' : 'Docs 목록 숨기기 (캔버스 넓게)'}
-          aria-label={sidebarHidden ? 'Docs 목록 보이기' : 'Docs 목록 숨기기'}
-        >
-          {sidebarHidden ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
-        </button>
+        {sidebarHidden !== null && (
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={onToggleSidebar}
+            title={sidebarHidden ? 'Docs 목록 보이기' : 'Docs 목록 숨기기 (캔버스 넓게)'}
+            aria-label={sidebarHidden ? 'Docs 목록 보이기' : 'Docs 목록 숨기기'}
+          >
+            {sidebarHidden ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
+          </button>
+        )}
         <input
           value={title}
           readOnly={!onTitle}

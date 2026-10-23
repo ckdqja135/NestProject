@@ -46,6 +46,15 @@ export class DocListQuery {
   @IsInt()
   @ApiProperty({ required: false })
   public folderId?: number;
+
+  @IsOptional()
+  @IsIn(DOC_TYPES)
+  @ApiProperty({
+    required: false,
+    enum: DOC_TYPES,
+    description: '이 종류만 (예: design)',
+  })
+  public type?: (typeof DOC_TYPES)[number];
 }
 
 export class CreateDocDto {

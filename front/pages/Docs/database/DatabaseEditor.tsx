@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import React, { FC, useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import useSWR from 'swr';
+import { useLocation } from 'react-router-dom';
 import { Transaction } from 'yjs';
 import {
   applyView,
@@ -70,6 +71,10 @@ const DatabaseEditor: FC<Props> = ({ workspace, docId, me, readOnly, initialCont
   const [viewId, setViewId] = useState<string | null>(() => readViewId(docId));
   const [search, setSearch] = useState('');
   const [openRow, setOpenRow] = useState<string | null>(null);
+  // 링크에 ?row= 가 있으면 그 항목을 열어 준다 (채팅에서 만든 할 일 링크)
+  const location = useLocation();
+  const linkedRow = useMemo(() => new URLSearchParams(location.search).get('row'), [location.search]);
+  const openedLinkRef = useRef<string | null>(null);
   const [menu, setMenu] = useState<'add-view' | 'view' | null>(null);
   const [viewName, setViewName] = useState('');
   const snapshotTimer = useRef<number | null>(null);
@@ -175,6 +180,10 @@ const DatabaseEditor: FC<Props> = ({ workspace, docId, me, readOnly, initialCont
         ? (view.filters || []).filter((f) => f.op !== 'me')
         : [...(view.filters || []), { prop: personProp!.id, op: 'me' }],
     });
+  if (linkedRow && openedLinkRef.current !== linkedRow && state.rows.some((r) => r.id === linkedRow)) {
+    openedLinkRef.current = linkedRow;
+    window.setTimeout(() => setOpenRow(linkedRow), 0);
+  }
   const opened = openRow ? state.rows.find((r) => r.id === openRow) : undefined;
   const viewProps = {
     state,

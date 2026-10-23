@@ -68,9 +68,11 @@ const STATUS_TEXT: Record<Status, string> = {
 
 interface Props {
   me: IUser;
+  // 어느 메뉴에서 열었는지 (디자인 메뉴에서 열면 위 경로와 돌아갈 곳이 디자인)
+  area?: 'docs' | 'design';
 }
 
-const DocPage: FC<Props> = ({ me }) => {
+const DocPage: FC<Props> = ({ me, area = 'docs' }) => {
   const { workspace, docId } = useParams<{ workspace: string; docId: string }>();
   const id = Number(docId);
   const history = useHistory();
@@ -339,7 +341,7 @@ const DocPage: FC<Props> = ({ me }) => {
       .delete(`${base}/docs/${doc.id}`)
       .then(() => {
         toast.info('휴지통으로 옮겼습니다.', { position: 'bottom-center' });
-        history.push(`/workspace/${workspace}/docs`);
+        history.push(area === 'design' ? `/workspace/${workspace}/design` : `/workspace/${workspace}/docs`);
       })
       .catch(toastError);
   const restore = () =>
@@ -348,7 +350,7 @@ const DocPage: FC<Props> = ({ me }) => {
       .then(() => mutate())
       .catch(toastError);
 
-  const home = `/workspace/${workspace}/docs`;
+  const home = area === 'design' ? `/workspace/${workspace}/design` : `/workspace/${workspace}/docs`;
   const isSlides = doc.type === 'slides';
   const isSheet = doc.type === 'sheet';
   const isBoard = doc.type === 'board';
@@ -378,7 +380,7 @@ const DocPage: FC<Props> = ({ me }) => {
     <>
       <EditorHeader>
         <div className="crumbs">
-          <Link to={home}>Docs</Link>›
+          <Link to={home}>{area === 'design' ? '디자인' : 'Docs'}</Link>›
           {doc.type === 'wiki' ? (
             <>
               <Link to={`${home}/wiki`}>Wiki</Link>›
@@ -583,6 +585,7 @@ const DocPage: FC<Props> = ({ me }) => {
             setShowComments(true);
           }}
           apiRef={designRef}
+          inDocs={area === 'docs'}
         />
       )}
       {isSlides && (

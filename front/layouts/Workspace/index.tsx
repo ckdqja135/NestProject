@@ -27,6 +27,7 @@ import DirectMessage from '@pages/DirectMessage';
 import Contacts from '@pages/Contacts';
 import Docs from '@pages/Docs';
 import Calendar from '@pages/Calendar';
+import Design from '@pages/Design';
 import { IChannel, IChat, IDM, IUser, IWorkspace } from '@typings/db';
 import fetcher from '@utils/fetcher';
 import {
@@ -58,6 +59,7 @@ import {
   FileText,
   Menu as MenuIcon,
   MessageSquare,
+  PenTool,
   SunMoon,
 } from 'lucide-react';
 import { avatarUrl } from '@utils/avatar';
@@ -162,7 +164,7 @@ const Workspace = () => {
   const locationRef = useRef(location.pathname);
   locationRef.current = decodeURIComponent(location.pathname);
   // 지금 보고 있는 화면 (왼쪽 메뉴). 메신저로 돌아가면 마지막으로 보던 채널·DM 을 연다
-  const sectionMatch = location.pathname.match(/^\/workspace\/[^/]+\/(docs|calendar|contacts)(\/|$)/);
+  const sectionMatch = location.pathname.match(/^\/workspace\/[^/]+\/(docs|design|calendar|contacts)(\/|$)/);
   const section = sectionMatch ? sectionMatch[1] : 'messenger';
   const lastMessengerPath = useRef<{ workspace?: string; path: string }>({ path: '' });
   if (section === 'messenger' && /\/(channel|dm)\//.test(location.pathname)) {
@@ -806,6 +808,14 @@ const Workspace = () => {
                 Docs
               </Link>
               <Link
+                to={`/workspace/${workspace}/design`}
+                className={section === 'design' ? 'active' : undefined}
+                aria-current={section === 'design' ? 'page' : undefined}
+              >
+                <PenTool className="icon" size={20} />
+                디자인
+              </Link>
+              <Link
                 to={`/workspace/${workspace}/calendar`}
                 className={section === 'calendar' ? 'active' : undefined}
                 aria-current={section === 'calendar' ? 'page' : undefined}
@@ -949,6 +959,7 @@ const Workspace = () => {
               <Route path="/workspace/:workspace/channel/:channel" component={Channel} />
               <Route path="/workspace/:workspace/dm/:id" component={DirectMessage} />
               <Route path="/workspace/:workspace/docs" component={Docs} />
+              <Route path="/workspace/:workspace/design" component={Design} />
               <Route path="/workspace/:workspace/calendar" component={Calendar} />
               <Route path="/workspace/:workspace/contacts/:view?" component={Contacts} />
             </Switch>

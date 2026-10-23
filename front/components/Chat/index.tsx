@@ -2,8 +2,11 @@ import {
   Bell,
   Bookmark,
   Bot,
+  CalendarPlus,
   CornerUpRight,
   FilePlus2,
+  FileText,
+  ListTodo,
   Link,
   MessageSquareReply,
   Pencil,
@@ -31,7 +34,23 @@ import { firstLink } from '@utils/links';
 import LinkPreview from '@components/LinkPreview';
 import DocLinkCard from '@components/DocLinkCard';
 import ToDocModal from '@components/ToDocModal';
-import { docLinksIn, isDocUrl } from '@utils/docLinks';
+import EventLinkCard from '@components/EventLinkCard';
+import loadable from '@loadable/component';
+import {
+  docLinksIn,
+  eventLinksIn,
+  eventUrl,
+  isWorkUrl,
+  mentionedIds,
+  messageToText,
+  messageUrl,
+  titleFrom,
+} from '@utils/docLinks';
+import type { ICalendarEvent } from '@typings/db';
+
+// 할 일·일정 만들기 창은 누를 때만 불러온다 (채팅 화면을 가볍게)
+const ToTaskModal = loadable(() => import('@components/ToTaskModal'));
+const EventModal = loadable(() => import('@pages/Calendar/EventModal'));
 import ForwardedCard from '@components/ForwardedCard';
 import ForwardModal from '@components/ForwardModal';
 import { parseForwardContent } from '@utils/forward';
@@ -136,6 +155,15 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
   );
   const [showForward, setShowForward] = useState(false);
   const [showToDoc, setShowToDoc] = useState(false);
+  const [showToTask, setShowToTask] = useState(false);
+  const [showToEvent, setShowToEvent] = useState(false);
+  const [showMakeMenu, setShowMakeMenu] = useState(false);
+  const { data: me } = useSWR<IUser>('/api/users', fetcher, { revalidateOnMount: false, revalidateOnFocus: false });
+  const eventRefs = useMemo(
+    () =>
+      gifUrl || poll || fileMeta ? [] : eventLinksIn(forwarded ? `${forwarded.c}\n${forwarded.m.t}` : data.content),
+    [data.content, gifUrl, poll, fileMeta, forwarded],
+  );
   // 메시지 속 우리 문서 링크는 카드로 보여 준다 (채팅 ↔ 문서)
   const docRefs = useMemo(
     () => (gifUrl || poll || fileMeta ? [] : docLinksIn(forwarded ? `${forwarded.c}\n${forwarded.m.t}` : data.content)),
@@ -312,6 +340,26 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
     : '';
   const canCopyLink = canAct && !!channelChat && !!linkChannel;
 
+  // 이 메시지로 돌아오는 주소, 그리고 원래 대화(채널이면 이 메시지의 스레드, DM 이면 그 DM)에 글 남기기
+  const dmOtherId = isDM ? ((data as IDM).SenderId === myId ? (data as IDM).ReceiverId : (data as IDM).SenderId) : null;
+  const thisMessageUrl = () =>
+    workspace
+      ? dmOtherId !== null
+        ? messageUrl(workspace, { dmWith: dmOtherId, id: data.id })
+        : messageUrl(workspace, { channel: channel || '', id: data.id, parentId: channelChat?.ParentId })
+      : '';
+  const leaveNote = (text: string) =>
+    !workspace
+      ? Promise.resolve()
+      : dmOtherId !== null
+      ? axios.post(`/api/workspaces/${workspace}/dms/${dmOtherId}/chats`, { content: text })
+      : axios.post(
+          `/api/workspaces/${workspace}/channels/${encodeURIComponent(channel || '')}/chats/${
+            channelChat?.ParentId || data.id
+          }/replies`,
+          { content: text },
+        );
+
   const onCopyLink = () => {
     if (!channelChat || !linkChannel) {
       return;
@@ -334,6 +382,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
         setShowPicker(false);
         setShowReminder(false);
         setShowFullPicker(false);
+        setShowMakeMenu(false);
       }}
     >
       <div className="chat-img">
@@ -414,8 +463,10 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
         ) : (
           <div className={fileMeta ? 'attachment' : 'message-body'}>{result}</div>
         )}
-        {link && !editing && workspace && !isDocUrl(link) && <LinkPreview workspace={workspace} url={link} />}
-        {!editing && docRefs.map((ref) => <DocLinkCard key={ref.id} workspace={ref.workspace} id={ref.id} />)}
+        {link && !editing && workspace && !isWorkUrl(link) && <LinkPreview workspace={workspace} url={link} />}
+        {!editing &&
+          docRefs.map((ref) => <DocLinkCard key={ref.id} workspace={ref.workspace} id={ref.id} row={ref.row} />)}
+        {!editing && eventRefs.map((ref) => <EventLinkCard key={`e${ref.id}`} workspace={ref.workspace} id={ref.id} />)}
         {readState && (
           <span
             className="read-count"
@@ -530,9 +581,10 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
           {canToDoc && (
             <button
               type="button"
-              title="이 메시지로 문서 만들기"
-              aria-label="문서로 만들기"
-              onClick={() => setShowToDoc(true)}
+              title="이 메시지로 문서·할 일·일정 만들기"
+              aria-label="작업물로 만들기"
+              aria-expanded={showMakeMenu}
+              onClick={() => setShowMakeMenu((v) => !v)}
             >
               <FilePlus2 size={16} />
             </button>
@@ -551,6 +603,41 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
             <button type="button" title="삭제" aria-label="삭제" onClick={() => setConfirmDelete(true)}>
               <Trash2 size={16} />
             </button>
+          )}
+          {showMakeMenu && (
+            <PresetMenu role="menu" aria-label="작업물로 만들기">
+              <div className="title">이 메시지로 만들기</div>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setShowMakeMenu(false);
+                  setShowToDoc(true);
+                }}
+              >
+                <FileText size={14} /> 문서
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setShowMakeMenu(false);
+                  setShowToTask(true);
+                }}
+              >
+                <ListTodo size={14} /> 할 일
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setShowMakeMenu(false);
+                  setShowToEvent(true);
+                }}
+              >
+                <CalendarPlus size={14} /> 일정
+              </button>
+            </PresetMenu>
           )}
           {showReminder && (
             <PresetMenu role="menu" aria-label="다시 알릴 시각">
@@ -600,6 +687,37 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
           historyUrl={historyUrl}
           workspace={workspace}
           onCloseModal={() => setShowHistory(false)}
+        />
+      )}
+      {showToTask && workspace && me && (
+        <ToTaskModal
+          show={showToTask}
+          workspace={workspace}
+          me={me}
+          members={members || []}
+          initialTitle={titleFrom(messageToText(data.content), '새 할 일')}
+          messageLink={thisMessageUrl()}
+          onCreated={(url) => leaveNote(`✅ 할 일로 만들었어요: ${url}`)}
+          onClose={() => setShowToTask(false)}
+        />
+      )}
+      {showToEvent && workspace && me && (
+        <EventModal
+          show={showToEvent}
+          workspace={workspace}
+          me={me}
+          members={members || []}
+          draft={{
+            title: titleFrom(messageToText(data.content), ''),
+            description: `${messageToText(data.content)}\n\n원래 메시지: ${thisMessageUrl()}`,
+            attendeeIds: mentionedIds(data.content),
+          }}
+          onClose={() => setShowToEvent(false)}
+          onSaved={(event: ICalendarEvent) => {
+            setShowToEvent(false);
+            leaveNote(`📅 일정으로 만들었어요: ${eventUrl(workspace, event.id)}`).catch(() => undefined);
+            toast.success('일정을 만들었어요.', { position: 'bottom-center' });
+          }}
         />
       )}
       {showToDoc && workspace && myId !== undefined && (

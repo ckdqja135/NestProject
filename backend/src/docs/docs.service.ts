@@ -322,7 +322,7 @@ export class DocsService {
 
   async listDocs(
     url: string,
-    query: { tab?: string; q?: string; folderId?: number },
+    query: { tab?: string; q?: string; folderId?: number; type?: string },
     myId: number,
   ) {
     const workspace = await this.findWorkspace(url, myId);
@@ -354,6 +354,9 @@ export class DocsService {
       ])
       .where('d.WorkspaceId = :workspaceId', { workspaceId: workspace.id })
       .andWhere(visibleFor(workspace.role), { me: myId });
+    if (query.type) {
+      qb.andWhere('d.type = :type', { type: query.type });
+    }
     if (query.q?.trim()) {
       qb.andWhere('d.title LIKE :q', {
         q: `%${query.q.trim().replace(/[\\%_]/g, (c) => `\\${c}`)}%`,

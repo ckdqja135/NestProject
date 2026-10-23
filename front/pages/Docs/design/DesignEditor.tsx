@@ -71,6 +71,8 @@ interface Props {
   onComment: (threadId: string, quote: string) => void;
   onOpenThread: (threadId: string) => void;
   apiRef: React.MutableRefObject<DesignApi | null>;
+  // Docs 메뉴 안에서 열었으면 Docs 목록을 숨겼다 보였다 할 수 있다
+  inDocs?: boolean;
 }
 
 const SNAPSHOT_DELAY_MS = 3000;
@@ -145,6 +147,7 @@ const DesignEditor: FC<Props> = ({
   onComment,
   onOpenThread,
   apiRef,
+  inDocs = true,
 }) => {
   const { provider, synced, canEdit, shouldSeed, status } = useCollab(workspace, docId, me);
   const editable = canEdit && !readOnly;
@@ -886,7 +889,7 @@ const DesignEditor: FC<Props> = ({
       onPaste={onPaste}
       aria-label="디자인"
     >
-      {hideSidebar && (
+      {inDocs && hideSidebar && (
         <Global
           styles={css`
             nav[aria-label='Docs 메뉴'] {
@@ -909,7 +912,7 @@ const DesignEditor: FC<Props> = ({
             editable={editable}
             title={title}
             onTitle={onTitle}
-            sidebarHidden={hideSidebar}
+            sidebarHidden={inDocs ? hideSidebar : null}
             onToggleSidebar={() => {
               writeStore(SIDEBAR_KEY, hideSidebar ? '0' : '1');
               setHideSidebar(!hideSidebar);
