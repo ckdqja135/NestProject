@@ -37,9 +37,11 @@ import { Banner, DropMenu, EditorHeader, Empty, TitleInput } from './styles';
 const BoardEditor = loadable(() => import('./board/BoardEditor'));
 // 문서·위키는 Notion 처럼 블록으로 쓰고 여럿이 함께 고친다
 const BlockEditor = loadable(() => import('./editor/BlockEditor'));
+// 데이터베이스 (표·보드·캘린더·갤러리)
+const DatabaseEditor = loadable(() => import('./database/DatabaseEditor'));
 
 // 실시간 동시 편집하는 종류: 내용은 편집기가 저장하고, 이 화면은 제목만 저장한다
-const COLLAB_TYPES = ['doc', 'wiki', 'board'];
+const COLLAB_TYPES = ['doc', 'wiki', 'board', 'database'];
 
 type Status = 'saved' | 'unsaved' | 'saving' | 'error' | 'conflict';
 
@@ -474,6 +476,9 @@ const DocPage: FC<Props> = ({ me }) => {
           onCurrentChange={setSlideIndex}
           onChange={(next) => onEdit({ content: next })}
         />
+      )}
+      {doc.type === 'database' && (
+        <DatabaseEditor workspace={workspace} docId={doc.id} me={me} readOnly={!canEdit} initialContent={doc.content} />
       )}
       {isBoard && (
         <BoardEditor

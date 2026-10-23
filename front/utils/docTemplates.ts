@@ -2,8 +2,14 @@ import { Deck, makeSlide, stringifyDeck, THEMES } from '@pages/Docs/slides/model
 import { Workbook } from '@pages/Docs/sheet/model';
 import dayjs from 'dayjs';
 import { BOARD_TEMPLATES } from '@pages/Docs/board/templates';
+import { DATABASE_TEMPLATES } from '@pages/Docs/database/templates';
 import { BUSINESS_WIKI_TEMPLATES, WikiCategory } from './wikiTemplates';
 import {
+  Bug,
+  Database,
+  ListTodo,
+  Newspaper,
+  UsersRound,
   BrainCircuit,
   Network,
   Shapes,
@@ -32,11 +38,11 @@ import {
   Wrench,
 } from 'lucide-react';
 
-export type DocType = 'doc' | 'wiki' | 'slides' | 'sheet' | 'board';
+export type DocType = 'doc' | 'wiki' | 'slides' | 'sheet' | 'board' | 'database';
 
 // Docs 새로 만들기·템플릿 (아이콘은 SVG, 색은 종류별)
 export const DOC_TYPE_INFO: Record<DocType, { Icon: LucideIcon; color: string; label: string; description: string }> = {
-  doc: { Icon: FileText, color: '#2f80ed', label: '문서', description: '마크다운으로 쓰는 문서' },
+  doc: { Icon: FileText, color: '#2f80ed', label: '문서', description: '블록으로 쓰고 여럿이 함께 고치는 문서' },
   slides: { Icon: Presentation, color: '#e8891d', label: '슬라이드', description: '글상자·도형·그림을 놓는 발표 자료' },
   sheet: { Icon: FileSpreadsheet, color: '#12a06b', label: '스프레드시트', description: '칸과 수식으로 계산하는 표' },
   wiki: { Icon: BookOpen, color: '#7c5cd6', label: '위키 페이지', description: '워크스페이스 모두가 함께 쓰는 위키' },
@@ -45,6 +51,12 @@ export const DOC_TYPE_INFO: Record<DocType, { Icon: LucideIcon; color: string; l
     color: '#d64a9b',
     label: '화이트보드',
     description: '포스트잇·도형·화살표로 함께 그리는 보드',
+  },
+  database: {
+    Icon: Database,
+    color: '#0f7b6c',
+    label: '데이터베이스',
+    description: '표·보드·캘린더로 보는 항목 목록 (할 일 관리 등)',
   },
 };
 
@@ -585,6 +597,51 @@ export const DOC_TEMPLATES: DocTemplate[] = [
     type: 'board',
     title: () => '칸반 보드',
     content: BOARD_TEMPLATES.kanban,
+  },
+  {
+    key: 'db-tasks',
+    Icon: ListTodo,
+    name: '할 일 관리',
+    description: '담당자·마감일·상태 보드, 내 할 일 보기',
+    type: 'database',
+    title: () => '할 일',
+    content: DATABASE_TEMPLATES.tasks,
+  },
+  {
+    key: 'db-roadmap',
+    Icon: MapIcon,
+    name: '프로젝트 로드맵',
+    description: '단계별·분기별 보드와 목표일 캘린더',
+    type: 'database',
+    title: () => '프로젝트 로드맵',
+    content: DATABASE_TEMPLATES.roadmap,
+  },
+  {
+    key: 'db-bugs',
+    Icon: Bug,
+    name: '버그 트래커',
+    description: '상태·심각도·담당자로 버그 관리',
+    type: 'database',
+    title: () => '버그 트래커',
+    content: DATABASE_TEMPLATES.bugs,
+  },
+  {
+    key: 'db-content',
+    Icon: Newspaper,
+    name: '콘텐츠 캘린더',
+    description: '채널별 글을 발행일 캘린더로',
+    type: 'database',
+    title: () => '콘텐츠 캘린더',
+    content: DATABASE_TEMPLATES.content,
+  },
+  {
+    key: 'db-meetings',
+    Icon: UsersRound,
+    name: '회의 기록 모음',
+    description: '날짜·참석자·종류별 회의 목록',
+    type: 'database',
+    title: () => '회의 기록',
+    content: DATABASE_TEMPLATES.meetings,
   },
   {
     key: 'budget',

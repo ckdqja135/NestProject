@@ -21,6 +21,7 @@ const TITLES = {
   slides: '제목 없는 슬라이드',
   sheet: '제목 없는 시트',
   board: '제목 없는 보드',
+  database: '제목 없는 데이터베이스',
 };
 
 // 볼 수 있는 문서: 내가 만들었거나, 워크스페이스 공개거나, 나와 공유됨
@@ -251,7 +252,7 @@ export class DocsService {
   async createDoc(
     url: string,
     dto: {
-      type: 'doc' | 'wiki' | 'slides' | 'sheet' | 'board';
+      type: 'doc' | 'wiki' | 'slides' | 'sheet' | 'board' | 'database';
       title?: string;
       content?: string;
       visibility?: 'private' | 'workspace';

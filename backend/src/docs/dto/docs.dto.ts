@@ -10,7 +10,14 @@ import {
   ValidateIf,
 } from 'class-validator';
 
-export const DOC_TYPES = ['doc', 'wiki', 'slides', 'sheet', 'board'] as const;
+export const DOC_TYPES = [
+  'doc',
+  'wiki',
+  'slides',
+  'sheet',
+  'board',
+  'database',
+] as const;
 export const VISIBILITIES = ['private', 'workspace'] as const;
 // 슬라이드에 줄인 그림(data:)을 넣을 수 있게 본문 한도(1MB)보다 조금 작게
 const MAX_CONTENT = 900_000;
@@ -41,7 +48,7 @@ export class DocListQuery {
 export class CreateDocDto {
   @IsIn(DOC_TYPES)
   @ApiProperty({ enum: DOC_TYPES })
-  public type: 'doc' | 'wiki' | 'slides' | 'sheet' | 'board';
+  public type: 'doc' | 'wiki' | 'slides' | 'sheet' | 'board' | 'database';
 
   @IsOptional()
   @IsString()
