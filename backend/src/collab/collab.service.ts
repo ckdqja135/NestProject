@@ -31,6 +31,11 @@ interface Room {
   awareness: Awareness;
   // 소켓 id → 그 소켓의 커서(awareness) clientID 들
   sockets: Map<string, Set<number>>;
+  // 고칠 수 있는 소켓들
+  editors: Set<string>;
+  // 예전(마크다운) 문서를 처음 열 때: 한 사람만 마크다운을 블록으로 옮겨 넣는다 (여럿이 넣으면 내용이 겹친다)
+  needsSeed: boolean;
+  seeder: string | null;
   dirty: boolean;
   firstDirtyAt: number;
   lastEditorId: number | null;
@@ -47,6 +52,8 @@ export type CollabMessage =
   | { type: 'snapshot'; docId: number; content: string };
 
 const roomName = (docId: number) => `collab-${docId}`;
+// 처음 열 때 예전 내용(마크다운)을 옮겨 넣어야 하는 문서 종류
+const SEEDED_TYPES = ['doc', 'wiki'];
 const toBytes = (data: unknown) =>
   data instanceof Uint8Array
     ? data
@@ -81,7 +88,7 @@ export class CollabService implements OnModuleInit, OnModuleDestroy {
     return socket.data.collab;
   }
 
-  private async room(url: string, docId: number) {
+  private async room(url: string, docId: number, type: string) {
     const existing = this.rooms.get(docId);
     if (existing) {
       return existing;
@@ -94,6 +101,7 @@ export class CollabService implements OnModuleInit, OnModuleDestroy {
         if (stored?.length) {
           Y.applyUpdate(ydoc, new Uint8Array(stored));
         }
+        const needsSeed = !stored?.length && SEEDED_TYPES.includes(type);
         const awareness = new Awareness(ydoc);
         awareness.setLocalState(null); // 서버 자신은 커서가 없다
         const room: Room = {
@@ -102,6 +110,9 @@ export class CollabService implements OnModuleInit, OnModuleDestroy {
           ydoc,
           awareness,
           sockets: new Map(),
+          editors: new Set(),
+          needsSeed,
+          seeder: null,
           dirty: false,
           firstDirtyAt: 0,
           lastEditorId: null,
@@ -185,17 +196,16 @@ export class CollabService implements OnModuleInit, OnModuleDestroy {
     const url = socket.nsp.name.replace(/^\/ws-/, '');
     if (message.type === 'join') {
       let canEdit: boolean;
+      let docType: string;
       try {
-        ({ canEdit } = await this.docsService.collabAccess(
-          url,
-          docId,
-          user.id,
-        ));
+        const access = await this.docsService.collabAccess(url, docId, user.id);
+        canEdit = access.canEdit;
+        docType = access.doc.type;
       } catch {
         socket.emit('collab', { type: 'error', docId, reason: 'not-found' });
         return;
       }
-      const room = await this.room(url, docId);
+      const room = await this.room(url, docId, docType);
       if (room.unloadTimer) {
         clearTimeout(room.unloadTimer);
         room.unloadTimer = null;
@@ -204,11 +214,23 @@ export class CollabService implements OnModuleInit, OnModuleDestroy {
         room.sockets.set(socket.id, new Set());
       }
       this.joined(socket).set(docId, { canEdit });
+      if (canEdit) {
+        room.editors.add(socket.id);
+      }
+      // 옮겨 넣을 사람이 아직 없으면 이 사람에게 맡긴다
+      if (
+        room.needsSeed &&
+        canEdit &&
+        (!room.seeder || !room.sockets.has(room.seeder))
+      ) {
+        room.seeder = socket.id;
+      }
       socket.join(roomName(docId));
       socket.emit('collab', {
         type: 'sync',
         docId,
         canEdit,
+        seed: room.needsSeed && room.seeder === socket.id,
         state: Y.encodeStateAsUpdate(room.ydoc),
         awareness: encodeAwarenessUpdate(room.awareness, [
           ...room.awareness.getStates().keys(),
@@ -235,6 +257,9 @@ export class CollabService implements OnModuleInit, OnModuleDestroy {
         socket
           .to(roomName(docId))
           .emit('collab', { type: 'update', docId, update });
+        // 내용이 들어왔으니 더 옮겨 넣지 않는다
+        room.needsSeed = false;
+        room.seeder = null;
         room.lastEditorId = user.id;
         this.scheduleSave(room);
         return;
@@ -283,6 +308,16 @@ export class CollabService implements OnModuleInit, OnModuleDestroy {
     }
     const ids = room.sockets.get(socket.id);
     room.sockets.delete(socket.id);
+    room.editors.delete(socket.id);
+    // 옮겨 넣기로 한 사람이 넣기 전에 나가면 남은 사람에게 넘긴다
+    if (room.needsSeed && room.seeder === socket.id) {
+      room.seeder = [...room.editors][0] || null;
+      if (room.seeder) {
+        socket.nsp.sockets
+          .get(room.seeder)
+          ?.emit('collab', { type: 'seed', docId });
+      }
+    }
     if (ids?.size) {
       removeAwarenessStates(room.awareness, [...ids], 'server');
       socket.nsp.to(roomName(docId)).emit('collab', {

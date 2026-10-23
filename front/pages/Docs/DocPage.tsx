@@ -1,7 +1,6 @@
 import useCustomEmojis from '@hooks/useCustomEmojis';
 import useSocket from '@hooks/useSocket';
 import { IDoc, IDocFolder, IUser, IWikiPage } from '@typings/db';
-import { renderDocMarkdown } from '@utils/docMarkdown';
 import fetcher from '@utils/fetcher';
 import axios from 'axios';
 import dayjs from 'dayjs';
@@ -13,30 +12,15 @@ import { createDoc, docPath, docsBase, toastError } from './api';
 import ShareDocModal from './ShareDocModal';
 import {
   ArchiveRestore,
-  Bold,
-  Code,
   CornerLeftUp,
   Ellipsis,
   Eye,
   Folder,
   FolderInput,
-  Heading1,
-  Heading2,
-  Heading3,
-  Image,
-  Italic,
-  List,
-  ListChecks,
-  ListOrdered,
   Lock,
-  Minus,
   Play,
   Plus,
-  Quote,
-  SquareCode,
   Star,
-  Strikethrough,
-  Table,
   Trash2,
   TriangleAlert,
 } from 'lucide-react';
@@ -47,12 +31,16 @@ import { parseDeck } from './slides/model';
 import SlidesEditor from './slides/SlidesEditor';
 import loadable from '@loadable/component';
 import useDarkTheme from '@hooks/useDarkTheme';
-import { Banner, DocBody, DropMenu, EditorBody, EditorHeader, Empty, Outline, TitleInput, Toolbar } from './styles';
+import { Banner, DropMenu, EditorHeader, Empty, TitleInput } from './styles';
 
 // 화이트보드는 큰 그리기 도구라 보드를 열 때만 불러온다
 const BoardEditor = loadable(() => import('./board/BoardEditor'));
+// 문서·위키는 Notion 처럼 블록으로 쓰고 여럿이 함께 고친다
+const BlockEditor = loadable(() => import('./editor/BlockEditor'));
 
-type Mode = 'edit' | 'split' | 'view';
+// 실시간 동시 편집하는 종류: 내용은 편집기가 저장하고, 이 화면은 제목만 저장한다
+const COLLAB_TYPES = ['doc', 'wiki', 'board'];
+
 type Status = 'saved' | 'unsaved' | 'saving' | 'error' | 'conflict';
 
 const SAVE_DELAY = 1000;
@@ -64,28 +52,6 @@ const STATUS_TEXT: Record<Status, string> = {
   error: '저장하지 못했습니다',
   conflict: '다른 사람이 먼저 고침',
 };
-
-// 빠른 삽입 도구: [보이는 글자, 설명, 앞, 뒤, 줄 단위]
-const T = { size: 16, strokeWidth: 2 };
-const TOOLS: [React.ReactNode, string, string, string, boolean][] = [
-  [<Heading1 key="h1" {...T} />, '큰 제목', '# ', '', true],
-  [<Heading2 key="h2" {...T} />, '중간 제목', '## ', '', true],
-  [<Heading3 key="h3" {...T} />, '작은 제목', '### ', '', true],
-  [<Bold key="b" {...T} />, '굵게', '**', '**', false],
-  [<Italic key="i" {...T} />, '기울임', '_', '_', false],
-  [<Strikethrough key="s" {...T} />, '취소선', '~~', '~~', false],
-  [<Code key="c" {...T} />, '코드', '`', '`', false],
-  [<List key="ul" {...T} />, '글머리 목록', '- ', '', true],
-  [<ListOrdered key="ol" {...T} />, '번호 목록', '1. ', '', true],
-  [<ListChecks key="todo" {...T} />, '할 일 목록', '- [ ] ', '', true],
-  [<Quote key="q" {...T} />, '인용', '> ', '', true],
-];
-const BLOCKS: [React.ReactNode, string, string][] = [
-  [<SquareCode key="code" {...T} />, '코드 블록', '\n```\n코드\n```\n'],
-  [<Table key="table" {...T} />, '표', '\n| 항목 | 내용 |\n| --- | --- |\n|  |  |\n'],
-  [<Minus key="hr" {...T} />, '구분선', '\n---\n'],
-  [<Image key="img" {...T} />, '이미지 (https 주소)', '\n![설명](https://)\n'],
-];
 
 interface Props {
   me: IUser;
@@ -114,12 +80,10 @@ const DocPage: FC<Props> = ({ me }) => {
   const [status, setStatus] = useState<Status>('saved');
   const statusRef = useRef(status);
   statusRef.current = status;
-  const [mode, setMode] = useState<Mode>('split');
   const [showShare, setShowShare] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [presenting, setPresenting] = useState<number | null>(null);
   const [slideIndex, setSlideIndex] = useState(0);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // 저장 상태: 서버 버전, 마지막으로 고친 횟수, 저장한 횟수
   const versionRef = useRef(0);
@@ -146,7 +110,6 @@ const DocPage: FC<Props> = ({ me }) => {
       loadedId.current = doc.id;
       editSeq.current = 0;
       savedSeq.current = 0;
-      setMode(doc.canEdit && !doc.deletedAt ? (doc.content ? 'split' : 'edit') : 'view');
       setSlideIndex(0);
       setStatus('saved');
     } else if (dirty()) {
@@ -164,9 +127,9 @@ const DocPage: FC<Props> = ({ me }) => {
         return;
       }
       const seq = editSeq.current;
-      // 화이트보드 내용은 실시간 동시 편집으로 저장되므로 제목만 보낸다
+      // 문서·위키·화이트보드 내용은 실시간 동시 편집으로 저장되므로 제목만 보낸다
       const body =
-        typeRef.current === 'board'
+        typeRef.current && COLLAB_TYPES.includes(typeRef.current)
           ? { title: latest.current.title, version: versionRef.current }
           : { ...latest.current, version: versionRef.current };
       const docIdNow = loadedId.current;
@@ -274,41 +237,6 @@ const DocPage: FC<Props> = ({ me }) => {
       })
       .catch(toastError);
 
-  const insert = (before: string, after: string, lineStart: boolean) => {
-    const el = textareaRef.current;
-    if (!el || !canEdit) {
-      return;
-    }
-    const { selectionStart: start, selectionEnd: end } = el;
-    let from = start;
-    if (lineStart) {
-      from = content.lastIndexOf('\n', start - 1) + 1;
-    }
-    const selected = content.slice(start, end);
-    const next = lineStart
-      ? content.slice(0, from) + before + content.slice(from)
-      : content.slice(0, start) + before + selected + after + content.slice(end);
-    onEdit({ content: next });
-    const cursor = lineStart ? end + before.length : start + before.length + selected.length;
-    requestAnimationFrame(() => {
-      el.focus();
-      el.setSelectionRange(lineStart ? cursor : start + before.length, cursor);
-    });
-  };
-  const insertBlock = (text: string) => {
-    const el = textareaRef.current;
-    if (!el || !canEdit) {
-      return;
-    }
-    const at = el.selectionEnd;
-    onEdit({ content: content.slice(0, at) + text + content.slice(at) });
-    requestAnimationFrame(() => {
-      el.focus();
-      el.setSelectionRange(at + text.length, at + text.length);
-    });
-  };
-
-  const rendered = useMemo(() => renderDocMarkdown(content, workspace, emojis), [content, workspace, emojis]);
   const deckSlides = useMemo(() => (doc?.type === 'slides' ? parseDeck(content).slides : []), [doc?.type, content]);
 
   // 위키 상위 페이지 경로
@@ -367,58 +295,8 @@ const DocPage: FC<Props> = ({ me }) => {
   const isSlides = doc.type === 'slides';
   const isSheet = doc.type === 'sheet';
   const isBoard = doc.type === 'board';
-  const isMarkdown = !isSlides && !isSheet && !isBoard;
+  const isBlocks = doc.type === 'doc' || doc.type === 'wiki';
   const isOwner = doc.OwnerId === me.id;
-  const editor = (
-    <div className="pane">
-      <Toolbar role="toolbar" aria-label="마크다운 빠른 삽입">
-        {TOOLS.map(([label, name, before, after, line]) => (
-          <button key={name} type="button" title={name} aria-label={name} onClick={() => insert(before, after, line)}>
-            {label}
-          </button>
-        ))}
-        {BLOCKS.map(([label, name, text]) => (
-          <button key={name} type="button" title={name} aria-label={name} onClick={() => insertBlock(text)}>
-            {label}
-          </button>
-        ))}
-      </Toolbar>
-      <textarea
-        ref={textareaRef}
-        value={content}
-        onChange={(e) => onEdit({ content: e.target.value })}
-        onKeyDown={(e) => {
-          if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-            e.preventDefault();
-            save();
-          }
-        }}
-        aria-label="문서 내용 (마크다운)"
-        placeholder={'# 제목\n\n마크다운으로 쓰세요. **굵게** _기울임_ `코드`, - 목록, - [ ] 할 일, | 표 |'}
-        spellCheck={false}
-      />
-    </div>
-  );
-  const preview = (
-    <div className="pane">
-      <DocBody>
-        {rendered.nodes.length ? rendered.nodes : <p style={{ color: 'var(--text-faint)' }}>내용이 없습니다.</p>}
-      </DocBody>
-      {children.length > 0 && (
-        <DocBody>
-          <h3>하위 페이지</h3>
-          <ul>
-            {children.map((p) => (
-              <li key={p.id}>
-                <Link to={docPath(workspace, p.id)}>{p.title}</Link>
-              </li>
-            ))}
-          </ul>
-        </DocBody>
-      )}
-    </div>
-  );
-
   return (
     <>
       <EditorHeader>
@@ -462,21 +340,6 @@ const DocPage: FC<Props> = ({ me }) => {
             </>
           )}
         </span>
-        {isMarkdown && (
-          <div className="modes" role="group" aria-label="보기 방식">
-            {(canEdit ? (['edit', 'split', 'view'] as Mode[]) : (['view'] as Mode[])).map((m) => (
-              <button
-                key={m}
-                type="button"
-                className={mode === m ? 'active' : undefined}
-                onClick={() => setMode(m)}
-                aria-pressed={mode === m}
-              >
-                {{ edit: '편집', split: '나란히', view: '보기' }[m]}
-              </button>
-            ))}
-          </div>
-        )}
         {isSlides && (
           <button type="button" className="btn" onClick={() => setPresenting(slideIndex)} title="지금 쪽부터 발표">
             <Play size={13} style={{ verticalAlign: '-2px' }} /> 발표
@@ -625,21 +488,28 @@ const DocPage: FC<Props> = ({ me }) => {
       {isSheet && (
         <SheetEditor value={content} title={title} readOnly={!canEdit} onChange={(next) => onEdit({ content: next })} />
       )}
-      {isMarkdown && (
-        <EditorBody>
-          {mode !== 'view' && editor}
-          {mode !== 'edit' && preview}
-          {mode === 'view' && rendered.headings.length > 1 && (
-            <Outline aria-label="목차">
-              <strong>목차</strong>
-              {rendered.headings.map((h) => (
-                <a key={h.id} href={`#${h.id}`} style={{ paddingLeft: (h.level - 1) * 10 }}>
-                  {h.text}
-                </a>
-              ))}
-            </Outline>
-          )}
-        </EditorBody>
+      {isBlocks && (
+        <BlockEditor
+          workspace={workspace}
+          docId={doc.id}
+          me={me}
+          readOnly={!canEdit}
+          initialContent={doc.content}
+          footer={
+            children.length > 0 && (
+              <div className="subpages">
+                <h3>하위 페이지</h3>
+                <ul>
+                  {children.map((p) => (
+                    <li key={p.id}>
+                      <Link to={docPath(workspace, p.id)}>{p.title}</Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )
+          }
+        />
       )}
       <ShareDocModal
         show={showShare}

@@ -28,5 +28,6 @@ export default function useCollab(workspace: string, docId: number | null, me?: 
     status: provider?.status ?? 'connecting',
     synced: !!provider?.synced,
     canEdit: !!provider?.canEdit,
+    shouldSeed: !!provider?.shouldSeed,
   };
 }

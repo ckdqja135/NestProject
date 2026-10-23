@@ -53,7 +53,10 @@ describe('CollabService', () => {
   };
 
   it('들어오면 현재 상태를 받고, 고친 내용은 다른 사람에게만 전달된다', async () => {
-    docsService.collabAccess.mockResolvedValue({ canEdit: true });
+    docsService.collabAccess.mockResolvedValue({
+      canEdit: true,
+      doc: { type: 'board' },
+    });
     const a = fakeSocket('a');
     const b = fakeSocket('b');
     await service.handle(a.socket, { id: 1 }, { type: 'join', docId: 7 });
@@ -80,7 +83,10 @@ describe('CollabService', () => {
   });
 
   it('보기 권한만 있으면 고칠 수 없고, 볼 수 없는 문서는 들어갈 수 없다', async () => {
-    docsService.collabAccess.mockResolvedValueOnce({ canEdit: false });
+    docsService.collabAccess.mockResolvedValueOnce({
+      canEdit: false,
+      doc: { type: 'board' },
+    });
     const v = fakeSocket('v');
     await service.handle(v.socket, { id: 4 }, { type: 'join', docId: 8 });
     await service.handle(
@@ -101,7 +107,10 @@ describe('CollabService', () => {
   });
 
   it('잠시 조용해지면 저장하고, 다시 열면 저장한 내용에서 시작한다', async () => {
-    docsService.collabAccess.mockResolvedValue({ canEdit: true });
+    docsService.collabAccess.mockResolvedValue({
+      canEdit: true,
+      doc: { type: 'board' },
+    });
     const a = fakeSocket('a');
     await service.handle(a.socket, { id: 1 }, { type: 'join', docId: 7 });
     await service.handle(
@@ -133,8 +142,52 @@ describe('CollabService', () => {
     expect(doc.getText('t').toString()).toBe('저장');
   });
 
+  it('예전 문서는 처음 들어온 한 사람에게만 옮겨 넣기를 맡기고, 그 사람이 나가면 다른 사람에게 넘긴다', async () => {
+    docsService.collabAccess.mockResolvedValue({
+      canEdit: true,
+      doc: { type: 'doc' },
+    });
+    const a = fakeSocket('a');
+    const b = fakeSocket('b');
+    // 소켓을 찾을 수 있게 nsp.sockets 를 붙인다
+    const sockets = new Map([
+      ['a', a.socket],
+      ['b', b.socket],
+    ]);
+    a.socket.nsp.sockets = sockets;
+    b.socket.nsp.sockets = sockets;
+    await service.handle(a.socket, { id: 1 }, { type: 'join', docId: 11 });
+    await service.handle(b.socket, { id: 2 }, { type: 'join', docId: 11 });
+    expect(a.sent[0].data.seed).toBe(true);
+    expect(b.sent[0].data.seed).toBe(false);
+    service.disconnect(a.socket);
+    expect(b.sent.at(-1)!.data).toEqual({ type: 'seed', docId: 11 });
+    // 옮겨 넣고 나면 새로 온 사람에게는 맡기지 않는다
+    await service.handle(
+      b.socket,
+      { id: 2 },
+      { type: 'update', docId: 11, update: edit('옛 내용') },
+    );
+    const c = fakeSocket('c');
+    await service.handle(c.socket, { id: 3 }, { type: 'join', docId: 11 });
+    expect(c.sent[0].data.seed).toBe(false);
+  });
+
+  it('보드는 옮겨 넣을 예전 내용이 없다', async () => {
+    docsService.collabAccess.mockResolvedValue({
+      canEdit: true,
+      doc: { type: 'board' },
+    });
+    const a = fakeSocket('a');
+    await service.handle(a.socket, { id: 1 }, { type: 'join', docId: 12 });
+    expect(a.sent[0].data.seed).toBe(false);
+  });
+
   it('연결이 끊기면 그 사람의 커서를 지우고 남은 사람에게 알린다', async () => {
-    docsService.collabAccess.mockResolvedValue({ canEdit: true });
+    docsService.collabAccess.mockResolvedValue({
+      canEdit: true,
+      doc: { type: 'board' },
+    });
     const a = fakeSocket('a');
     const b = fakeSocket('b');
     await service.handle(a.socket, { id: 1 }, { type: 'join', docId: 7 });

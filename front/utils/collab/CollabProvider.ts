@@ -22,7 +22,8 @@ export const COLLAB_COLORS = ['#e0405a', '#2f80ed', '#12a06b', '#e8891d', '#7c5c
 export const colorFor = (userId: number) => COLLAB_COLORS[userId % COLLAB_COLORS.length];
 
 type Message =
-  | { type: 'sync'; docId: number; canEdit: boolean; state: ArrayBuffer; awareness: ArrayBuffer }
+  | { type: 'sync'; docId: number; canEdit: boolean; seed?: boolean; state: ArrayBuffer; awareness: ArrayBuffer }
+  | { type: 'seed'; docId: number }
   | { type: 'update'; docId: number; update: ArrayBuffer }
   | { type: 'awareness'; docId: number; update: ArrayBuffer }
   | { type: 'error'; docId: number; reason: string };
@@ -37,6 +38,9 @@ export default class CollabProvider {
   canEdit = false;
 
   synced = false;
+
+  // 예전(마크다운) 문서를 블록으로 옮겨 넣을 차례인지 (서버가 한 사람에게만 맡긴다)
+  shouldSeed = false;
 
   private listeners = new Set<() => void>();
 
@@ -82,8 +86,14 @@ export default class CollabProvider {
       this.setStatus('error');
       return;
     }
+    if (message.type === 'seed') {
+      this.shouldSeed = true;
+      this.listeners.forEach((l) => l());
+      return;
+    }
     if (message.type === 'sync') {
       this.canEdit = message.canEdit;
+      this.shouldSeed = !!message.seed;
       Y.applyUpdate(this.doc, toBytes(message.state), REMOTE);
       applyAwarenessUpdate(this.awareness, toBytes(message.awareness), REMOTE);
       // 끊긴 동안 고친 내용까지 서버에 보낸다
@@ -126,6 +136,11 @@ export default class CollabProvider {
     const mine = [...added, ...updated, ...removed].filter((id) => id === this.doc.clientID);
     if (mine.length && this.synced) this.sendAwareness(mine);
   };
+
+  // 옮겨 넣기를 끝냈다 (다시 넣지 않게)
+  seeded() {
+    this.shouldSeed = false;
+  }
 
   // 검색·미리보기용 글 (서버가 저장할 때 함께 쓴다)
   sendSnapshot(content: string) {
