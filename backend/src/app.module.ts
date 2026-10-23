@@ -46,6 +46,8 @@ import { DocComments } from './entities/DocComments';
 import { PinsModule } from './pins/pins.module';
 import { SectionsModule } from './sections/sections.module';
 import { PushModule } from './push/push.module';
+import { TasksModule } from './tasks/tasks.module';
+import { DocTasks } from './entities/DocTasks';
 import { ContactsModule } from './contacts/contacts.module';
 import { LinksModule } from './links/links.module';
 import { ForwardModule } from './forward/forward.module';
@@ -103,6 +105,7 @@ import { Workspaces } from './entities/Workspaces';
         SidebarSectionItems,
         PushSubscriptions,
         AppSettings,
+        DocTasks,
         Contacts,
         ContactStars,
         PasswordResets,
@@ -146,6 +149,7 @@ import { Workspaces } from './entities/Workspaces';
     PinsModule,
     SectionsModule,
     PushModule,
+    TasksModule,
     ContactsModule,
     LinksModule,
     ForwardModule,

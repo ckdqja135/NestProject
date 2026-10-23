@@ -87,6 +87,7 @@ import {
   WorkspaceWrapper,
 } from './styles';
 import SidebarSections from '@components/SidebarSections';
+import TasksButton from '@components/TasksButton';
 
 const Workspace = () => {
   const params = useParams<{ workspace?: string }>();
@@ -634,6 +635,7 @@ const Workspace = () => {
             <MenuIcon size={18} />
           </NavToggle>
           {userData && <SearchModal workspace={workspace} myId={userData.id} />}
+          {userData && workspace && <TasksButton workspace={workspace} me={userData} />}
           {userData && workspace && <ThreadsButton workspace={workspace} myId={userData.id} />}
           {userData && workspace && <SavedButton workspace={workspace} myId={userData.id} />}
           {userData && workspace && <MentionsButton workspace={workspace} />}

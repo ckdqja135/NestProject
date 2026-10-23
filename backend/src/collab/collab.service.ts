@@ -1,4 +1,5 @@
 import {
+  Optional,
   Injectable,
   Logger,
   OnModuleDestroy,
@@ -13,6 +14,7 @@ import {
 } from 'y-protocols/awareness';
 import * as Y from 'yjs';
 import { DocsService } from '../docs/docs.service';
+import { TasksService } from '../tasks/tasks.service';
 import { EventsGateway } from '../events/events.gateway';
 
 // 실시간 동시 편집 (Yjs). 문서마다 서버 메모리에 공동 편집 상태를 하나 두고,
@@ -27,6 +29,7 @@ const MAX_SNAPSHOT = 2 * 1024 * 1024;
 interface Room {
   url: string;
   docId: number;
+  type: string;
   ydoc: Y.Doc;
   awareness: Awareness;
   // 소켓 id → 그 소켓의 커서(awareness) clientID 들
@@ -70,6 +73,8 @@ export class CollabService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private docsService: DocsService,
     private eventsGateway: EventsGateway,
+    // 데이터베이스를 저장하면 "내 할 일" 목록도 다시 적는다 (테스트처럼 없으면 건너뛴다)
+    @Optional() private tasksService?: TasksService,
   ) {}
 
   onModuleInit() {
@@ -112,6 +117,7 @@ export class CollabService implements OnModuleInit, OnModuleDestroy {
         const room: Room = {
           url,
           docId,
+          type,
           ydoc,
           awareness,
           sockets: new Map(),
@@ -179,6 +185,13 @@ export class CollabService implements OnModuleInit, OnModuleDestroy {
         room.lastEditorId,
         snapshot,
       );
+      if (room.type === 'database') {
+        await this.tasksService
+          ?.indexDatabase(room.url, room.docId, room.ydoc, room.lastEditorId)
+          .catch((error: Error) =>
+            this.logger.warn(`할 일 목록을 적지 못했습니다: ${error.message}`),
+          );
+      }
     } catch (error) {
       this.logger.error(
         `문서 ${room.docId} 저장 실패: ${(error as Error).message}`,
