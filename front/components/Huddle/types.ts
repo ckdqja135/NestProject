@@ -9,8 +9,9 @@ export interface HuddleMember {
   joinedAt: number;
 }
 
+// scope: ch-채널id · doc-문서id · ev-일정id
 export interface HuddleInfo {
-  channelId: number;
+  scope: string;
   startedAt: number;
   members: HuddleMember[];
 }

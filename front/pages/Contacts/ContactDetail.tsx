@@ -1,4 +1,5 @@
 import useSidebarPins from '@hooks/useSidebarPins';
+import { useCall } from '@components/Call/CallProvider';
 import { IContact, IUser, IUserGroup } from '@typings/db';
 import { avatarUrl } from '@utils/avatar';
 import getErrorMessage from '@utils/getErrorMessage';
@@ -12,6 +13,7 @@ import {
   MessageSquare,
   Pencil,
   Phone,
+  PhoneCall,
   Star,
   Trash2,
   X,
@@ -76,6 +78,7 @@ interface ExternalProps {
 // 연락처 오른쪽 상세: 동료(워크스페이스 멤버) 또는 외부 연락처
 const ContactDetail: FC<MemberProps | ExternalProps> = (props) => {
   const { pins, setPinned } = useSidebarPins(props.workspace);
+  const { startCall, inCall } = useCall();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const targetKey = props.kind === 'member' ? `m${props.member.id}` : `c${props.contact.id}`;
   useEffect(() => setConfirmDelete(false), [targetKey]);
@@ -117,6 +120,17 @@ const ContactDetail: FC<MemberProps | ExternalProps> = (props) => {
           <Link to={`/workspace/${workspace}/dm/${member.id}`} className="action primary">
             <MessageSquare size={16} /> {isMe ? '메모' : '메시지'}
           </Link>
+          {!isMe && !member.bot && (
+            <button
+              type="button"
+              className="action"
+              onClick={() => startCall(member)}
+              disabled={!online || inCall}
+              title={online ? '음성 통화 (화면 공유 가능)' : '접속해 있지 않아 통화할 수 없습니다'}
+            >
+              <PhoneCall size={16} /> 통화
+            </button>
+          )}
           <a href={`mailto:${member.email}`} className="action">
             <Mail size={16} /> 메일
           </a>

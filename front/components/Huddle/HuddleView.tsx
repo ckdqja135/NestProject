@@ -35,7 +35,7 @@ const useElapsed = (startedAt: number) => {
 };
 
 interface Props {
-  channelName: string;
+  label: string;
   info: HuddleInfo;
   me: IUser;
   members: IUser[];
@@ -68,7 +68,7 @@ interface Tile {
 
 // 허들 화면: 작게(사이드바 아래 막대) 또는 크게(참여자 타일)
 const HuddleView: FC<Props> = ({
-  channelName,
+  label,
   info,
   me,
   members,
@@ -206,11 +206,11 @@ const HuddleView: FC<Props> = ({
 
   if (expanded) {
     return (
-      <HuddleStage role="dialog" aria-label={`#${channelName} 허들`}>
+      <HuddleStage role="dialog" aria-label={`${label} 허들`}>
         {audios}
         <header>
           <Headphones size={16} />
-          <strong>#{channelName} 허들</strong>
+          <strong>{label} 허들</strong>
           <span className="time">{elapsed}</span>
           <span className="count">{info.members.length}명</span>
         </header>
@@ -224,12 +224,12 @@ const HuddleView: FC<Props> = ({
   }
 
   return (
-    <HuddleBar role="region" aria-label={`#${channelName} 허들`}>
+    <HuddleBar role="region" aria-label={`${label} 허들`}>
       {audios}
       <div className="top">
         <Headphones size={15} className="icon" />
         <button type="button" className="title" onClick={() => onExpand(true)} title="크게 보기">
-          #{channelName}
+          {label}
         </button>
         <span className="time">{elapsed}</span>
       </div>

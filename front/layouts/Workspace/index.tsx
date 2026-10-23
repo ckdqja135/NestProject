@@ -582,7 +582,7 @@ const Workspace = () => {
 
   return (
     <CallProvider socket={socket} members={membersData}>
-      <HuddleProvider socket={socket} me={userData || undefined} members={membersData} channels={channelData}>
+      <HuddleProvider socket={socket} me={userData || undefined} members={membersData}>
         <Header>
           <NavToggle
             type="button"

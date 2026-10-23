@@ -18,7 +18,25 @@ import { DMs } from '../entities/DMs';
 import { findFileMessage } from '../files/find-file-message';
 import { WorkspaceMembers } from '../entities/WorkspaceMembers';
 import { onlineMap } from './onlineMap';
-import { Huddle, HuddleMediaState, HuddleStore, huddleStore } from './huddles';
+import {
+  Huddle,
+  HuddleMediaState,
+  HuddleStore,
+  huddleStore,
+  SCOPE_PATTERN,
+} from './huddles';
+
+// 문서·일정 허들에 들어갈 수 있는지 (label: 알림에 쓸 이름, notify: 허들이 시작되면 알릴 사람)
+export interface ScopeAccess {
+  ok: boolean;
+  label?: string;
+  notify?: number[];
+}
+export type ScopeResolver = (
+  url: string,
+  id: number,
+  userId: number,
+) => Promise<ScopeAccess>;
 import { corsOrigin, isAllowedOrigin } from '../security';
 
 // SessionIoAdapter 가 핸드셰이크 때 세션에서 꺼내 둔 로그인 사용자
@@ -81,7 +99,7 @@ export class EventsGateway
     // 참여 중인 채널에서 진행 중인 허들
     socket.emit(
       'huddleList',
-      huddleStore.list(namespace, this.channelIdsOf(socket)),
+      huddleStore.list(namespace, this.channelScopesOf(socket)),
     );
     socket.nsp.emit('onlineList', this.getOnlineList(namespace));
   }
@@ -240,14 +258,15 @@ export class EventsGateway
     await this.collabHandler?.handle(socket, user, data);
   }
 
-  // 채널 허들(여러 명 통화): 참여·나가기·연결 신호 중계·마이크/카메라 상태.
+  // 허들(여러 명 통화): 참여·나가기·지켜보기·연결 신호 중계·마이크/카메라 상태.
   // 서버는 음성·영상을 받지 않고, 누가 있는지와 브라우저끼리 연결하는 데 필요한 신호만 전달한다.
+  // scope: ch-채널id (채널 멤버만), doc-문서id (문서를 볼 수 있는 사람), ev-일정id (일정을 볼 수 있는 사람)
   @SubscribeMessage('huddle')
-  handleHuddle(
+  async handleHuddle(
     @MessageBody()
     data: {
-      type: 'join' | 'leave' | 'signal' | 'state';
-      channelId?: number;
+      type: 'join' | 'leave' | 'signal' | 'state' | 'watch' | 'unwatch';
+      scope?: string;
       to?: number;
       data?: unknown;
       state?: HuddleMediaState;
@@ -259,18 +278,30 @@ export class EventsGateway
     if (!user || !onlineMap[namespace]?.[socket.id] || !data) {
       return;
     }
-    if (data.type === 'join') {
-      const channelId = Number(data.channelId);
-      // 참여 중인 채널의 허들에만 들어갈 수 있다
-      if (
-        !Number.isInteger(channelId) ||
-        !socket.rooms.has(`${namespace}-${channelId}`)
-      ) {
+    if (data.type === 'join' || data.type === 'watch') {
+      const scope = String(data.scope || '');
+      const access = await this.scopeAccess(socket, scope, user.id);
+      if (!access) {
+        socket.emit('huddleError', { scope, reason: 'forbidden' });
         return;
       }
-      const result = huddleStore.join(namespace, channelId, user.id, socket.id);
+      // 채널이 아닌 허들은 그 문서·일정을 보고 있는 사람들에게 알린다
+      if (!scope.startsWith('ch-')) {
+        socket.join(this.huddleRoom(namespace, scope));
+      }
+      if (data.type === 'watch') {
+        const current = huddleStore.get(namespace, scope);
+        socket.emit(
+          'huddleUpdate',
+          current
+            ? HuddleStore.view(current)
+            : { scope, startedAt: 0, members: [] },
+        );
+        return;
+      }
+      const result = huddleStore.join(namespace, scope, user.id, socket.id);
       if (result === 'full') {
-        socket.emit('huddleError', { channelId, reason: 'full' });
+        socket.emit('huddleError', { scope, reason: 'full' });
         return;
       }
       if (result.replacedSocketId) {
@@ -284,6 +315,31 @@ export class EventsGateway
       }
       socket.emit('huddleJoined', HuddleStore.view(result.huddle));
       this.broadcastHuddle(socket.nsp, result.huddle);
+      // 일정 허들이 시작되면 참석자들에게 '참여' 알림
+      if (result.started && access.notify?.length) {
+        access.notify
+          .filter((id) => id !== user.id)
+          .forEach((id) =>
+            this.socketsOf(namespace, id).forEach((s) =>
+              s.emit('huddleInvite', {
+                scope,
+                label: access.label,
+                from: user.id,
+                fromName: user.nickname,
+              }),
+            ),
+          );
+      }
+      return;
+    }
+    if (data.type === 'unwatch') {
+      const scope = String(data.scope || '');
+      if (SCOPE_PATTERN.test(scope) && !scope.startsWith('ch-')) {
+        const mine = huddleStore.findBySocket(namespace, socket.id);
+        if (mine?.huddle.scope !== scope) {
+          socket.leave(this.huddleRoom(namespace, scope));
+        }
+      }
       return;
     }
     if (data.type === 'leave') {
@@ -316,26 +372,74 @@ export class EventsGateway
         return;
       }
       socket.nsp.sockets.get(target.socketId)?.emit('huddleSignal', {
-        channelId: mine.huddle.channelId,
+        scope: mine.huddle.scope,
         from: user.id,
         data: data.data,
       });
     }
   }
 
-  // 허들 참여자가 바뀌면 그 채널 사람들에게 알린다 (아무도 없으면 끝난 것)
+  // 문서·일정 허들에 들어갈 수 있는지는 그 기능 쪽(Docs·Calendar)이 알려 준다 (모듈끼리 서로 의존하지 않게 시작할 때 등록)
+  private scopeResolvers: Partial<Record<'doc' | 'ev', ScopeResolver>> = {};
+
+  setScopeResolver(kind: 'doc' | 'ev', resolver: ScopeResolver) {
+    this.scopeResolvers[kind] = resolver;
+  }
+
+  private async scopeAccess(
+    socket: Socket,
+    scope: string,
+    userId: number,
+  ): Promise<ScopeAccess | null> {
+    const match = SCOPE_PATTERN.exec(scope);
+    if (!match) {
+      return null;
+    }
+    const [, kind, idText] = match;
+    const id = Number(idText);
+    if (kind === 'ch') {
+      // 참여 중인 채널의 허들에만 들어갈 수 있다
+      return socket.rooms.has(`${socket.nsp.name}-${id}`) ? { ok: true } : null;
+    }
+    const resolver = this.scopeResolvers[kind as 'doc' | 'ev'];
+    if (!resolver) {
+      return null;
+    }
+    try {
+      const result = await resolver(
+        socket.nsp.name.replace(/^\/ws-/, ''),
+        id,
+        userId,
+      );
+      return result?.ok ? result : null;
+    } catch {
+      return null;
+    }
+  }
+
+  // 허들 소식을 받을 방: 채널은 채널 방, 문서·일정은 지켜보는 사람들의 방
+  private huddleRoom(namespace: string, scope: string) {
+    return scope.startsWith('ch-')
+      ? `${namespace}-${scope.slice(3)}`
+      : `${namespace}-watch-${scope}`;
+  }
+
+  // 허들 참여자가 바뀌면 알린다 (아무도 없으면 끝난 것)
   private broadcastHuddle(nsp: Namespace, huddle: Huddle) {
     nsp
-      .to(`${nsp.name}-${huddle.channelId}`)
+      .to(this.huddleRoom(nsp.name, huddle.scope))
       .emit('huddleUpdate', HuddleStore.view(huddle));
   }
 
-  private channelIdsOf(socket: Socket) {
+  // 참여 중인 채널들의 허들 scope
+  private channelScopesOf(socket: Socket) {
     const prefix = `${socket.nsp.name}-`;
     return new Set(
       [...socket.rooms]
         .filter((room) => room.startsWith(prefix))
-        .map((room) => Number(room.slice(prefix.length))),
+        .map((room) => room.slice(prefix.length))
+        .filter((rest) => /^\d+$/.test(rest))
+        .map((rest) => `ch-${rest}`),
     );
   }
 
@@ -461,11 +565,19 @@ export class EventsGateway
 
     const rooms = new Set(channels.map((c) => `${namespace}-${c.channelId}`));
     socket.rooms.forEach((room) => {
-      if (room.startsWith(`${namespace}-`) && !rooms.has(room)) {
+      // 채널 방(워크스페이스-숫자)만 맞춘다 (문서·일정 허들을 지켜보는 방은 그대로)
+      const isChannelRoom = /^\d+$/.test(room.slice(namespace.length + 1));
+      if (
+        room.startsWith(`${namespace}-`) &&
+        isChannelRoom &&
+        !rooms.has(room)
+      ) {
         socket.leave(room);
         // 나간 채널의 허들에서도 뺀다
         const channelId = Number(room.slice(namespace.length + 1));
-        const left = huddleStore.leaveChannel(namespace, channelId, user.id);
+        const left = Number.isInteger(channelId)
+          ? huddleStore.leaveScope(namespace, `ch-${channelId}`, user.id)
+          : undefined;
         if (left) {
           socket.emit('huddleEnded', { reason: 'removed' });
           this.broadcastHuddle(socket.nsp, left);

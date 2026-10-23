@@ -110,6 +110,20 @@ export class CalendarService implements OnModuleInit, OnModuleDestroy {
   onModuleInit() {
     this.timer = setInterval(() => this.tick(), TICK_MS);
     this.timer.unref?.();
+    // 일정 허들: 일정을 볼 수 있는 사람이 들어가고, 시작되면 주최자·참석자(불참 빼고)에게 알린다
+    this.eventsGateway.setScopeResolver('ev', async (url, id, userId) => {
+      const { event } = await this.load(url, id, userId);
+      return {
+        ok: true,
+        label: event.title,
+        notify: [
+          event.OwnerId,
+          ...(event.Attendees || [])
+            .filter((a) => a.status !== 'declined')
+            .map((a) => a.UserId),
+        ].filter((uid): uid is number => !!uid),
+      };
+    });
   }
 
   onModuleDestroy() {

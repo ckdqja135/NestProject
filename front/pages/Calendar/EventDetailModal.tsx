@@ -3,7 +3,20 @@ import { Actions } from '@components/ModalForm/styles';
 import { ICalendarEvent, IUser, RsvpStatus } from '@typings/db';
 import { avatarUrl } from '@utils/avatar';
 import axios from 'axios';
-import { Bell, CircleCheck, CircleX, Clock, Crown, Hourglass, Lock, MapPin, Pencil, Trash2 } from 'lucide-react';
+import {
+  Bell,
+  CircleCheck,
+  CircleX,
+  Clock,
+  Crown,
+  Headphones,
+  Hourglass,
+  Lock,
+  MapPin,
+  Pencil,
+  Trash2,
+} from 'lucide-react';
+import { useHuddle, useHuddleWatch } from '@components/Huddle/HuddleProvider';
 import React, { FC, useState } from 'react';
 import { toast } from 'react-toastify';
 import { calBase, toastError } from './api';
@@ -30,6 +43,10 @@ interface Props {
 
 const EventDetailModal: FC<Props> = ({ show, workspace, event, me, follows, onClose, onEdit, onChanged }) => {
   const [busy, setBusy] = useState(false);
+  // 일정 허들: 볼 수 있는 일정이면 그 자리에서 함께 이야기한다
+  const { join: joinHuddle, current: huddleCurrent } = useHuddle();
+  const huddleScope = show && event && !event.masked ? `ev-${event.id}` : null;
+  const huddle = useHuddleWatch(huddleScope);
   if (!event) {
     return null;
   }
@@ -131,6 +148,25 @@ const EventDetailModal: FC<Props> = ({ show, workspace, event, me, follows, onCl
                 </ul>
               </>
             )}
+            <div className="rsvp" role="group" aria-label="허들">
+              <button
+                type="button"
+                className={huddle ? 'on' : undefined}
+                onClick={() => {
+                  joinHuddle(`ev-${event.id}`, event.title);
+                  // 창이 허들 막대를 가리지 않도록 닫는다
+                  onClose();
+                }}
+                title="이 일정 참석자들과 음성·화상 허들"
+              >
+                <Headphones size={15} />{' '}
+                {huddleCurrent === huddleScope
+                  ? '허들 중'
+                  : huddle
+                  ? `허들 참여 · ${huddle.members.length}명`
+                  : '허들 시작'}
+              </button>
+            </div>
             {canRsvp && (
               <div className="rsvp" role="group" aria-label="참석 여부">
                 <button

@@ -74,6 +74,11 @@ export class CollabService implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit() {
     this.eventsGateway.setCollabHandler(this);
+    // 문서 허들: 그 문서를 볼 수 있는 사람이면 들어간다
+    this.eventsGateway.setScopeResolver('doc', async (url, id, userId) => {
+      const { doc } = await this.docsService.collabAccess(url, id, userId);
+      return { ok: true, label: doc.title };
+    });
   }
 
   async onModuleDestroy() {

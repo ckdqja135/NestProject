@@ -29,7 +29,7 @@ const EachChannel: VFC<Props> = ({ channel, mentionCount = 0 }) => {
 
   const [socket] = useSocket(workspace);
   const { huddles } = useHuddle();
-  const huddle = huddles[channel.id];
+  const huddle = huddles[`ch-${channel.id}`];
   // 다른 기기에서 읽으면 안 읽은 수를 다시 센다
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   useEffect(() => subscribeReadState(rerender), []);

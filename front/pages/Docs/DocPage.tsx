@@ -12,6 +12,7 @@ import useSWR, { mutate as mutateKey } from 'swr';
 import { createDoc, docPath, docsBase, toastError } from './api';
 import ShareDocModal from './ShareDocModal';
 import CommentsPanel, { DocComment } from './CommentsPanel';
+import { useHuddle, useHuddleWatch } from '@components/Huddle/HuddleProvider';
 import { removeCommentMark, scrollToThread } from './editor/commentMarks';
 import {
   ArchiveRestore,
@@ -21,6 +22,7 @@ import {
   Folder,
   FolderInput,
   Lock,
+  Headphones,
   MessageSquare,
   Play,
   Plus,
@@ -250,6 +252,10 @@ const DocPage: FC<Props> = ({ me }) => {
       .catch(toastError);
 
   const { data: comments } = useSWR<DocComment[]>(Number.isInteger(id) ? `${base}/docs/${id}/comments` : null, fetcher);
+  // 문서 허들: 이 문서를 보며 함께 이야기한다
+  const docHuddleScope = Number.isInteger(id) ? `doc-${id}` : null;
+  const docHuddle = useHuddleWatch(docHuddleScope);
+  const { join: joinHuddle, current: huddleCurrent } = useHuddle();
   const openThreads = useMemo(
     () => new Set((comments || []).filter((c) => !c.resolved).map((c) => c.threadId)).size,
     [comments],
@@ -395,6 +401,15 @@ const DocPage: FC<Props> = ({ me }) => {
             fill={doc.favorite ? '#f2c94c' : 'none'}
             color={doc.favorite ? '#d4a20f' : 'currentColor'}
           />
+        </button>
+        <button
+          type="button"
+          className={`btn${docHuddle ? ' live' : ''}`}
+          onClick={() => joinHuddle(`doc-${doc.id}`, doc.title)}
+          title="이 문서를 보며 음성·화상 허들"
+        >
+          <Headphones size={14} style={{ verticalAlign: '-3px' }} />{' '}
+          {huddleCurrent === docHuddleScope ? '허들 중' : docHuddle ? `허들 ${docHuddle.members.length}명` : '허들'}
         </button>
         <button
           type="button"

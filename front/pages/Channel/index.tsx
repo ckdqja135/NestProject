@@ -91,8 +91,9 @@ const Channel = () => {
   const [threadParentId, setThreadParentId] = useState<number | null>(null);
   const { isPinned, setPinned } = useSidebarPins(workspace);
   const { huddles, current: huddleChannel, join: joinHuddle } = useHuddle();
-  const huddle = channelData ? huddles[channelData.id] : undefined;
-  const inHuddle = !!channelData && huddleChannel === channelData.id;
+  const huddleScope = channelData ? `ch-${channelData.id}` : '';
+  const huddle = channelData ? huddles[huddleScope] : undefined;
+  const inHuddle = !!channelData && huddleChannel === huddleScope;
   const [showPinned, setShowPinned] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const scrollbarRef = useRef<Scrollbars>(null);
@@ -512,7 +513,7 @@ const Channel = () => {
               <HeaderButton
                 type="button"
                 className={huddle ? 'live' : undefined}
-                onClick={() => joinHuddle(channelData.id)}
+                onClick={() => joinHuddle(huddleScope, `#${channelData.name}`)}
                 title={
                   inHuddle ? '허들 크게 보기' : huddle ? '진행 중인 허들에 참여' : '이 채널에서 음성·화상 허들 시작'
                 }
@@ -593,7 +594,7 @@ const Channel = () => {
                 .join(', ')}{' '}
               님이 허들 중이에요
             </span>
-            <button type="button" onClick={() => channelData && joinHuddle(channelData.id)}>
+            <button type="button" onClick={() => channelData && joinHuddle(huddleScope, `#${channelData.name}`)}>
               참여하기
             </button>
           </HuddleBanner>

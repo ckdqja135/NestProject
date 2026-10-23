@@ -477,6 +477,13 @@ export const EditorHeader = styled.header`
       background: var(--bg-selected);
       border-color: #1264a3;
     }
+
+    /* 이 문서에서 허들이 진행 중 */
+    &.live {
+      border-color: #2eb67d;
+      background: #2eb67d;
+      color: white;
+    }
   }
 
   & .modes {

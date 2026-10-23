@@ -1,4 +1,4 @@
-import { IChannel, IUser } from '@typings/db';
+import { IUser } from '@typings/db';
 import { getMediaSession, setMediaSession } from '@utils/mediaSession';
 import axios from 'axios';
 import React, {
@@ -35,11 +35,13 @@ interface Peer {
 }
 
 interface HuddleContextValue {
-  huddles: Record<number, HuddleInfo>;
-  current: number | null; // 내가 들어가 있는 허들의 채널 id
-  join: (channelId: number) => void;
+  huddles: Record<string, HuddleInfo>;
+  current: string | null; // 내가 들어가 있는 허들 (scope)
+  join: (scope: string, label: string) => void;
   leave: () => void;
   expand: () => void;
+  watch: (scope: string) => void;
+  unwatch: (scope: string) => void;
 }
 
 const HuddleContext = createContext<HuddleContextValue>({
@@ -48,8 +50,21 @@ const HuddleContext = createContext<HuddleContextValue>({
   join: () => undefined,
   leave: () => undefined,
   expand: () => undefined,
+  watch: () => undefined,
+  unwatch: () => undefined,
 });
 export const useHuddle = () => useContext(HuddleContext);
+
+// 문서·일정 화면: 그 허들이 진행 중인지 받아 본다 (채널 허들은 따로 하지 않아도 온다)
+export const useHuddleWatch = (scope: string | null) => {
+  const { watch, unwatch, huddles } = useHuddle();
+  useEffect(() => {
+    if (!scope) return undefined;
+    watch(scope);
+    return () => unwatch(scope);
+  }, [scope, watch, unwatch]);
+  return scope ? huddles[scope] : undefined;
+};
 
 const SPEAKING_LEVEL = 0.035;
 
@@ -57,12 +72,13 @@ interface Props {
   socket?: Socket;
   me?: IUser;
   members?: IUser[];
-  channels?: IChannel[];
 }
 
-const HuddleProvider: FC<PropsWithChildren<Props>> = ({ socket, me, members, channels, children }) => {
-  const [huddles, setHuddles] = useState<Record<number, HuddleInfo>>({});
-  const [current, setCurrent] = useState<number | null>(null);
+const HuddleProvider: FC<PropsWithChildren<Props>> = ({ socket, me, members, children }) => {
+  const [huddles, setHuddles] = useState<Record<string, HuddleInfo>>({});
+  const [current, setCurrent] = useState<string | null>(null);
+  const [label, setLabel] = useState('');
+  const watchingRef = useRef(new Map<string, number>());
   const [joining, setJoining] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -73,7 +89,7 @@ const HuddleProvider: FC<PropsWithChildren<Props>> = ({ socket, me, members, cha
   const [connected, setConnected] = useState<Set<number>>(new Set());
   const [speaking, setSpeaking] = useState<Set<number>>(new Set());
 
-  const currentRef = useRef<number | null>(null);
+  const currentRef = useRef<string | null>(null);
   const meRef = useRef(me);
   meRef.current = me;
   const peersRef = useRef(new Map<number, Peer>());
@@ -242,9 +258,9 @@ const HuddleProvider: FC<PropsWithChildren<Props>> = ({ socket, me, members, cha
   );
 
   const join = useCallback(
-    async (channelId: number) => {
+    async (scope: string, nextLabel: string) => {
       if (!socket || joining) return;
-      if (currentRef.current === channelId) {
+      if (currentRef.current === scope) {
         setExpanded(true);
         return;
       }
@@ -257,6 +273,7 @@ const HuddleProvider: FC<PropsWithChildren<Props>> = ({ socket, me, members, cha
         teardown();
       }
       setJoining(true);
+      setLabel(nextLabel);
       setMediaSession('huddle');
       try {
         if (!rtcConfigRef.current) {
@@ -270,7 +287,7 @@ const HuddleProvider: FC<PropsWithChildren<Props>> = ({ socket, me, members, cha
           setNoMic(true);
           toast.info('마이크를 쓸 수 없어 듣기만 합니다.', { position: 'bottom-center' });
         }
-        emit({ type: 'join', channelId });
+        emit({ type: 'join', scope });
         // 서버가 받아 주지 않으면 (채널에서 나갔거나 연결이 끊김) 기다리지 않는다
         joinTimerRef.current = window.setTimeout(() => {
           if (currentRef.current === null) {
@@ -294,19 +311,24 @@ const HuddleProvider: FC<PropsWithChildren<Props>> = ({ socket, me, members, cha
   // 서버가 보내는 허들 소식
   useEffect(() => {
     if (!socket) return undefined;
-    const onList = (list: HuddleInfo[]) => setHuddles(Object.fromEntries(list.map((h) => [h.channelId, h])));
+    const onList = (list: HuddleInfo[]) =>
+      setHuddles((prev) => {
+        // 채널 허들 목록만 새로 받는다 (지켜보는 문서·일정 허들은 그대로)
+        const kept = Object.fromEntries(Object.entries(prev).filter(([scope]) => !scope.startsWith('ch-')));
+        return { ...kept, ...Object.fromEntries(list.map((h) => [h.scope, h])) };
+      });
     const onUpdate = (info: HuddleInfo) => {
       setHuddles((prev) => {
         const next = { ...prev };
-        if (info.members.length) next[info.channelId] = info;
-        else delete next[info.channelId];
+        if (info.members.length) next[info.scope] = info;
+        else delete next[info.scope];
         return next;
       });
-      if (info.channelId === currentRef.current) syncPeers(info);
+      if (info.scope === currentRef.current) syncPeers(info);
     };
     const onJoined = (info: HuddleInfo) => {
-      currentRef.current = info.channelId;
-      setCurrent(info.channelId);
+      currentRef.current = info.scope;
+      setCurrent(info.scope);
       setJoining(false);
       if (joinTimerRef.current) window.clearTimeout(joinTimerRef.current);
       onUpdate(info);
@@ -326,13 +348,37 @@ const HuddleProvider: FC<PropsWithChildren<Props>> = ({ socket, me, members, cha
         { position: 'bottom-center' },
       );
     };
-    const onError = ({ reason }: { reason: string }) => {
+    const onError = ({ scope, reason }: { scope: string; reason: string }) => {
+      // 지켜보기만 거절된 것이면 (볼 수 없는 문서 등) 조용히 넘어간다
+      if (currentRef.current === null && !joinTimerRef.current) return;
+      if (currentRef.current !== null && currentRef.current !== scope) return;
       teardown();
       toast.error(reason === 'full' ? '허들이 가득 찼습니다 (최대 6명).' : '허들에 들어가지 못했습니다.', {
         position: 'bottom-center',
       });
     };
-    const onSignal = async ({ from, data }: { channelId: number; from: number; data: Signal }) => {
+    // 일정 허들이 시작됐다는 초대
+    const onInvite = ({ scope, label: inviteLabel, fromName }: { scope: string; label: string; fromName: string }) => {
+      if (currentRef.current === scope) return;
+      toast.info(
+        ({ closeToast }) => (
+          <div className="huddle-invite">
+            <b>{fromName}</b>님이 ‘{inviteLabel}’ 허들을 시작했어요.{' '}
+            <button
+              type="button"
+              onClick={() => {
+                joinRef.current(scope, inviteLabel);
+                closeToast?.();
+              }}
+            >
+              참여
+            </button>
+          </div>
+        ),
+        { position: 'top-right', autoClose: 20000 },
+      );
+    };
+    const onSignal = async ({ from, data }: { scope: string; from: number; data: Signal }) => {
       const peer = peersRef.current.get(from);
       if (!peer || !data) return;
       const { pc } = peer;
@@ -363,7 +409,9 @@ const HuddleProvider: FC<PropsWithChildren<Props>> = ({ socket, me, members, cha
     socket.on('huddleEnded', onEnded);
     socket.on('huddleError', onError);
     socket.on('huddleSignal', onSignal);
+    socket.on('huddleInvite', onInvite);
     return () => {
+      socket.off('huddleInvite', onInvite);
       socket.off('huddleList', onList);
       socket.off('huddleUpdate', onUpdate);
       socket.off('huddleJoined', onJoined);
@@ -377,7 +425,9 @@ const HuddleProvider: FC<PropsWithChildren<Props>> = ({ socket, me, members, cha
   useEffect(() => {
     if (!socket) return undefined;
     const onReconnect = () => {
-      if (currentRef.current !== null) emit({ type: 'join', channelId: currentRef.current });
+      if (currentRef.current !== null) emit({ type: 'join', scope: currentRef.current });
+      // 지켜보던 문서·일정 허들도 다시 받는다
+      watchingRef.current.forEach((_, scope) => emit({ type: 'watch', scope }));
     };
     socket.io.on('reconnect', onReconnect);
     return () => {
@@ -526,19 +576,51 @@ const HuddleProvider: FC<PropsWithChildren<Props>> = ({ socket, me, members, cha
     }
   };
 
+  // 여러 화면이 같은 것을 지켜봐도 한 번만 보내고, 마지막 화면이 닫힐 때 그만 본다
+  const watch = useCallback(
+    (scope: string) => {
+      const count = watchingRef.current.get(scope) || 0;
+      watchingRef.current.set(scope, count + 1);
+      if (!count) emit({ type: 'watch', scope });
+    },
+    [emit],
+  );
+  const unwatch = useCallback(
+    (scope: string) => {
+      const count = (watchingRef.current.get(scope) || 1) - 1;
+      if (count > 0) {
+        watchingRef.current.set(scope, count);
+        return;
+      }
+      watchingRef.current.delete(scope);
+      emit({ type: 'unwatch', scope });
+      if (currentRef.current !== scope) {
+        setHuddles((prev) => {
+          if (!(scope in prev)) return prev;
+          const next = { ...prev };
+          delete next[scope];
+          return next;
+        });
+      }
+    },
+    [emit],
+  );
+
+  const joinRef = useRef(join);
+  joinRef.current = join;
+
   const value = useMemo(
-    () => ({ huddles, current, join, leave, expand: () => setExpanded(true) }),
-    [huddles, current, join, leave],
+    () => ({ huddles, current, join, leave, expand: () => setExpanded(true), watch, unwatch }),
+    [huddles, current, join, leave, watch, unwatch],
   );
   const info = current !== null ? huddles[current] : undefined;
-  const channel = channels?.find((c) => c.id === current);
 
   return (
     <HuddleContext.Provider value={value}>
       {children}
       {me && current !== null && info && (
         <HuddleView
-          channelName={channel?.name || ''}
+          label={label}
           info={info}
           me={me}
           members={members || []}
