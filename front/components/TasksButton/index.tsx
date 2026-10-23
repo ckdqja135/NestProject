@@ -4,7 +4,10 @@ import useSocket from '@hooks/useSocket';
 import { IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
 import dayjs from 'dayjs';
-import { ListTodo } from 'lucide-react';
+import { FileCheck2, ListTodo } from 'lucide-react';
+import ApprovalCard from '@components/ApprovalCard';
+import Modal from '@components/Modal';
+import { ApprovalKind, KIND_LABELS } from '@utils/approval';
 import React, { FC, useEffect, useRef, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -39,6 +42,17 @@ const List = styled.ul`
 
     &:hover {
       background: var(--bg-hover);
+    }
+
+    &.section {
+      padding: 8px 16px 2px;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 700;
+
+      &:hover {
+        background: transparent;
+      }
     }
 
     &.done .title {
@@ -112,17 +126,28 @@ const TasksButton: FC<{ workspace: string; me: IUser }> = ({ workspace, me }) =>
   const [socket] = useSocket(workspace);
   const key = `/api/workspaces/${workspace}/tasks`;
   const { data, mutate } = useSWR<IMyTask[]>(key, fetcher);
+  // 내가 결재할 차례인 것
+  const { data: approvals, mutate: mutateApprovals } = useSWR<
+    { id: number; title: string; kind: string; requesterName: string; createdAt: string }[]
+  >(`/api/workspaces/${workspace}/approvals/pending`, fetcher);
+  const [openApproval, setOpenApproval] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const [showDone, setShowDone] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onChanged = () => mutate();
+    const onApproval = () => mutateApprovals();
     socket?.on('tasksChanged', onChanged);
+    socket?.on('approvalUpdated', onApproval);
+    // 결재 요청 카드는 봇 DM 으로 오므로 새 DM 이 오면 다시 본다
+    socket?.on('dm', onApproval);
     return () => {
       socket?.off('tasksChanged', onChanged);
+      socket?.off('approvalUpdated', onApproval);
+      socket?.off('dm', onApproval);
     };
-  }, [socket, mutate]);
+  }, [socket, mutate, mutateApprovals]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -135,7 +160,8 @@ const TasksButton: FC<{ workspace: string; me: IUser }> = ({ workspace, me }) =>
 
   const tasks = data || [];
   const today = dayjs().format('YYYY-MM-DD');
-  const urgent = tasks.filter((t) => !t.done && t.due && t.due <= today).length;
+  const waiting = approvals || [];
+  const urgent = tasks.filter((t) => !t.done && t.due && t.due <= today).length + waiting.length;
   const shown = tasks.filter((t) => showDone || !t.done);
 
   // 완료 표시: 그 데이터베이스에 잠깐 붙어 상태(또는 체크 칸)를 바꾼다
@@ -181,7 +207,7 @@ const TasksButton: FC<{ workspace: string; me: IUser }> = ({ workspace, me }) =>
         className={open ? 'active' : undefined}
         onClick={() => setOpen((v) => !v)}
         title="내 할 일"
-        aria-label={urgent ? `내 할 일 (오늘까지 ${urgent}개)` : '내 할 일'}
+        aria-label={urgent ? `내 할 일 (오늘까지·결재 대기 ${urgent}개)` : '내 할 일'}
         aria-expanded={open}
       >
         <ListTodo size={18} />
@@ -196,6 +222,31 @@ const TasksButton: FC<{ workspace: string; me: IUser }> = ({ workspace, me }) =>
             </button>
           </header>
           <List>
+            {waiting.length > 0 && (
+              <>
+                <li className="section">결재 대기 {waiting.length}</li>
+                {waiting.map((a) => (
+                  <li key={`a${a.id}`}>
+                    <FileCheck2 size={15} style={{ marginTop: 2, color: '#e8891d', flex: 'none' }} />
+                    <button
+                      type="button"
+                      className="open"
+                      onClick={() => {
+                        setOpen(false);
+                        setOpenApproval(a.id);
+                      }}
+                    >
+                      <span className="title">{a.title}</span>
+                      <span className="meta">
+                        {KIND_LABELS[a.kind as ApprovalKind] || '결재'} · {a.requesterName} 님 요청 ·{' '}
+                        {dayjs(a.createdAt).format('M/D HH:mm')}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+                <li className="section">할 일</li>
+              </>
+            )}
             {!shown.length && (
               <li className="empty">
                 맡은 할 일이 없어요. 데이터베이스에서 담당자로 정해지거나, 메시지의 "작업물로 만들기 → 할 일"로 만들면
@@ -229,6 +280,11 @@ const TasksButton: FC<{ workspace: string; me: IUser }> = ({ workspace, me }) =>
             ))}
           </List>
         </Dropdown>
+      )}
+      {openApproval !== null && (
+        <Modal show onCloseModal={() => setOpenApproval(null)} title="결재">
+          <ApprovalCard workspace={workspace} id={openApproval} />
+        </Modal>
       )}
     </TasksWrapper>
   );

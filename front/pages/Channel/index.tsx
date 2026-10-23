@@ -1,4 +1,16 @@
-import { Archive, ArrowUpToLine, Bell, BellOff, ChartBar, Hash, Headphones, Lock, Pin, Settings } from 'lucide-react';
+import {
+  Archive,
+  ArrowUpToLine,
+  Bell,
+  BellOff,
+  ChartBar,
+  FileCheck2,
+  Hash,
+  Headphones,
+  Lock,
+  Pin,
+  Settings,
+} from 'lucide-react';
 import useMyRole, { isAdminRole } from '@hooks/useMyRole';
 import { useHuddle } from '@components/Huddle/HuddleProvider';
 import useSidebarPins from '@hooks/useSidebarPins';
@@ -48,6 +60,7 @@ import { Redirect, useHistory } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
+import ApprovalModal from '@components/ApprovalModal';
 
 const PAGE_SIZE = 20;
 // 내가 보낸 파일 메시지는 낙관적 업데이트가 없으므로 소켓으로 받은 것을 그대로 표시한다
@@ -243,6 +256,8 @@ const Channel = () => {
 
   // 투표 만들기, 정한 시각에 보내기
   const [showPollModal, setShowPollModal] = useState(false);
+  // 결재 요청 (이 대화에 카드로 올린다)
+  const [showApproval, setShowApproval] = useState(false);
   const onCreatePoll = useCallback((poll: Poll) => sendMessage(toPollContent(poll)), [sendMessage]);
   const onSchedule = useCallback(
     (date: Date) => {
@@ -665,6 +680,16 @@ const Channel = () => {
         <TypingIndicator names={typingUsers} />
         <ScheduledBar workspace={workspace} channel={channel} />
         <PollModal show={showPollModal} onCloseModal={() => setShowPollModal(false)} onCreate={onCreatePoll} />
+        {showApproval && userData && workspace && (
+          <ApprovalModal
+            show={showApproval}
+            workspace={workspace}
+            myId={userData.id}
+            target={{ channel }}
+            onCreated={() => mutateChat().then(() => setTimeout(() => scrollbarRef.current?.scrollToBottom(), 100))}
+            onClose={() => setShowApproval(false)}
+          />
+        )}
         {channelData?.archived ? (
           <ArchivedNotice role="status">
             <Archive size={14} /> 보관된 채널입니다. 메시지를 읽을 수만 있어요.
@@ -692,6 +717,9 @@ const Channel = () => {
                 <GifPicker onSelect={onSelectGif} />
                 <AttachButton type="button" onClick={() => setShowPollModal(true)} title="투표 만들기">
                   <ChartBar size={14} /> 투표
+                </AttachButton>
+                <AttachButton type="button" onClick={() => setShowApproval(true)} title="결재 요청 (승인·반려)">
+                  <FileCheck2 size={14} /> 결재
                 </AttachButton>
                 <ScheduleButton disabled={!chat?.trim()} onSchedule={onSchedule} />
               </>

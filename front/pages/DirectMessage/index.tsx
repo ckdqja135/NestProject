@@ -1,4 +1,4 @@
-import { ArrowUpToLine, ChartBar, Phone, Pin } from 'lucide-react';
+import { ArrowUpToLine, ChartBar, FileCheck2, Phone, Pin } from 'lucide-react';
 import useSidebarPins from '@hooks/useSidebarPins';
 import { ChatActions } from '@components/Chat';
 import ChatBox from '@components/ChatBox';
@@ -44,6 +44,7 @@ import { useParams } from 'react-router';
 import { toast } from 'react-toastify';
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
+import ApprovalModal from '@components/ApprovalModal';
 
 const PAGE_SIZE = 20;
 const DirectMessage = () => {
@@ -236,6 +237,8 @@ const DirectMessage = () => {
 
   // 투표 만들기, 정한 시각에 보내기
   const [showPollModal, setShowPollModal] = useState(false);
+  // 결재 요청 (이 대화에 카드로 올린다)
+  const [showApproval, setShowApproval] = useState(false);
   const onCreatePoll = useCallback((poll: Poll) => sendMessage(toPollContent(poll)), [sendMessage]);
   const onSchedule = useCallback(
     (date: Date) => {
@@ -496,6 +499,16 @@ const DirectMessage = () => {
         <TypingIndicator names={typingUsers} />
         <ScheduledBar workspace={workspace} receiverId={Number(id)} />
         <PollModal show={showPollModal} onCloseModal={() => setShowPollModal(false)} onCreate={onCreatePoll} />
+        {showApproval && userData && workspace && (
+          <ApprovalModal
+            show={showApproval}
+            workspace={workspace}
+            myId={userData.id}
+            target={{ dmUserId: Number(id) }}
+            onCreated={() => mutateChat().then(() => setTimeout(() => scrollbarRef.current?.scrollToBottom(), 100))}
+            onClose={() => setShowApproval(false)}
+          />
+        )}
         <ChatBox
           onSubmitForm={onSubmitForm}
           chat={chat}
@@ -512,6 +525,9 @@ const DirectMessage = () => {
               <GifPicker onSelect={onSelectGif} />
               <AttachButton type="button" onClick={() => setShowPollModal(true)} title="투표 만들기">
                 <ChartBar size={14} /> 투표
+              </AttachButton>
+              <AttachButton type="button" onClick={() => setShowApproval(true)} title="결재 요청 (승인·반려)">
+                <FileCheck2 size={14} /> 결재
               </AttachButton>
               <ScheduleButton disabled={!chat?.trim()} onSchedule={onSchedule} />
             </>

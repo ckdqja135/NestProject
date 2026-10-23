@@ -73,6 +73,8 @@ import { parsePollContent, POLL_EMOJIS } from '@utils/poll';
 import { formatWhen, timePresets } from '@utils/timePresets';
 import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
+import ApprovalCard from '@components/ApprovalCard';
+import { parseApprovalContent } from '@utils/approval';
 
 export const EMOJIS = ['👍', '❤️', '😂', '🎉', '😮', '👀'];
 
@@ -146,6 +148,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
 
   const gifUrl = useMemo(() => parseGifContent(data.content), [data.content]);
   const poll = useMemo(() => parsePollContent(data.content), [data.content]);
+  const approval = useMemo(() => parseApprovalContent(data.content), [data.content]);
   const fileMeta = useMemo(() => parseFileContent(data.content), [data.content]);
   const forwarded = useMemo(() => parseForwardContent(data.content), [data.content]);
   const link = useMemo(
@@ -275,6 +278,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
     !gifUrl &&
     !fileMeta &&
     !poll &&
+    !approval &&
     !forwarded &&
     !isLegacyUpload(data.content);
   // 파일(보낸 사람 기기에만 있음)·투표는 전달하지 않는다
@@ -451,7 +455,9 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
             </div>
           </EditBox>
         ) : // 코드 블록/인용/파일 카드는 블록 요소라 <p> 대신 <div> 로 감싼다
-        poll ? (
+        approval && workspace ? (
+          <ApprovalCard workspace={workspace} id={approval.id} note={approval.n} />
+        ) : poll ? (
           <PollView
             poll={poll}
             reactions={data.Reactions}

@@ -256,6 +256,9 @@ export class DmsService {
     myId: number,
   ) {
     const dm = await this.findMyDM(url, id, dmId, myId);
+    if (dm.content?.startsWith('approval:')) {
+      throw new ForbiddenException('결재 카드는 고칠 수 없습니다.');
+    }
     // 내용이 바뀔 때만 바뀌기 전 내용을 수정 내역으로 남긴다
     if (dm.content !== content) {
       await this.messageEditsRepository.save({

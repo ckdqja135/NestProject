@@ -47,6 +47,9 @@ import { PinsModule } from './pins/pins.module';
 import { SectionsModule } from './sections/sections.module';
 import { PushModule } from './push/push.module';
 import { TasksModule } from './tasks/tasks.module';
+import { ApprovalsModule } from './approvals/approvals.module';
+import { Approvals } from './entities/Approvals';
+import { ApprovalSteps } from './entities/ApprovalSteps';
 import { DocTasks } from './entities/DocTasks';
 import { ContactsModule } from './contacts/contacts.module';
 import { LinksModule } from './links/links.module';
@@ -106,6 +109,8 @@ import { Workspaces } from './entities/Workspaces';
         PushSubscriptions,
         AppSettings,
         DocTasks,
+        Approvals,
+        ApprovalSteps,
         Contacts,
         ContactStars,
         PasswordResets,
@@ -150,6 +155,7 @@ import { Workspaces } from './entities/Workspaces';
     SectionsModule,
     PushModule,
     TasksModule,
+    ApprovalsModule,
     ContactsModule,
     LinksModule,
     ForwardModule,

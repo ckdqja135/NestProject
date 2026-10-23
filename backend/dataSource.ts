@@ -14,6 +14,8 @@ import { SidebarSectionItems } from './src/entities/SidebarSectionItems';
 import { PushSubscriptions } from './src/entities/PushSubscriptions';
 import { AppSettings } from './src/entities/AppSettings';
 import { DocTasks } from './src/entities/DocTasks';
+import { Approvals } from './src/entities/Approvals';
+import { ApprovalSteps } from './src/entities/ApprovalSteps';
 import { Contacts } from './src/entities/Contacts';
 import { ContactStars } from './src/entities/ContactStars';
 import { PasswordResets } from './src/entities/PasswordResets';
@@ -68,6 +70,8 @@ const options: DataSourceOptions & SeederOptions = {
     PushSubscriptions,
     AppSettings,
     DocTasks,
+    Approvals,
+    ApprovalSteps,
     Contacts,
     ContactStars,
     PasswordResets,

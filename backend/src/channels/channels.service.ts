@@ -436,6 +436,9 @@ export class ChannelsService {
     if (chat.UserId !== myId) {
       throw new ForbiddenException('내가 보낸 메시지만 수정할 수 있습니다.');
     }
+    if (chat.content?.startsWith('approval:')) {
+      throw new ForbiddenException('결재 카드는 고칠 수 없습니다.');
+    }
     // 내용이 바뀔 때만 바뀌기 전 내용을 수정 내역으로 남긴다
     if (chat.content !== content) {
       await this.messageEditsRepository.save({
