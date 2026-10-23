@@ -23,7 +23,7 @@ export const Field = styled.div`
     color: #e01e5a;
   }
 
-  & > .select {
+  & .select {
     width: 100%;
     height: 40px;
     padding: 0 8px;
@@ -32,6 +32,37 @@ export const Field = styled.div`
     background: var(--bg);
     color: var(--text);
     font-size: 14px;
+  }
+
+  & .send-btn {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 40px;
+    padding: 0 12px;
+    border: none;
+    border-radius: 6px;
+    background: #007a5a;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+  }
+
+  & > .check-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    font-size: 13px;
+    font-weight: normal;
+    cursor: pointer;
   }
 
   /* 여러 개 고르는 체크 목록 (게스트 채널 등) */

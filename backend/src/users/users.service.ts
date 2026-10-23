@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
+import { DndSchedule } from '../common/dnd';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import bcrypt from 'bcrypt';
@@ -129,6 +130,7 @@ export class UsersService {
         'away',
         'theme',
         'notificationsPaused',
+        'dndSchedule',
       ],
     });
     const workspaces = await this.dataSource
@@ -154,9 +156,24 @@ export class UsersService {
   // 화면 테마·알림 일시 중지 (내 계정 설정). 내 다른 기기/탭에도 바로 반영한다.
   async updatePreferences(
     myId: number,
-    changes: { theme?: string; notificationsPaused?: boolean },
+    changes: {
+      theme?: string;
+      notificationsPaused?: boolean;
+      dndSchedule?: DndSchedule | null;
+    },
   ) {
     const update: Partial<Users> = {};
+    if (changes.dndSchedule !== undefined) {
+      update.dndSchedule = changes.dndSchedule
+        ? JSON.stringify({
+            on: changes.dndSchedule.on,
+            start: changes.dndSchedule.start,
+            end: changes.dndSchedule.end,
+            days: [...new Set(changes.dndSchedule.days)].sort(),
+            tz: changes.dndSchedule.tz,
+          })
+        : null;
+    }
     if (changes.theme !== undefined) {
       update.theme = changes.theme;
     }
@@ -168,12 +185,30 @@ export class UsersService {
     }
     const user = await this.usersRepository.findOne({
       where: { id: myId },
-      select: ['id', 'theme', 'notificationsPaused'],
+      select: ['id', 'theme', 'notificationsPaused', 'dndSchedule'],
     });
     this.eventsGateway.emitToUserEverywhere(myId, 'preferencesChanged', {
       theme: user.theme,
       notificationsPaused: user.notificationsPaused,
+      dndSchedule: user.dndSchedule,
     });
+    // 방해 금지 표시(🌙)가 다른 사람 화면에도 바뀌도록 멤버 목록을 새로 받게 한다
+    if (changes.dndSchedule !== undefined) {
+      const workspaces = await this.dataSource
+        .getRepository(Workspaces)
+        .createQueryBuilder('workspace')
+        .innerJoin(
+          'workspace.WorkspaceMembers',
+          'members',
+          'members.UserId = :myId',
+          { myId },
+        )
+        .select(['workspace.url'])
+        .getMany();
+      workspaces.forEach((workspace) =>
+        this.eventsGateway.emitToWorkspace(workspace.url, 'membersChanged'),
+      );
+    }
     return user;
   }
 

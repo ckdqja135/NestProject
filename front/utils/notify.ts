@@ -2,6 +2,7 @@ import { parseForwardContent } from '@utils/forward';
 import { parseFileContent } from '@utils/fileStore';
 import { parsePollContent } from '@utils/poll';
 import { plainMentions } from '@utils/mention';
+import { myQuietNow } from '@utils/dnd';
 
 // 브라우저 알림. 탭을 보고 있지 않을 때만 띄운다.
 export const canNotify = () => typeof window !== 'undefined' && 'Notification' in window;
@@ -40,7 +41,9 @@ export const notifyIfHidden = (title: string, body: string, onClick?: () => void
     !canNotify() ||
     Notification.permission !== 'granted' ||
     document.visibilityState === 'visible' ||
-    notificationsPaused()
+    notificationsPaused() ||
+    // 방해 금지 시간에는 띄우지 않는다
+    myQuietNow()
   ) {
     return;
   }

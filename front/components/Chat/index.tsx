@@ -3,6 +3,7 @@ import {
   Bookmark,
   Bot,
   CornerUpRight,
+  FilePlus2,
   Link,
   MessageSquareReply,
   Pencil,
@@ -28,6 +29,9 @@ import { parseGifContent } from '@utils/gif';
 import { renderMarkdown } from '@utils/markdown';
 import { firstLink } from '@utils/links';
 import LinkPreview from '@components/LinkPreview';
+import DocLinkCard from '@components/DocLinkCard';
+import ToDocModal from '@components/ToDocModal';
+import { docLinksIn, isDocUrl } from '@utils/docLinks';
 import ForwardedCard from '@components/ForwardedCard';
 import ForwardModal from '@components/ForwardModal';
 import { parseForwardContent } from '@utils/forward';
@@ -61,6 +65,8 @@ export interface ChatActions {
   onTogglePin?: (chat: IDM | IChat) => void;
   // 워크스페이스 관리자: 채널에서 다른 사람 메시지도 지울 수 있다
   canModerate?: boolean;
+  // 채널에서 이 메시지를 읽은·안 읽은 사람 ("몇 명 읽음")
+  readBy?: (chat: IDM | IChat) => { read: number[]; unread: number[] };
 }
 
 interface Props {
@@ -129,6 +135,12 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
     [data.content, gifUrl, poll, fileMeta, forwarded],
   );
   const [showForward, setShowForward] = useState(false);
+  const [showToDoc, setShowToDoc] = useState(false);
+  // 메시지 속 우리 문서 링크는 카드로 보여 준다 (채팅 ↔ 문서)
+  const docRefs = useMemo(
+    () => (gifUrl || poll || fileMeta ? [] : docLinksIn(forwarded ? `${forwarded.c}\n${forwarded.m.t}` : data.content)),
+    [data.content, gifUrl, poll, fileMeta, forwarded],
+  );
   const result = useMemo<React.ReactNode>(
     () =>
       gifUrl ? (
@@ -239,6 +251,9 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
     !isLegacyUpload(data.content);
   // 파일(보낸 사람 기기에만 있음)·투표는 전달하지 않는다
   const canForward = canAct && !!workspace && !fileMeta && !poll && !isLegacyUpload(data.content);
+  // 메시지를 문서로 (글이 있는 메시지만, 내 아이디를 알 때)
+  const canToDoc =
+    canAct && !!workspace && myId !== undefined && !gifUrl && !fileMeta && !poll && !isLegacyUpload(data.content);
   const canRemind = canAct && !!workspace;
 
   // 리액션 이모지: 커스텀(:이름:)이면 그림
@@ -271,6 +286,14 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
       .catch((error) => toast.error(getErrorMessage(error), { position: 'bottom-center' }));
   };
   const canDelete = canAct && (isMine || (!isDM && !!actions?.canModerate)) && !!actions?.onDelete;
+  // 내가 채널에 올린 메시지(답글 말고)는 몇 명이 읽었는지 보여 준다
+  const readState =
+    canAct && isMine && !isDM && channelChat && !channelChat.ParentId && actions?.readBy ? actions.readBy(data) : null;
+  const nameList = (ids: number[]) =>
+    ids
+      .map((id) => members?.find((m) => m.id === id)?.nickname)
+      .filter(Boolean)
+      .join(', ');
   const canReact = canAct && !!actions?.onReact;
   const canReply = canAct && !!channelChat && !channelChat.ParentId && !!actions?.onReply;
   const canPin = canAct && !!actions?.onTogglePin;
@@ -391,7 +414,18 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
         ) : (
           <div className={fileMeta ? 'attachment' : 'message-body'}>{result}</div>
         )}
-        {link && !editing && workspace && <LinkPreview workspace={workspace} url={link} />}
+        {link && !editing && workspace && !isDocUrl(link) && <LinkPreview workspace={workspace} url={link} />}
+        {!editing && docRefs.map((ref) => <DocLinkCard key={ref.id} workspace={ref.workspace} id={ref.id} />)}
+        {readState && (
+          <span
+            className="read-count"
+            title={`읽음: ${nameList(readState.read) || '없음'}${
+              readState.unread.length ? `\n안 읽음: ${nameList(readState.unread)}` : ''
+            }`}
+          >
+            {readState.unread.length === 0 ? '모두 읽음' : `${readState.read.length}명 읽음`}
+          </span>
+        )}
         {reactionGroups.length > 0 && (
           <ReactionList>
             {reactionGroups.map((group) => (
@@ -493,6 +527,16 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
               <CornerUpRight size={16} />
             </button>
           )}
+          {canToDoc && (
+            <button
+              type="button"
+              title="이 메시지로 문서 만들기"
+              aria-label="문서로 만들기"
+              onClick={() => setShowToDoc(true)}
+            >
+              <FilePlus2 size={16} />
+            </button>
+          )}
           {canCopyLink && (
             <button type="button" title="메시지 링크 복사" aria-label="메시지 링크 복사" onClick={onCopyLink}>
               <Link size={16} />
@@ -556,6 +600,15 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
           historyUrl={historyUrl}
           workspace={workspace}
           onCloseModal={() => setShowHistory(false)}
+        />
+      )}
+      {showToDoc && workspace && myId !== undefined && (
+        <ToDocModal
+          show={showToDoc}
+          workspace={workspace}
+          myId={myId}
+          source={{ kind: 'message', chat: data, channel }}
+          onClose={() => setShowToDoc(false)}
         />
       )}
       {showForward && workspace && (

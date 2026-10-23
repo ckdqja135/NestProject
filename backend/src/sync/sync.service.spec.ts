@@ -8,10 +8,13 @@ import { SyncService } from './sync.service';
 
 describe('SyncService', () => {
   let service: SyncService;
+  // 채널 멤버인지 확인하는 쿼리
+  const query = jest.fn().mockResolvedValue([{ 1: 1 }]);
   const markersRepository = {
     find: jest.fn(),
     findOne: jest.fn(),
     save: jest.fn(),
+    manager: { query },
   };
   const draftsRepository = {
     find: jest.fn(),
@@ -23,7 +26,9 @@ describe('SyncService', () => {
     findWorkspaceByUrl: jest.fn().mockResolvedValue({ id: 1 }),
     assertMember: jest.fn(),
   };
-  const eventsGateway = { emitToUser: jest.fn() };
+  const emit = jest.fn();
+  const to = jest.fn(() => ({ emit }));
+  const eventsGateway = { emitToUser: jest.fn(), server: { to } };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -68,6 +73,13 @@ describe('SyncService', () => {
         at: 2000,
       },
     );
+    // 채널을 보는 사람들에게도 ("몇 명 읽음")
+    expect(to).toHaveBeenCalledWith('/ws-shlack-3');
+    expect(emit).toHaveBeenCalledWith('channelRead', {
+      channelId: 3,
+      userId: 7,
+      at: 2000,
+    });
   });
 
   it('기기 시계가 앞서 있어도 미래 시각으로 기록하지 않는다', async () => {

@@ -73,6 +73,10 @@ export class Users {
   @Column('boolean', { name: 'notificationsPaused', default: false })
   notificationsPaused: boolean;
 
+  // 방해 금지 시간 (JSON: on, start 'HH:mm', end 'HH:mm', days 0~6(일~토), tz). 이 시간에는 알림을 보내지 않는다
+  @Column('varchar', { name: 'dndSchedule', length: 200, nullable: true })
+  dndSchedule: string | null;
+
   // 사람이 아닌 봇 계정 (예: 캘린더 어시스턴트). 로그인하지 않고 알림만 보낸다
   @Column('boolean', { name: 'bot', default: false })
   bot: boolean;

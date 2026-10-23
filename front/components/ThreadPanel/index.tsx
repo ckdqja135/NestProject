@@ -10,7 +10,8 @@ import { toGifContent } from '@utils/gif';
 import getErrorMessage from '@utils/getErrorMessage';
 import useSidebarPins from '@hooks/useSidebarPins';
 import axios from 'axios';
-import { ArrowUpToLine } from 'lucide-react';
+import { ArrowUpToLine, FilePlus2 } from 'lucide-react';
+import ToDocModal from '@components/ToDocModal';
 import React, { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Socket } from 'socket.io-client';
 import { toast } from 'react-toastify';
@@ -31,6 +32,7 @@ interface Props {
 const ThreadPanel: FC<Props> = ({ workspace, channel, parent, me, members, socket, actions, onClose }) => {
   const repliesKey = `/api/workspaces/${workspace}/channels/${channel}/chats/${parent.id}/replies`;
   const { data: replies, mutate } = useSWR<IChat[]>(repliesKey, fetcher);
+  const [showToDoc, setShowToDoc] = useState(false);
   const [reply, setReply] = useState('');
   const { isPinned, setPinned } = useSidebarPins(workspace);
   const pinned = isPinned('thread', parent.id);
@@ -143,6 +145,15 @@ const ThreadPanel: FC<Props> = ({ workspace, channel, parent, me, members, socke
 
   return (
     <Panel aria-label="스레드">
+      {showToDoc && replies && (
+        <ToDocModal
+          show={showToDoc}
+          workspace={workspace}
+          myId={me.id}
+          source={{ kind: 'thread', parent, replies, channel }}
+          onClose={() => setShowToDoc(false)}
+        />
+      )}
       <PanelHeader>
         <span>스레드</span>
         <small>#{channel}</small>
@@ -154,6 +165,15 @@ const ThreadPanel: FC<Props> = ({ workspace, channel, parent, me, members, socke
           title={pinned ? '사이드바 고정 풀기' : '이 스레드를 사이드바 맨 위에 고정'}
         >
           <ArrowUpToLine size={13} /> {pinned ? '고정됨' : '맨 위 고정'}
+        </button>
+        <button
+          type="button"
+          className="pin-top"
+          onClick={() => setShowToDoc(true)}
+          disabled={!replies}
+          title="이 스레드를 문서로 정리"
+        >
+          <FilePlus2 size={13} /> 문서로
         </button>
         <button type="button" onClick={onClose} aria-label="스레드 닫기">
           &times;

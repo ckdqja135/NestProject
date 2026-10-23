@@ -1,4 +1,11 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { LoggedInGuard } from '../auth/logged-in.guard';
 import { User } from '../common/decorators/user.decorator';
@@ -24,5 +31,17 @@ export class SearchController {
     @User() user: Users,
   ) {
     return this.searchService.search(url, query, user.id);
+  }
+
+  @ApiOperation({
+    summary: '이 문서가 언급된 대화 (내가 볼 수 있는 채널 메시지·DM)',
+  })
+  @Get('doc-mentions/:id')
+  docMentions(
+    @Param('url') url: string,
+    @Param('id', ParseIntPipe) id: number,
+    @User() user: Users,
+  ) {
+    return this.searchService.docMentions(url, id, user.id);
   }
 }

@@ -36,6 +36,7 @@ export class LocalSerializer extends PassportSerializer {
           'away',
           'theme',
           'notificationsPaused',
+          'dndSchedule',
         ],
       });
       if (!user) {

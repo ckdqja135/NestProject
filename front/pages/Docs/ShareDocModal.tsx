@@ -1,13 +1,14 @@
 import Modal from '@components/Modal';
 import useMyRole from '@hooks/useMyRole';
 import { ChoiceList, Field, FormError, TextInput } from '@components/ModalForm/styles';
-import { IDoc, IUser } from '@typings/db';
+import { IChannel, IDoc, IUser } from '@typings/db';
 import { avatarUrl } from '@utils/avatar';
 import fetcher from '@utils/fetcher';
 import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
 import React, { FC, useEffect, useState } from 'react';
-import { Building2, Lock } from 'lucide-react';
+import { Building2, Lock, Send } from 'lucide-react';
+import { toast } from 'react-toastify';
 import useSWR from 'swr';
 import { docsBase } from './api';
 import { ShareList } from './styles';
@@ -28,14 +29,23 @@ const ShareDocModal: FC<Props> = ({ show, workspace, doc, me, onCloseModal, onCh
   // 게스트는 워크스페이스 전체에 공개할 수 없다
   const isGuest = useMyRole(workspace) === 'guest';
   const { data: members } = useSWR<IUser[]>(show ? `/api/workspaces/${workspace}/members` : null, fetcher);
+  const { data: channels } = useSWR<IChannel[]>(show ? `/api/workspaces/${workspace}/channels` : null, fetcher);
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
+  // 채널에 보내기 (문서 링크를 메시지로)
+  const [sendTo, setSendTo] = useState('');
+  const [note, setNote] = useState('');
+  const [grant, setGrant] = useState(true);
+  const [sending, setSending] = useState(false);
   const base = `${docsBase(workspace)}/docs/${doc.id}`;
   const manage = doc.canManage;
   useEffect(() => {
     if (show) {
       setQuery('');
       setError('');
+      setSendTo('');
+      setNote('');
+      setGrant(true);
     }
   }, [show]);
 
@@ -54,6 +64,30 @@ const ShareDocModal: FC<Props> = ({ show, workspace, doc, me, onCloseModal, onCh
     : [];
   const isWiki = doc.type === 'wiki';
   const link = `${window.location.origin}/workspace/${workspace}/docs/d/${doc.id}`;
+  const writable = (channels || []).filter((c) => !c.archived);
+  // 비공개 문서를 채널에 보내면 채널 사람들은 볼 수 없으니, 보기 권한도 같이 줄지 묻는다
+  const canGrant = manage && doc.visibility === 'private' && !isWiki;
+
+  const sendToChannel = async () => {
+    if (!sendTo || sending) return;
+    setSending(true);
+    setError('');
+    try {
+      if (canGrant && grant) {
+        await axios.put(`${base}/channel-share`, { channel: sendTo });
+      }
+      await axios.post(`/api/workspaces/${workspace}/channels/${encodeURIComponent(sendTo)}/chats`, {
+        content: [note.trim(), link].filter(Boolean).join('\n'),
+      });
+      toast.success(`#${sendTo} 에 문서를 보냈어요.`, { position: 'bottom-center' });
+      setNote('');
+      onChanged();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <Modal show={show} onCloseModal={onCloseModal} title={`'${doc.title}' 공유`}>
@@ -171,6 +205,43 @@ const ShareDocModal: FC<Props> = ({ show, workspace, doc, me, onCloseModal, onCh
           </ShareList>
         </Field>
       )}
+
+      <Field>
+        <label htmlFor="doc-send-channel">채널에 보내기</label>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <select
+            id="doc-send-channel"
+            className="select"
+            value={sendTo}
+            onChange={(e) => setSendTo(e.target.value)}
+            style={{ flex: '0 0 40%' }}
+          >
+            <option value="">채널 고르기</option>
+            {writable.map((c) => (
+              <option key={c.id} value={c.name}>
+                {c.private ? '🔒 ' : '# '}
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <TextInput
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="함께 보낼 말 (선택)"
+            aria-label="함께 보낼 말"
+            maxLength={500}
+          />
+          <button type="button" className="send-btn" onClick={sendToChannel} disabled={!sendTo || sending}>
+            <Send size={14} /> 보내기
+          </button>
+        </div>
+        {canGrant && sendTo && (
+          <label className="check-line">
+            <input type="checkbox" checked={grant} onChange={(e) => setGrant(e.target.checked)} />#{sendTo} 사람들에게
+            보기 권한도 주기 (지금은 비공개 문서예요)
+          </label>
+        )}
+      </Field>
 
       <Field>
         <label htmlFor="doc-share-link">링크</label>

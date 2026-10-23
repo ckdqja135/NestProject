@@ -1123,3 +1123,67 @@ export const Gallery = styled.div`
     }
   }
 `;
+
+// 문서가 언급된 대화 목록 (문서 머리의 "대화" 단추)
+export const MentionMenu = styled.div`
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  width: min(380px, 90vw);
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  color: var(--text);
+  text-align: left;
+
+  & > strong {
+    padding: 4px 6px 8px;
+    font-size: 13px;
+  }
+
+  & > .empty {
+    margin: 4px 6px 8px;
+    color: var(--text-muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  & > button {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--bg-hover);
+    }
+
+    & .meta {
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    & .text {
+      display: -webkit-box;
+      overflow: hidden;
+      font-size: 13px;
+      line-height: 1.45;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      word-break: break-word;
+    }
+  }
+`;

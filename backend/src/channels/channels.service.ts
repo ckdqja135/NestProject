@@ -218,6 +218,25 @@ export class ChannelsService {
     return channel;
   }
 
+  // 채널 멤버(봇 제외)가 마지막으로 읽은 시각. 읽은 기록이 없으면 0
+  async getChannelReads(url: string, name: string, myId: number) {
+    const channel = await this.findChannel(url, name, myId);
+    const rows: { userId: number; at: Date | null }[] =
+      await this.channelMembersRepository.manager.query(
+        `SELECT cm.UserId AS userId, rm.lastReadAt AS at
+           FROM channelmembers cm
+           JOIN users u ON u.id = cm.UserId AND u.bot = 0
+           LEFT JOIN readmarkers rm
+             ON rm.UserId = cm.UserId AND rm.WorkspaceId = ? AND rm.key = ?
+          WHERE cm.ChannelId = ?`,
+        [channel.WorkspaceId, `c:${channel.id}`, channel.id],
+      );
+    return rows.map((r) => ({
+      userId: Number(r.userId),
+      at: r.at ? new Date(r.at).getTime() : 0,
+    }));
+  }
+
   async getWorkspaceChannelMembers(url: string, name: string, myId: number) {
     const channel = await this.findChannel(url, name, myId);
     return this.usersRepository

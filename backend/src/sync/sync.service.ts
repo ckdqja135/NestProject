@@ -56,6 +56,24 @@ export class SyncService {
     }
     await this.markersRepository.save({ ...where, lastReadAt: new Date(time) });
     this.eventsGateway.emitToUser(url, myId, 'readMarker', { key, at: time });
+    // 채널을 읽었으면 그 채널을 보는 사람들의 "몇 명 읽음"도 바꾼다 (채널 멤버일 때만)
+    const channelId = /^c:(\d+)$/.exec(key)?.[1];
+    if (channelId) {
+      const member = await this.markersRepository.manager.query(
+        `SELECT 1 FROM channelmembers cm JOIN channels c ON c.id = cm.ChannelId
+          WHERE cm.ChannelId = ? AND cm.UserId = ? AND c.WorkspaceId = ? LIMIT 1`,
+        [Number(channelId), myId, workspace.id],
+      );
+      if (member.length) {
+        this.eventsGateway.server
+          .to(`/ws-${url}-${channelId}`)
+          .emit('channelRead', {
+            channelId: Number(channelId),
+            userId: myId,
+            at: time,
+          });
+      }
+    }
     return { key, at: time };
   }
 

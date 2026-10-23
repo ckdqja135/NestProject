@@ -1,5 +1,6 @@
 import { Overlay, ResultBox, ResultItem, SearchForm } from '@components/SearchModal/styles';
-import { IChannel, IChat, IDM, ISearchResult, IUser } from '@typings/db';
+import { IChannel, IChat, IDM, ISearchDoc, ISearchResult, IUser } from '@typings/db';
+import { FileText } from 'lucide-react';
 import fetcher from '@utils/fetcher';
 import useSWR from 'swr';
 import { Filters, MoreButton } from '@components/SearchModal/styles';
@@ -83,7 +84,7 @@ const SearchModal: FC<Props> = ({ workspace, myId }) => {
           // 다음 페이지면 이어 붙인다
           setResult((prev) =>
             nextPage > 1 && prev
-              ? { ...data, chats: [...prev.chats, ...data.chats], dms: [...prev.dms, ...data.dms] }
+              ? { ...data, chats: [...prev.chats, ...data.chats], dms: [...prev.dms, ...data.dms], docs: prev.docs }
               : data,
           ),
         )
@@ -133,6 +134,14 @@ const SearchModal: FC<Props> = ({ workspace, myId }) => {
     [history, workspace, onClose],
   );
 
+  const onClickDoc = useCallback(
+    (doc: ISearchDoc) => {
+      onClose();
+      history.push(`/workspace/${workspace}/docs/d/${doc.id}`);
+    },
+    [history, workspace, onClose],
+  );
+
   const onClickDM = useCallback(
     (dm: IDM) => {
       onClose();
@@ -146,7 +155,8 @@ const SearchModal: FC<Props> = ({ workspace, myId }) => {
     return null;
   }
 
-  const total = result ? result.chats.length + result.dms.length : 0;
+  const docs = result?.docs || [];
+  const total = result ? result.chats.length + result.dms.length + docs.length : 0;
 
   return (
     <>
@@ -155,8 +165,8 @@ const SearchModal: FC<Props> = ({ workspace, myId }) => {
           type="search"
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
-          placeholder="메시지 검색"
-          aria-label="메시지 검색"
+          placeholder="메시지·문서 검색"
+          aria-label="메시지·문서 검색"
         />
       </SearchForm>
       {(result || loading) && (
@@ -216,6 +226,22 @@ const SearchModal: FC<Props> = ({ workspace, myId }) => {
             {result && (
               <div>
                 {error && <p className="empty">{error}</p>}
+                {docs.length > 0 && (
+                  <>
+                    <h3>문서 ({docs.length})</h3>
+                    {docs.map((doc) => (
+                      <ResultItem key={`doc${doc.id}`} type="button" onClick={() => onClickDoc(doc)}>
+                        <div className="meta">
+                          <FileText size={12} style={{ verticalAlign: '-1px' }} />{' '}
+                          <b>{highlight(doc.title, searched)}</b>
+                          {doc.ownerName ? ` · ${doc.ownerName}` : ''} · {dayjs(doc.updatedAt).format('YYYY-MM-DD')}{' '}
+                          고침
+                        </div>
+                        {doc.snippet && <div className="content">{highlight(doc.snippet, searched)}</div>}
+                      </ResultItem>
+                    ))}
+                  </>
+                )}
                 <h3>채널 메시지 ({result.chats.length})</h3>
                 {result.chats.length === 0 && <p className="empty">일치하는 채널 메시지가 없습니다.</p>}
                 {result.chats.map((chat) => (

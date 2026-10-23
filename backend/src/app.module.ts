@@ -34,12 +34,18 @@ import { DMs } from './entities/DMs';
 import { DMReactions } from './entities/DMReactions';
 import { SavedItems } from './entities/SavedItems';
 import { SidebarPins } from './entities/SidebarPins';
+import { SidebarSections } from './entities/SidebarSections';
+import { SidebarSectionItems } from './entities/SidebarSectionItems';
+import { PushSubscriptions } from './entities/PushSubscriptions';
+import { AppSettings } from './entities/AppSettings';
 import { Contacts } from './entities/Contacts';
 import { ContactStars } from './entities/ContactStars';
 import { PasswordResets } from './entities/PasswordResets';
 import { DocLinks } from './entities/DocLinks';
 import { DocComments } from './entities/DocComments';
 import { PinsModule } from './pins/pins.module';
+import { SectionsModule } from './sections/sections.module';
+import { PushModule } from './push/push.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { LinksModule } from './links/links.module';
 import { ForwardModule } from './forward/forward.module';
@@ -93,6 +99,10 @@ import { Workspaces } from './entities/Workspaces';
         Reactions,
         SavedItems,
         SidebarPins,
+        SidebarSections,
+        SidebarSectionItems,
+        PushSubscriptions,
+        AppSettings,
         Contacts,
         ContactStars,
         PasswordResets,
@@ -134,6 +144,8 @@ import { Workspaces } from './entities/Workspaces';
     GifsModule,
     SavedModule,
     PinsModule,
+    SectionsModule,
+    PushModule,
     ContactsModule,
     LinksModule,
     ForwardModule,

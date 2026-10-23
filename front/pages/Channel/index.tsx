@@ -86,6 +86,14 @@ const Channel = () => {
     userData ? `/api/workspaces/${workspace}/channels/${channel}/members` : null,
     fetcher,
   );
+  // 채널 사람들이 어디까지 읽었는지 ("몇 명 읽음"). 사람이 많은 채널은 보이지 않는다
+  const READ_COUNT_LIMIT = 100;
+  const { data: reads, mutate: mutateReads } = useSWR<{ userId: number; at: number }[]>(
+    userData && channelMembersData && channelMembersData.length <= READ_COUNT_LIMIT
+      ? `/api/workspaces/${workspace}/channels/${channel}/reads`
+      : null,
+    fetcher,
+  );
   // 쓰다 만 메시지는 대화별로 임시 저장된다
   const [chat, setChat] = useDraft(workspace, `channel:${channel}`);
   const onChangeChat = useCallback((e: { target: { value: string } }) => setChat(e.target.value), [setChat]);
@@ -338,6 +346,24 @@ const Channel = () => {
     [channelData, mutateChat],
   );
 
+  // 누가 이 채널을 읽으면 "몇 명 읽음"을 바로 바꾼다
+  useEffect(() => {
+    const onChannelRead = ({ channelId, userId, at }: { channelId: number; userId: number; at: number }) => {
+      if (channelId !== channelData?.id) return;
+      mutateReads(
+        (list) =>
+          list?.some((r) => r.userId === userId)
+            ? list.map((r) => (r.userId === userId ? { ...r, at: Math.max(r.at, at) } : r))
+            : [...(list || []), { userId, at }],
+        false,
+      );
+    };
+    socket?.on('channelRead', onChannelRead);
+    return () => {
+      socket?.off('channelRead', onChannelRead);
+    };
+  }, [socket, channelData, mutateReads]);
+
   useEffect(() => {
     socket?.on('message', onMessage);
     socket?.on('messageUpdated', onMessageUpdated);
@@ -390,6 +416,17 @@ const Channel = () => {
         axios.delete(`${chatsKey}/${target.id}`).catch(showError);
       },
       canModerate: isAdminRole(myRole),
+      // 내 메시지를 읽은 사람 (나 빼고)
+      readBy: reads
+        ? (target: IDM | IChat) => {
+            const time = new Date(target.createdAt).getTime();
+            const others = reads.filter((r) => r.userId !== userData?.id);
+            return {
+              read: others.filter((r) => r.at >= time).map((r) => r.userId),
+              unread: others.filter((r) => r.at < time).map((r) => r.userId),
+            };
+          }
+        : undefined,
       onReact: (target: IDM | IChat, emoji: string) => {
         axios.post(`${chatsKey}/${target.id}/reactions`, { emoji }).catch(showError);
       },
@@ -404,7 +441,7 @@ const Channel = () => {
         request.catch(showError);
       },
     }),
-    [chatsKey, myRole],
+    [chatsKey, myRole, reads, userData],
   );
 
   const onClickInviteChannel = useCallback(() => {

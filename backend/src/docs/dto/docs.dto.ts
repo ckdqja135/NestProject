@@ -182,3 +182,13 @@ export class ResolveThreadDto {
   @ApiProperty({ description: '해결함 / 다시 열기' })
   public resolved: boolean;
 }
+
+export class DocChannelShareDto {
+  @IsString()
+  @MaxLength(80)
+  @ApiProperty({
+    example: '일반',
+    description: '채널 이름 (내가 들어가 있는 채널)',
+  })
+  public channel: string;
+}

@@ -24,6 +24,7 @@ export class AuthService {
         'away',
         'theme',
         'notificationsPaused',
+        'dndSchedule',
       ],
     });
     if (!user) {

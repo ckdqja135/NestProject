@@ -1,4 +1,5 @@
 import useSocket from '@hooks/useSocket';
+import { isQuietNow, parseDnd } from '@utils/dnd';
 import { IDM, IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
 import { setUnread } from '@utils/unreadStore';
@@ -97,6 +98,11 @@ const EachDM: VFC<Props> = ({ member, isOnline }) => {
       )}
       <span className={count && count > 0 ? 'bold' : undefined}>{member.nickname}</span>
       {member.id === userData?.id && <span> (나)</span>}
+      {isQuietNow(parseDnd(member.dndSchedule)) && (
+        <span title="방해 금지 시간 (알림을 받지 않아요)" aria-label="방해 금지 중" style={{ marginLeft: 4 }}>
+          🌙
+        </span>
+      )}
       {member.role === 'guest' && (
         <span
           className="guest-tag"

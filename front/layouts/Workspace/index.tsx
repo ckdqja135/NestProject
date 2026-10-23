@@ -16,6 +16,9 @@ import GroupsModal from '@components/GroupsModal';
 import CustomEmojiModal from '@components/CustomEmojiModal';
 import useCustomEmojis from '@hooks/useCustomEmojis';
 import useMyRole, { isAdminRole } from '@hooks/useMyRole';
+import DndModal from '@components/DndModal';
+import { DndSchedule, isQuietNow, parseDnd, setMyDnd } from '@utils/dnd';
+import { disablePush, enablePush } from '@utils/push';
 import Menu from '@components/Menu';
 import SearchModal from '@components/SearchModal';
 import useSocket from '@hooks/useSocket';
@@ -81,6 +84,7 @@ import {
   Workspaces,
   WorkspaceWrapper,
 } from './styles';
+import SidebarSections from '@components/SidebarSections';
 
 const Workspace = () => {
   const params = useParams<{ workspace?: string }>();
@@ -101,6 +105,14 @@ const Workspace = () => {
   const [showStorageModal, setShowStorageModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
+  // 방해 금지 시간 (계정 설정, 모든 기기 공통)
+  const [showDnd, setShowDnd] = useState(false);
+  const [dnd, setDnd] = useState<DndSchedule | null>(null);
+  const applyDnd = useCallback((raw: string | null | undefined) => {
+    const schedule = parseDnd(raw);
+    setMyDnd(schedule);
+    setDnd(schedule);
+  }, []);
   const [showWorkspaceSettings, setShowWorkspaceSettings] = useState(false);
   const [showQuickSwitcher, setShowQuickSwitcher] = useState(false);
   const [theme, setTheme] = useState<ThemePref>(getThemePref);
@@ -168,8 +180,10 @@ const Workspace = () => {
   membersRef.current = membersData;
 
   const onLogOut = useCallback(() => {
-    axios
-      .post('/api/users/logout')
+    // 다음에 이 브라우저를 쓰는 사람이 내 푸시 알림을 받지 않게 먼저 끊는다
+    disablePush()
+      .catch(() => undefined)
+      .then(() => axios.post('/api/users/logout'))
       .then(() => {
         revalidateUser();
       })
@@ -273,13 +287,18 @@ const Workspace = () => {
   // 다른 기기에서 읽은 위치·설정이 바뀌면 바로 반영
   useEffect(() => {
     const onReadMarker = ({ key, at }: { key: string; at: number }) => workspace && applyReadMarker(workspace, key, at);
-    const onPreferences = (prefs: { theme: ThemePref | null; notificationsPaused: boolean }) => {
+    const onPreferences = (prefs: {
+      theme: ThemePref | null;
+      notificationsPaused: boolean;
+      dndSchedule?: string | null;
+    }) => {
       if (prefs.theme) {
         setThemePref(prefs.theme);
         setTheme(prefs.theme);
       }
       setNotificationsPaused(prefs.notificationsPaused);
       setPaused(prefs.notificationsPaused);
+      if (prefs.dndSchedule !== undefined) applyDnd(prefs.dndSchedule);
     };
     socket?.on('readMarker', onReadMarker);
     socket?.on('preferencesChanged', onPreferences);
@@ -287,7 +306,7 @@ const Workspace = () => {
       socket?.off('readMarker', onReadMarker);
       socket?.off('preferencesChanged', onPreferences);
     };
-  }, [socket, workspace]);
+  }, [socket, workspace, applyDnd]);
 
   // 로그인하면 계정에 저장된 설정을 이 기기에 적용 (처음이면 이 기기 설정을 계정에 올린다)
   const appliedPrefsFor = useRef<number | null>(null);
@@ -306,7 +325,22 @@ const Workspace = () => {
       setNotificationsPaused(userData.notificationsPaused);
       setPaused(userData.notificationsPaused);
     }
-  }, [userData]);
+    applyDnd(userData.dndSchedule);
+    // 알림 권한이 있으면 이 브라우저로 푸시도 받는다 (탭을 모두 닫아도 멘션·DM 알림)
+    if (notificationPermission() === 'granted') enablePush().catch(() => undefined);
+  }, [userData, applyDnd]);
+
+  // 푸시 알림을 누르면 서비스 워커가 이 창으로 그 메시지 주소를 보낸다
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return undefined;
+    const onMessage = (event: MessageEvent) => {
+      if (event.data?.type !== 'shlack-open') return;
+      const target = new URL(event.data.url, window.location.origin);
+      if (target.origin === window.location.origin) history.push(`${target.pathname}${target.search}`);
+    };
+    navigator.serviceWorker.addEventListener('message', onMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', onMessage);
+  }, [history]);
 
   // 서버가 알려주는 멤버십 변경: 채널 초대, 워크스페이스 초대, 워크스페이스에서 내보내짐
   useEffect(() => {
@@ -537,6 +571,7 @@ const Workspace = () => {
         if (result === 'granted') {
           setNotificationsPaused(false);
           setPaused(false);
+          enablePush().catch(() => undefined);
           axios.patch('/api/users/me/preferences', { notificationsPaused: false }).catch(() => undefined);
           toast.success('데스크톱 알림을 켰습니다.', { position: 'bottom-center' });
         }
@@ -669,6 +704,19 @@ const Workspace = () => {
                       <li>
                         <button type="button" role="menuitem" onClick={onToggleNotifications}>
                           {notificationMenuLabel}
+                        </button>
+                      </li>
+                      <li>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            setShowDnd(true);
+                          }}
+                        >
+                          🌙 방해 금지 시간
+                          {isQuietNow(dnd) ? ' (지금 켜짐)' : dnd?.on ? ` (${dnd.start}~${dnd.end})` : ''}
                         </button>
                       </li>
                       <li className="divider" role="separator" />
@@ -890,6 +938,7 @@ const Workspace = () => {
                   </WorkspaceModal>
                 </Menu>
                 <PinnedList />
+                <SidebarSections />
                 <ChannelList />
                 <DMList />
               </MenuScroll>
@@ -948,6 +997,15 @@ const Workspace = () => {
             onUrlChanged={moveToWorkspaceUrl}
           />
         )}
+        <DndModal
+          show={showDnd}
+          current={dnd}
+          onCloseModal={() => setShowDnd(false)}
+          onSaved={(schedule) => {
+            setMyDnd(schedule);
+            setDnd(schedule);
+          }}
+        />
         {userData && (
           <StatusModal
             show={showStatusModal}

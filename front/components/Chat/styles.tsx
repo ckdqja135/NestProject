@@ -53,6 +53,16 @@ export const ChatWrapper = styled.div`
     min-width: 0;
 
     & p,
+    /* 내 채널 메시지 아래: 몇 명 읽음 */
+    & .read-count {
+      display: block;
+      flex: 0 0 100%;
+      margin-top: 2px;
+      color: var(--text-faint);
+      font-size: 11px;
+      cursor: default;
+    }
+
     & .message-body,
     & .attachment {
       flex: 0 0 100%;

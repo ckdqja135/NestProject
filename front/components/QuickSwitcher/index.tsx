@@ -1,6 +1,6 @@
-import { Hash, Lock } from 'lucide-react';
+import { FileText, Hash, Lock } from 'lucide-react';
 import Modal from '@components/Modal';
-import { IChannel, IUser } from '@typings/db';
+import { IChannel, IDocListItem, IUser } from '@typings/db';
 import { avatarUrl } from '@utils/avatar';
 import fetcher from '@utils/fetcher';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -19,13 +19,25 @@ interface Props {
 
 type Item = { key: string; label: string; path: string; hint: string; icon: React.ReactNode };
 
-// 빠른 이동 (Ctrl/⌘ + K): 채널이나 사람 이름을 쳐서 바로 이동
+// 빠른 이동 (Ctrl/⌘ + K): 채널·사람·문서 이름을 쳐서 바로 이동
 const QuickSwitcher: FC<Props> = ({ show, workspace, myId, onCloseModal }) => {
   const history = useHistory();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const { data: channels } = useSWR<IChannel[]>(show ? `/api/workspaces/${workspace}/channels` : null, fetcher);
   const { data: members } = useSWR<IUser[]>(show ? `/api/workspaces/${workspace}/members` : null, fetcher);
+  // 문서: 검색어가 없으면 최근에 본 것, 있으면 제목으로 찾기 (치는 동안 잠깐 기다렸다가)
+  const [docQuery, setDocQuery] = useState('');
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDocQuery(query.trim()), 200);
+    return () => window.clearTimeout(timer);
+  }, [query]);
+  const { data: docs } = useSWR<IDocListItem[]>(
+    show
+      ? `/api/workspaces/${workspace}/docs?${docQuery ? `tab=all&q=${encodeURIComponent(docQuery)}` : 'tab=recent'}`
+      : null,
+    fetcher,
+  );
 
   useEffect(() => {
     if (show) {
@@ -51,13 +63,24 @@ const QuickSwitcher: FC<Props> = ({ show, workspace, myId, onCloseModal }) => {
         hint: 'DM',
         icon: <img src={avatarUrl(m, 20)} alt="" />,
       })),
+      ...(docs || []).slice(0, q ? 20 : 5).map((d) => ({
+        key: `d${d.id}`,
+        label: d.title,
+        path: `/workspace/${workspace}/docs/d/${d.id}`,
+        hint: q ? '문서' : '최근 문서',
+        icon: (
+          <span className="icon">
+            <FileText size={14} />
+          </span>
+        ),
+      })),
     ];
     const matched = q ? all.filter((item) => item.label.toLowerCase().includes(q)) : all;
     // 이름이 검색어로 시작하는 것을 먼저
     return matched
       .sort((a, b) => Number(b.label.toLowerCase().startsWith(q)) - Number(a.label.toLowerCase().startsWith(q)))
       .slice(0, MAX_RESULTS);
-  }, [query, channels, members, workspace, myId]);
+  }, [query, channels, members, docs, workspace, myId]);
 
   useEffect(() => {
     setActive(0);
@@ -91,21 +114,21 @@ const QuickSwitcher: FC<Props> = ({ show, workspace, myId, onCloseModal }) => {
       show={show}
       onCloseModal={onCloseModal}
       title="빠른 이동"
-      description="채널이나 사람 이름을 입력하세요. ↑↓ 로 고르고 Enter"
+      description="채널·사람·문서 이름을 입력하세요. ↑↓ 로 고르고 Enter"
     >
       <SearchInput
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={onKeyDown}
         placeholder="어디로 갈까요?"
-        aria-label="이동할 채널 또는 사람"
+        aria-label="이동할 채널, 사람 또는 문서"
         role="combobox"
         aria-expanded
         aria-controls="quick-switcher-list"
         aria-activedescendant={items[active] ? `qs-${items[active].key}` : undefined}
       />
       <ResultList id="quick-switcher-list" role="listbox">
-        {(channels || members) && items.length === 0 && <li className="empty">일치하는 채널이나 사람이 없습니다.</li>}
+        {(channels || members) && items.length === 0 && <li className="empty">일치하는 채널·사람·문서가 없습니다.</li>}
         {items.map((item, index) => (
           <li key={item.key}>
             <button

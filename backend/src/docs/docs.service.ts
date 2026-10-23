@@ -37,7 +37,7 @@ const VISIBLE = `(d.OwnerId = :me OR d.visibility = 'workspace' OR EXISTS (
   SELECT 1 FROM docshares ds WHERE ds.DocId = d.id AND ds.UserId = :me))`;
 const VISIBLE_FOR_GUEST = `(d.OwnerId = :me OR EXISTS (
   SELECT 1 FROM docshares ds WHERE ds.DocId = d.id AND ds.UserId = :me))`;
-const visibleFor = (role: WorkspaceRole) =>
+export const visibleFor = (role: WorkspaceRole) =>
   role === 'guest' ? VISIBLE_FOR_GUEST : VISIBLE;
 
 @Injectable()
@@ -661,6 +661,52 @@ export class DocsService {
       title: doc.title,
       role,
     });
+  }
+
+  // 채널 사람들 모두에게 보기 권한을 준다 (채널에 문서를 보낼 때). 이미 편집 권한이 있으면 그대로 둔다
+  async shareWithChannel(
+    url: string,
+    id: number,
+    channelName: string,
+    myId: number,
+  ) {
+    const { workspace, doc, canManage } = await this.access(url, id, myId);
+    if (!canManage) {
+      throw new ForbiddenException(
+        '문서를 만든 사람이나 워크스페이스 관리자만 공유할 수 있습니다.',
+      );
+    }
+    const rows: { id: number }[] = await this.docsRepository.manager.query(
+      `SELECT cm.UserId AS id
+         FROM channels c
+         JOIN channelmembers cm ON cm.ChannelId = c.id
+         JOIN users u ON u.id = cm.UserId AND u.bot = 0
+        WHERE c.WorkspaceId = ? AND c.name = ?
+          AND EXISTS (SELECT 1 FROM channelmembers me WHERE me.ChannelId = c.id AND me.UserId = ?)`,
+      [workspace.id, channelName, myId],
+    );
+    if (!rows.length) {
+      throw new NotFoundException('존재하지 않는 채널입니다.');
+    }
+    const existing = await this.sharesRepository.find({
+      where: { DocId: doc.id },
+      select: ['UserId'],
+    });
+    const already = new Set(existing.map((s) => s.UserId));
+    const added = rows
+      .map((r) => Number(r.id))
+      .filter((uid) => uid !== doc.OwnerId && !already.has(uid));
+    if (added.length) {
+      await this.sharesRepository.save(
+        added.map((uid) => ({
+          DocId: doc.id,
+          UserId: uid,
+          role: 'view' as const,
+        })),
+      );
+      this.notify(url, { id: doc.id });
+    }
+    return { added: added.length };
   }
 
   async removeShare(url: string, id: number, userId: number, myId: number) {

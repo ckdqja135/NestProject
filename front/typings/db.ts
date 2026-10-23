@@ -11,6 +11,7 @@ export interface IUser {
   away?: boolean; // 자리 비움으로 표시
   theme?: 'system' | 'light' | 'dark' | null; // 계정에 저장한 화면 테마 (모든 기기 공통)
   notificationsPaused?: boolean; // 데스크톱 알림 일시 중지 (모든 기기 공통)
+  dndSchedule?: string | null; // 방해 금지 시간 (JSON, utils/dnd 의 parseDnd 로 읽는다)
   bot?: boolean; // 봇 계정 (캘린더 어시스턴트)
   role?: WorkspaceRole; // 멤버 목록에서: 이 워크스페이스에서의 역할
   Workspaces: IWorkspace[];
@@ -80,9 +81,19 @@ export interface IWorkspace {
   OwnerId: number; // 워크스페이스 만든 사람 아이디
 }
 
+export interface ISearchDoc {
+  id: number;
+  title: string;
+  type: string;
+  snippet: string | null;
+  updatedAt: string;
+  ownerName: string | null;
+}
+
 export interface ISearchResult {
   chats: IChat[];
   dms: IDM[];
+  docs?: ISearchDoc[]; // 내가 볼 수 있는 문서 (첫 페이지에만)
   hasMoreChats?: boolean; // 다음 페이지가 있는지
   hasMoreDms?: boolean;
 }

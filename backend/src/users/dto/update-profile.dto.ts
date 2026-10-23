@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
+  IsInt,
+  Max,
+  Min,
+  ValidateNested,
   IsBoolean,
   IsIn,
   IsNotEmpty,
@@ -102,6 +109,39 @@ export class ChangePasswordDto {
 
 export const THEMES = ['system', 'light', 'dark'] as const;
 
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+export class DndScheduleDto {
+  @IsBoolean()
+  @ApiProperty({ example: true, description: '켜기' })
+  public on: boolean;
+
+  @Matches(HHMM)
+  @ApiProperty({ example: '22:00', description: '시작 (HH:mm)' })
+  public start: string;
+
+  @Matches(HHMM)
+  @ApiProperty({
+    example: '08:00',
+    description: '끝 (HH:mm), 시작보다 이르면 다음 날',
+  })
+  public end: string;
+
+  @IsArray()
+  @ArrayMaxSize(7)
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(6, { each: true })
+  @ApiProperty({ example: [1, 2, 3, 4, 5], description: '요일 0(일)~6(토)' })
+  public days: number[];
+
+  @IsString()
+  @MaxLength(64)
+  @Matches(/^[A-Za-z0-9_+\-/]+$/)
+  @ApiProperty({ example: 'Asia/Seoul', description: '시간대' })
+  public tz: string;
+}
+
 export class UpdatePreferencesDto {
   @IsOptional()
   @IsIn(THEMES)
@@ -112,6 +152,16 @@ export class UpdatePreferencesDto {
   @IsBoolean()
   @ApiProperty({ required: false, description: '데스크톱 알림 일시 중지' })
   public notificationsPaused?: boolean;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => DndScheduleDto)
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    description: '방해 금지 시간 (null 이면 지운다)',
+  })
+  public dndSchedule?: DndScheduleDto | null;
 }
 
 export class RequestPasswordResetDto {

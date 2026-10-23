@@ -276,6 +276,18 @@ export class ChannelsController {
     );
   }
 
+  @ApiOperation({
+    summary: '채널 멤버가 어디까지 읽었는지 ("몇 명 읽음" 표시용)',
+  })
+  @Get(':name/reads')
+  getReads(
+    @Param('url') url: string,
+    @Param('name') name: string,
+    @User() user: Users,
+  ) {
+    return this.channelsService.getChannelReads(url, name, user.id);
+  }
+
   @ApiOperation({ summary: '채널 멤버 목록' })
   @Get(':name/members')
   getAllMembers(

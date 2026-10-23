@@ -25,6 +25,13 @@ export function serveFrontend(app: NestExpressApplication) {
     return;
   }
   app.useStaticAssets(distDir, { prefix: '/dist' });
+  // 푸시 알림용 서비스 워커는 사이트 맨 위 주소에 있어야 모든 화면을 맡는다
+  const serviceWorker = path.join(frontDir, 'sw.js');
+  app.use('/sw.js', (req: Request, res: Response, next: NextFunction) => {
+    if (req.method !== 'GET' || !fs.existsSync(serviceWorker)) return next();
+    res.setHeader('Cache-Control', 'no-cache');
+    res.type('application/javascript').sendFile(serviceWorker);
+  });
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (
       req.method !== 'GET' ||

@@ -13,6 +13,7 @@ import { createDoc, docPath, docsBase, toastError } from './api';
 import ShareDocModal from './ShareDocModal';
 import CommentsPanel, { DocComment } from './CommentsPanel';
 import MarginComments from './MarginComments';
+import DocMentions from './DocMentions';
 import { useHuddle, useHuddleWatch } from '@components/Huddle/HuddleProvider';
 import { removeCommentMark, scrollToThread } from './editor/commentMarks';
 import {
@@ -444,6 +445,7 @@ const DocPage: FC<Props> = ({ me }) => {
           <Headphones size={14} style={{ verticalAlign: '-3px' }} />{' '}
           {huddleCurrent === docHuddleScope ? '허들 중' : docHuddle ? `허들 ${docHuddle.members.length}명` : '허들'}
         </button>
+        {!doc.deletedAt && <DocMentions workspace={workspace} docId={doc.id} myId={me.id} />}
         <button
           type="button"
           className={`btn${showComments ? ' on' : ''}`}

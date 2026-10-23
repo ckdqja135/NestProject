@@ -9,6 +9,9 @@ import fetcher from '@utils/fetcher';
 import React, { FC, useCallback, useState } from 'react';
 import { useParams } from 'react-router';
 import useSWR from 'swr';
+import useSidebarSections from '@hooks/useSidebarSections';
+import SidebarItem from '@components/SidebarSections/SidebarItem';
+import { useDropBack } from '@components/SidebarSections';
 
 interface Props {
   channelData?: IChannel[];
@@ -24,6 +27,9 @@ const ChannelList: FC<Props> = () => {
   const { data: mentions } = useMentions(workspace);
   // 맨 위에 고정한 채널은 '고정됨' 에만 보인다
   const { isPinned } = useSidebarPins(workspace);
+  // 내가 만든 섹션에 넣은 채널은 그 섹션에만 보인다
+  const { sectionOf } = useSidebarSections(workspace);
+  const dropBack = useDropBack();
   const { data: userData } = useSWR<IUser>('/api/users', fetcher, {
     dedupingInterval: 2000, // 2초
   });
@@ -35,7 +41,7 @@ const ChannelList: FC<Props> = () => {
 
   return (
     <>
-      <h2>
+      <h2 {...dropBack}>
         <CollapseButton collapse={channelCollapse} onClick={toggleChannelCollapse}>
           <i
             className="c-icon p-channel_sidebar__section_heading_expand p-channel_sidebar__section_heading_expand--show_more_feature c-icon--caret-right c-icon--inherit c-icon--inline"
@@ -48,10 +54,12 @@ const ChannelList: FC<Props> = () => {
       <div>
         {!channelCollapse &&
           channelData
-            ?.filter((channel) => !isPinned('channel', channel.id))
+            ?.filter((channel) => !isPinned('channel', channel.id) && sectionOf('channel', channel.id) === null)
             .map((channel) => {
               return (
-                <EachChannel key={channel.id} channel={channel} mentionCount={mentions?.unreadByChannel[channel.id]} />
+                <SidebarItem key={channel.id} kind="channel" id={channel.id} label={channel.name}>
+                  <EachChannel channel={channel} mentionCount={mentions?.unreadByChannel[channel.id]} />
+                </SidebarItem>
               );
             })}
         {!channelCollapse && !isGuest && (

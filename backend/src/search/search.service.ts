@@ -1,11 +1,30 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ChannelChats } from '../entities/ChannelChats';
 import { DMs } from '../entities/DMs';
+import { Docs } from '../entities/Docs';
+import { visibleFor } from '../docs/docs.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 
 const SEARCH_LIMIT = 30;
+const DOC_LIMIT = 20;
+const MENTION_LIMIT = 30;
+// 본문까지 찾는 문서 종류 (슬라이드·시트 본문은 JSON 이라 제목만 찾는다)
+const TEXT_DOC_TYPES = ['doc', 'wiki', 'database', 'board', 'design'];
+
+export interface DocHit {
+  id: number;
+  title: string;
+  type: string;
+  snippet: string | null;
+  updatedAt: Date;
+  ownerName: string | null;
+}
 const DAY = 24 * 60 * 60 * 1000;
 
 export interface SearchFilters {
@@ -43,6 +62,7 @@ export class SearchService {
     @InjectRepository(ChannelChats)
     private channelChatsRepository: Repository<ChannelChats>,
     @InjectRepository(DMs) private dmsRepository: Repository<DMs>,
+    @InjectRepository(Docs) private docsRepository: Repository<Docs>,
     private workspacesService: WorkspacesService,
   ) {}
 
@@ -58,7 +78,7 @@ export class SearchService {
       throw new BadRequestException('검색어를 입력해주세요.');
     }
     const workspace = await this.workspacesService.findWorkspaceByUrl(url);
-    await this.workspacesService.assertMember(workspace.id, myId);
+    const role = await this.workspacesService.assertMember(workspace.id, myId);
     const like = `%${escapeLike(q)}%`;
     const page = filters.page || 1;
     const skip = (page - 1) * SEARCH_LIMIT;
@@ -142,11 +162,103 @@ export class SearchService {
         .getMany();
     }
 
+    // 문서: 내가 볼 수 있는 것 중 제목·본문에 검색어가 있는 것 (첫 페이지에만, 채널·보낸 사람 필터가 없을 때)
+    let docs: DocHit[] = [];
+    if (q && page === 1 && !filters.channel && !filters.from) {
+      const docQuery = this.docsRepository
+        .createQueryBuilder('d')
+        .leftJoin('d.Owner', 'o')
+        .select([
+          'd.id AS id',
+          'd.title AS title',
+          'd.type AS type',
+          'd.updatedAt AS updatedAt',
+          'o.nickname AS ownerName',
+        ])
+        .addSelect(
+          `CASE WHEN d.type IN (:...textTypes) AND d.content LIKE :like
+             THEN SUBSTRING(d.content, GREATEST(1, LOCATE(:q, d.content) - 40), 160)
+             ELSE NULL END`,
+          'snippet',
+        )
+        .where('d.WorkspaceId = :workspaceId', { workspaceId: workspace.id })
+        .andWhere(visibleFor(role), { me: myId })
+        .andWhere(
+          '(d.title LIKE :like OR (d.type IN (:...textTypes) AND d.content LIKE :like))',
+          { like, q, textTypes: TEXT_DOC_TYPES },
+        );
+      if (after) {
+        docQuery.andWhere('d.updatedAt >= :after', { after });
+      }
+      if (before) {
+        docQuery.andWhere('d.updatedAt < :before', { before });
+      }
+      docs = await docQuery
+        .orderBy('(d.title LIKE :like)', 'DESC')
+        .addOrderBy('d.updatedAt', 'DESC')
+        .limit(DOC_LIMIT)
+        .getRawMany();
+    }
+
     return {
       chats: chats.slice(0, SEARCH_LIMIT),
       dms: dms.slice(0, SEARCH_LIMIT),
+      docs,
       hasMoreChats: chats.length > SEARCH_LIMIT,
       hasMoreDms: dms.length > SEARCH_LIMIT,
+    };
+  }
+
+  // 이 문서가 언급된 대화: 내가 볼 수 있는 채널 메시지와 내 DM 중 문서 링크가 들어 있는 것
+  async docMentions(url: string, docId: number, myId: number) {
+    const workspace = await this.workspacesService.findWorkspaceByUrl(url);
+    const role = await this.workspacesService.assertMember(workspace.id, myId);
+    const doc = await this.docsRepository
+      .createQueryBuilder('d')
+      .where('d.id = :docId AND d.WorkspaceId = :workspaceId', {
+        docId,
+        workspaceId: workspace.id,
+      })
+      .andWhere(visibleFor(role), { me: myId })
+      .getOne();
+    if (!doc) {
+      throw new NotFoundException('존재하지 않는 문서입니다.');
+    }
+    const like = `%/docs/d/${docId}%`;
+    // d/12 를 찾을 때 d/123 은 빼려고 한 번 더 거른다
+    const exact = new RegExp(`/docs/d/${docId}(?!\\d)`);
+    const chats = await this.channelChatsRepository
+      .createQueryBuilder('chats')
+      .leftJoinAndSelect('chats.User', 'user')
+      .innerJoinAndSelect('chats.Channel', 'channel')
+      .innerJoin(
+        'channel.ChannelMembers',
+        'members',
+        'members.UserId = :myId',
+        {
+          myId,
+        },
+      )
+      .where('channel.WorkspaceId = :workspaceId', {
+        workspaceId: workspace.id,
+      })
+      .andWhere('chats.content LIKE :like', { like })
+      .orderBy('chats.createdAt', 'DESC')
+      .take(MENTION_LIMIT)
+      .getMany();
+    const dms = await this.dmsRepository
+      .createQueryBuilder('dms')
+      .innerJoinAndSelect('dms.Sender', 'sender')
+      .innerJoinAndSelect('dms.Receiver', 'receiver')
+      .where('dms.WorkspaceId = :workspaceId', { workspaceId: workspace.id })
+      .andWhere('(dms.SenderId = :myId OR dms.ReceiverId = :myId)', { myId })
+      .andWhere('dms.content LIKE :like', { like })
+      .orderBy('dms.createdAt', 'DESC')
+      .take(MENTION_LIMIT)
+      .getMany();
+    return {
+      chats: chats.filter((c) => exact.test(c.content)),
+      dms: dms.filter((d) => exact.test(d.content)),
     };
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Optional, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { ChannelChats } from '../entities/ChannelChats';
@@ -8,6 +8,7 @@ import { UserGroupMembers } from '../entities/UserGroupMembers';
 import { EventsGateway } from '../events/events.gateway';
 import { onlineMap } from '../events/onlineMap';
 import { WorkspacesService } from '../workspaces/workspaces.service';
+import { PushService } from '../push/push.service';
 
 const MENTION_PATTERN = /@\[(.+?)]\((\d+)\)/g;
 const LIST_LIMIT = 50;
@@ -56,6 +57,8 @@ export class MentionsService {
     private groupMembersRepository: Repository<UserGroupMembers>,
     private workspacesService: WorkspacesService,
     private eventsGateway: EventsGateway,
+    // 테스트처럼 푸시 모듈이 없으면 푸시 없이 동작한다
+    @Optional() private pushService?: PushService,
   ) {}
 
   // 새 채널 메시지에서 멘션된 채널 멤버에게 멘션을 기록하고 실시간으로 알린다
@@ -115,6 +118,14 @@ export class MentionsService {
         chat,
       });
     }
+    // 접속해 있지 않은 사람에게는 브라우저 푸시로
+    await this.pushService
+      ?.notifyMention(
+        url,
+        chat,
+        members.map((m) => m.UserId),
+      )
+      .catch(() => undefined);
   }
 
   // 메시지(와 그 답글)가 삭제되면 관련 멘션도 지우고 받은 사람에게 알린다

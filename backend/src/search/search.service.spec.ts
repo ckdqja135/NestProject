@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ChannelChats } from '../entities/ChannelChats';
 import { DMs } from '../entities/DMs';
+import { Docs } from '../entities/Docs';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { escapeLike, SearchService, startOfDay } from './search.service';
 
@@ -17,10 +18,17 @@ const createQueryBuilderMock = (result: unknown[]) => {
     'orderBy',
     'skip',
     'take',
+    'leftJoin',
+    'select',
+    'addSelect',
+    'addOrderBy',
+    'limit',
   ].forEach((method) => {
     qb[method] = jest.fn(() => qb);
   });
   qb.getMany = jest.fn().mockResolvedValue(result);
+  qb.getRawMany = jest.fn().mockResolvedValue(result);
+  qb.getOne = jest.fn().mockResolvedValue(result[0] ?? null);
   return qb;
 };
 
@@ -28,9 +36,10 @@ describe('SearchService', () => {
   let service: SearchService;
   const chatsQb = createQueryBuilderMock([{ id: 1 }]);
   const dmsQb = createQueryBuilderMock([{ id: 2 }]);
+  const docsQb = createQueryBuilderMock([{ id: 3, title: '바나나 회의록' }]);
   const workspacesService = {
     findWorkspaceByUrl: jest.fn().mockResolvedValue({ id: 1 }),
-    assertMember: jest.fn(),
+    assertMember: jest.fn().mockResolvedValue('member'),
   };
 
   beforeEach(async () => {
@@ -44,6 +53,10 @@ describe('SearchService', () => {
         {
           provide: getRepositoryToken(DMs),
           useValue: { createQueryBuilder: () => dmsQb },
+        },
+        {
+          provide: getRepositoryToken(Docs),
+          useValue: { createQueryBuilder: () => docsQb },
         },
         { provide: WorkspacesService, useValue: workspacesService },
       ],
@@ -68,6 +81,7 @@ describe('SearchService', () => {
     ).resolves.toEqual({
       chats: [{ id: 1 }],
       dms: [{ id: 2 }],
+      docs: [{ id: 3, title: '바나나 회의록' }],
       hasMoreChats: false,
       hasMoreDms: false,
     });
@@ -113,5 +127,25 @@ describe('SearchService', () => {
       '2026-10-11T00:00:00.000Z',
     );
     expect(Number.isNaN(startOfDay('2026-13-99', -540).getTime())).toBe(true);
+  });
+
+  it('게스트는 워크스페이스 공개 문서를 찾지 못한다', async () => {
+    docsQb.andWhere.mockClear();
+    workspacesService.assertMember.mockResolvedValueOnce('guest');
+    await service.search('shlack', { q: '회의' }, 1);
+    const visibility = docsQb.andWhere.mock.calls.find(([sql]) =>
+      String(sql).includes('d.OwnerId = :me'),
+    );
+    expect(String(visibility?.[0])).not.toContain("visibility = 'workspace'");
+  });
+
+  it('문서 링크가 들어간 대화만 돌려준다 (d/12 와 d/123 을 구분)', async () => {
+    chatsQb.getMany.mockResolvedValueOnce([
+      { id: 1, content: '여기 /docs/d/12 봐 주세요' },
+      { id: 2, content: '이건 /docs/d/123 이에요' },
+    ]);
+    dmsQb.getMany.mockResolvedValueOnce([]);
+    const result = await service.docMentions('shlack', 12, 1);
+    expect(result.chats.map((c: { id: number }) => c.id)).toEqual([1]);
   });
 });

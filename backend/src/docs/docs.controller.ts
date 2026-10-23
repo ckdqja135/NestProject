@@ -25,6 +25,7 @@ import {
   DocShareDto,
   FolderDto,
   UpdateDocDto,
+  DocChannelShareDto,
 } from './dto/docs.dto';
 import { DocsService } from './docs.service';
 
@@ -105,6 +106,17 @@ export class DocsController {
   ) {
     await this.docsService.setShare(url, id, body.userId, body.role, user.id);
     return 'ok';
+  }
+
+  @ApiOperation({ summary: '채널 사람들 모두에게 보기 권한 주기' })
+  @Put('docs/:id/channel-share')
+  shareWithChannel(
+    @Param('url') url: string,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: DocChannelShareDto,
+    @User() user: Users,
+  ) {
+    return this.docsService.shareWithChannel(url, id, body.channel, user.id);
   }
 
   @ApiOperation({ summary: '공유 해제' })

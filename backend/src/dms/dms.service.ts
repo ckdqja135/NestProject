@@ -1,4 +1,5 @@
 import {
+  Optional,
   BadRequestException,
   ForbiddenException,
   Injectable,
@@ -17,6 +18,8 @@ import { EventsGateway } from '../events/events.gateway';
 import { BotsService } from '../bots/bots.service';
 import { onlineMap } from '../events/onlineMap';
 import { toFileContent, toFileMeta } from '../common/upload';
+import { PushService } from '../push/push.service';
+import { previewText } from '../common/preview';
 
 function getKeysByValue(object: Record<string, number>, value: number) {
   return Object.keys(object).filter((key) => object[key] === value);
@@ -48,6 +51,8 @@ export class DmsService {
     private workspacesService: WorkspacesService,
     private eventsGateway: EventsGateway,
     private botsService: BotsService,
+    // 테스트처럼 푸시 모듈이 없으면 푸시 없이 동작한다
+    @Optional() private pushService?: PushService,
   ) {}
 
   private async findWorkspace(url: string, otherId: number, myId: number) {
@@ -149,6 +154,15 @@ export class DmsService {
       relations: ['Sender', 'Receiver', 'Reactions'],
     });
     this.emitToPair(url, id, myId, 'dm', dmWithSender);
+    // 받는 사람이 접속해 있지 않으면 브라우저 푸시로
+    this.pushService
+      ?.notify(id, {
+        title: `${dmWithSender.Sender?.nickname || '새 메시지'} (DM)`,
+        body: previewText(content),
+        url: `/workspace/${url}/dm/${myId}?message=${saved.id}`,
+        tag: `dm-${saved.id}`,
+      })
+      .catch(() => undefined);
     return dmWithSender;
   }
 
