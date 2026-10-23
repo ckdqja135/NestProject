@@ -11,6 +11,7 @@ import { SavedItems } from './src/entities/SavedItems';
 import { SidebarPins } from './src/entities/SidebarPins';
 import { Contacts } from './src/entities/Contacts';
 import { ContactStars } from './src/entities/ContactStars';
+import { PasswordResets } from './src/entities/PasswordResets';
 import { ScheduledMessages } from './src/entities/ScheduledMessages';
 import { Reminders } from './src/entities/Reminders';
 import { MessageEdits } from './src/entities/MessageEdits';
@@ -57,6 +58,7 @@ const options: DataSourceOptions & SeederOptions = {
     SidebarPins,
     Contacts,
     ContactStars,
+    PasswordResets,
     ScheduledMessages,
     Reminders,
     MessageEdits,

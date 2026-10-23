@@ -1,3 +1,4 @@
+import { parseForwardContent } from '@utils/forward';
 import { parseFileContent } from '@utils/fileStore';
 import { parsePollContent } from '@utils/poll';
 import { plainMentions } from '@utils/mention';
@@ -52,7 +53,7 @@ export const notifyIfHidden = (title: string, body: string, onClick?: () => void
 };
 
 // 멘션 마크업(@[닉네임](id))과 GIF/이미지를 알림용 텍스트로
-export const previewText = (content: string) => {
+export const previewText = (content: string): string => {
   if (content.startsWith('gif:')) {
     return '[GIF]';
   }
@@ -63,6 +64,10 @@ export const previewText = (content: string) => {
   const poll = parsePollContent(content);
   if (poll) {
     return `[투표] ${poll.q}`;
+  }
+  const forwarded = parseForwardContent(content);
+  if (forwarded) {
+    return `[전달] ${previewText(forwarded.c || forwarded.m.t)}`;
   }
   const text = plainMentions(content);
   return text.length > 80 ? `${text.slice(0, 80)}…` : text;

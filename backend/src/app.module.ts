@@ -36,8 +36,11 @@ import { SavedItems } from './entities/SavedItems';
 import { SidebarPins } from './entities/SidebarPins';
 import { Contacts } from './entities/Contacts';
 import { ContactStars } from './entities/ContactStars';
+import { PasswordResets } from './entities/PasswordResets';
 import { PinsModule } from './pins/pins.module';
 import { ContactsModule } from './contacts/contacts.module';
+import { LinksModule } from './links/links.module';
+import { ForwardModule } from './forward/forward.module';
 import { ScheduledMessages } from './entities/ScheduledMessages';
 import { Reminders } from './entities/Reminders';
 import { MessageEdits } from './entities/MessageEdits';
@@ -89,6 +92,7 @@ import { Workspaces } from './entities/Workspaces';
         SidebarPins,
         Contacts,
         ContactStars,
+        PasswordResets,
         ScheduledMessages,
         Reminders,
         MessageEdits,
@@ -126,6 +130,8 @@ import { Workspaces } from './entities/Workspaces';
     SavedModule,
     PinsModule,
     ContactsModule,
+    LinksModule,
+    ForwardModule,
     ScheduledModule,
     GroupsModule,
     MailModule,

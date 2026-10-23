@@ -70,7 +70,12 @@ const LogIn = () => {
           </div>
         </Label>
         <Label id="password-label">
-          <span>비밀번호</span>
+          <span>
+            비밀번호
+            <Link to="/forgot-password" className="forgot">
+              비밀번호를 잊으셨나요?
+            </Link>
+          </span>
           <div className="field">
             <Lock size={17} />
             <Input

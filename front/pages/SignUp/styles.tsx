@@ -161,6 +161,16 @@ export const Label = styled.label`
     font-weight: 700;
     color: var(--text);
     cursor: pointer;
+
+    & .forgot {
+      font-weight: 600;
+      color: #1264a3;
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
   }
 
   & .field {

@@ -7,6 +7,8 @@ import 'react-toastify/dist/ReactToastify.css';
 const Workspace = loadable(() => import('@layouts/Workspace'));
 const LogIn = loadable(() => import('@pages/LogIn'));
 const SignUp = loadable(() => import('@pages/SignUp'));
+const ForgotPassword = loadable(() => import('@pages/ForgotPassword'));
+const ResetPassword = loadable(() => import('@pages/ResetPassword'));
 
 // 알림은 화면 전환(리다이렉트 포함) 중에도 사라지지 않도록 최상단에 둔다
 const App = () => (
@@ -17,6 +19,8 @@ const App = () => (
       </Route>
       <Route path="/login" component={LogIn} />
       <Route path="/signup" component={SignUp} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
       <Route path="/workspace/:workspace" component={Workspace} />
     </Switch>
     <ToastContainer position="bottom-center" />

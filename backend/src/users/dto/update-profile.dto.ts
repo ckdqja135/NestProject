@@ -113,3 +113,25 @@ export class UpdatePreferencesDto {
   @ApiProperty({ required: false, description: '데스크톱 알림 일시 중지' })
   public notificationsPaused?: boolean;
 }
+
+export class RequestPasswordResetDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  @ApiProperty({ description: '가입한 이메일' })
+  public email: string;
+}
+
+export class ResetPasswordDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  @ApiProperty({ description: '메일로 받은 링크의 토큰' })
+  public token: string;
+
+  @IsString()
+  @MinLength(4)
+  @MaxLength(100)
+  @ApiProperty({ description: '새 비밀번호 (4자 이상)' })
+  public password: string;
+}

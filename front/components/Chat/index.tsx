@@ -1,4 +1,15 @@
-import { Bell, Bookmark, Bot, Link, MessageSquareReply, Pencil, Pin, SmilePlus, Trash2 } from 'lucide-react';
+import {
+  Bell,
+  Bookmark,
+  Bot,
+  CornerUpRight,
+  Link,
+  MessageSquareReply,
+  Pencil,
+  Pin,
+  SmilePlus,
+  Trash2,
+} from 'lucide-react';
 import {
   ActionBar,
   ChatWrapper,
@@ -15,6 +26,11 @@ import { IChat, IDM, IUser } from '@typings/db';
 import { isTempId } from '@utils/chatPages';
 import { parseGifContent } from '@utils/gif';
 import { renderMarkdown } from '@utils/markdown';
+import { firstLink } from '@utils/links';
+import LinkPreview from '@components/LinkPreview';
+import ForwardedCard from '@components/ForwardedCard';
+import ForwardModal from '@components/ForwardModal';
+import { parseForwardContent } from '@utils/forward';
 import { parseFileContent } from '@utils/fileStore';
 import FileAttachment from '@components/FileAttachment';
 import dayjs from 'dayjs';
@@ -104,12 +120,24 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
   const gifUrl = useMemo(() => parseGifContent(data.content), [data.content]);
   const poll = useMemo(() => parsePollContent(data.content), [data.content]);
   const fileMeta = useMemo(() => parseFileContent(data.content), [data.content]);
+  const forwarded = useMemo(() => parseForwardContent(data.content), [data.content]);
+  const link = useMemo(
+    () =>
+      gifUrl || poll || fileMeta ? null : firstLink(forwarded ? `${forwarded.c}\n${forwarded.m.t}` : data.content),
+    [data.content, gifUrl, poll, fileMeta, forwarded],
+  );
+  const [showForward, setShowForward] = useState(false);
   const result = useMemo<React.ReactNode>(
     () =>
       gifUrl ? (
         <img src={gifUrl} alt="GIF" style={{ maxHeight: 200, maxWidth: '100%', borderRadius: 4 }} />
       ) : fileMeta ? (
         <FileAttachment meta={fileMeta} sentAt={data.createdAt} />
+      ) : forwarded ? (
+        <>
+          {forwarded.c && renderMarkdown(forwarded.c, workspace, emojiMap)}
+          <ForwardedCard forwarded={forwarded} workspace={workspace} emojis={emojiMap} />
+        </>
       ) : isLegacyUpload(data.content) ? (
         <span style={{ color: 'var(--text-muted)' }}>
           [이전 방식으로 서버에 올린 첨부파일 - 더 이상 볼 수 없습니다]
@@ -117,7 +145,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
       ) : (
         renderMarkdown(data.content, workspace, emojiMap)
       ),
-    [workspace, data.content, gifUrl, fileMeta, data.createdAt, emojiMap],
+    [workspace, data.content, gifUrl, fileMeta, forwarded, data.createdAt, emojiMap],
   );
 
   // 같은 이모지끼리 묶어서 개수와 내가 눌렀는지 표시 (채널 메시지, DM 모두)
@@ -199,7 +227,16 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
   // 전송 중(임시 id)인 메시지에는 액션을 보여주지 않는다
   const canAct = !!actions && !isTempId(data.id);
   const canEdit =
-    canAct && isMine && !!actions?.onEdit && !gifUrl && !fileMeta && !poll && !isLegacyUpload(data.content);
+    canAct &&
+    isMine &&
+    !!actions?.onEdit &&
+    !gifUrl &&
+    !fileMeta &&
+    !poll &&
+    !forwarded &&
+    !isLegacyUpload(data.content);
+  // 파일(보낸 사람 기기에만 있음)·투표는 전달하지 않는다
+  const canForward = canAct && !!workspace && !fileMeta && !poll && !isLegacyUpload(data.content);
   const canRemind = canAct && !!workspace;
 
   // 리액션 이모지: 커스텀(:이름:)이면 그림
@@ -352,6 +389,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
         ) : (
           <div className={fileMeta ? 'attachment' : 'message-body'}>{result}</div>
         )}
+        {link && !editing && workspace && <LinkPreview workspace={workspace} url={link} />}
         {reactionGroups.length > 0 && (
           <ReactionList>
             {reactionGroups.map((group) => (
@@ -443,6 +481,16 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
               <Bell size={16} />
             </button>
           )}
+          {canForward && (
+            <button
+              type="button"
+              title="다른 채널·사람에게 전달"
+              aria-label="전달"
+              onClick={() => setShowForward(true)}
+            >
+              <CornerUpRight size={16} />
+            </button>
+          )}
           {canCopyLink && (
             <button type="button" title="메시지 링크 복사" aria-label="메시지 링크 복사" onClick={onCopyLink}>
               <Link size={16} />
@@ -506,6 +554,19 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
           historyUrl={historyUrl}
           workspace={workspace}
           onCloseModal={() => setShowHistory(false)}
+        />
+      )}
+      {showForward && workspace && (
+        <ForwardModal
+          show={showForward}
+          workspace={workspace}
+          source={{
+            source: isDM ? 'dm' : 'chat',
+            id: data.id,
+            content: data.content,
+            author: user.nickname || channelChat?.botName || '',
+          }}
+          onClose={() => setShowForward(false)}
         />
       )}
     </ChatWrapper>

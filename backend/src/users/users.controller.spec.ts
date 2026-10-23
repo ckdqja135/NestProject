@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
+import { PasswordResetService } from './password-reset.service';
 
 describe('UsersController', () => {
   let controller: UsersController;
@@ -10,7 +11,10 @@ describe('UsersController', () => {
     jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       controllers: [UsersController],
-      providers: [{ provide: UsersService, useValue: usersService }],
+      providers: [
+        { provide: UsersService, useValue: usersService },
+        { provide: PasswordResetService, useValue: {} },
+      ],
     }).compile();
 
     controller = module.get<UsersController>(UsersController);
