@@ -135,6 +135,7 @@ const Contacts = () => {
           <span className="name">
             {m.nickname}
             {m.id === me.id && <small className="me"> (나)</small>}
+            {m.role === 'guest' && <small className="role-tag">게스트</small>}
           </span>
           {meta && <span className="meta">{meta}</span>}
           {m.statusEmoji && (

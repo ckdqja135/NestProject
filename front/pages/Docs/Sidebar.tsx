@@ -1,4 +1,5 @@
 import { IDocFolder, IDocListItem, IWikiPage } from '@typings/db';
+import useMyRole from '@hooks/useMyRole';
 import fetcher from '@utils/fetcher';
 import React, { FC, useCallback, useMemo, useState } from 'react';
 import { BookOpen, ChevronDown, ChevronRight, Folder, FolderPlus, House, Library, Trash2 } from 'lucide-react';
@@ -89,6 +90,8 @@ const FolderTree: FC<{ workspace: string; folders: IDocFolder[] }> = ({ workspac
 // Docs 왼쪽 목록: 홈, 위키, 고정된 문서, 내 문서 라이브러리, 휴지통
 const DocsSidebar: FC<Props> = ({ workspace }) => {
   const history = useHistory();
+  // 게스트는 위키(워크스페이스 공개)를 못 본다
+  const isGuest = useMyRole(workspace) === 'guest';
   const base = docsBase(workspace);
   const { data: wiki, mutate: refreshWiki } = useSWR<IWikiPage[]>(`${base}/docs/wiki`, fetcher);
   const { data: pinned, mutate: refreshPinned } = useSWR<IDocListItem[]>(`${base}/docs?tab=favorites`, fetcher);
@@ -126,10 +129,12 @@ const DocsSidebar: FC<Props> = ({ workspace }) => {
       <NavLink className="item" activeClassName="active" exact to={home}>
         <House size={16} /> <span className="label">홈</span>
       </NavLink>
-      <NavLink className="item" activeClassName="active" exact to={`${home}/wiki`}>
-        <BookOpen size={16} /> <span className="label">Wiki</span>
-      </NavLink>
-      {wiki && <WikiTree workspace={workspace} pages={wiki} />}
+      {!isGuest && (
+        <NavLink className="item" activeClassName="active" exact to={`${home}/wiki`}>
+          <BookOpen size={16} /> <span className="label">Wiki</span>
+        </NavLink>
+      )}
+      {wiki && !isGuest && <WikiTree workspace={workspace} pages={wiki} />}
 
       <h4>고정된 Docs</h4>
       {pinned?.length ? (

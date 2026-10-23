@@ -13,6 +13,18 @@ import { ChannelMembers } from '../entities/ChannelMembers';
 import { Users } from '../entities/Users';
 import { EventsGateway } from '../events/events.gateway';
 import { BotsService } from '../bots/bots.service';
+import { MemberRole } from './dto/member-role.dto';
+
+// 워크스페이스 안에서의 역할. 소유자는 Workspaces.OwnerId, 나머지는 멤버 표의 role 칸
+export type WorkspaceRole = 'owner' | MemberRole;
+const RANK: Record<WorkspaceRole, number> = {
+  guest: 0,
+  member: 1,
+  admin: 2,
+  owner: 3,
+};
+export const isAdminRole = (role: WorkspaceRole | null | undefined) =>
+  role === 'owner' || role === 'admin';
 
 @Injectable()
 export class WorkspacesService {
@@ -42,13 +54,68 @@ export class WorkspacesService {
     return workspace;
   }
 
-  async assertMember(workspaceId: number, userId: number) {
+  // 이 워크스페이스에서의 역할 (멤버가 아니면 null)
+  async roleOf(
+    workspaceId: number,
+    userId: number,
+  ): Promise<WorkspaceRole | null> {
     const member = await this.workspaceMembersRepository.findOne({
       where: { WorkspaceId: workspaceId, UserId: userId },
+      relations: ['Workspace'],
     });
     if (!member) {
+      return null;
+    }
+    if (member.Workspace?.OwnerId === userId) {
+      return 'owner';
+    }
+    return member.role || 'member';
+  }
+
+  // 멤버인지 확인하고 역할을 돌려준다
+  async assertMember(
+    workspaceId: number,
+    userId: number,
+  ): Promise<WorkspaceRole> {
+    const role = await this.roleOf(workspaceId, userId);
+    if (!role) {
       throw new ForbiddenException('워크스페이스 멤버가 아닙니다.');
     }
+    return role;
+  }
+
+  // 이 역할 이상인지 확인한다 (게스트 < 멤버 < 관리자 < 소유자)
+  async assertRole(
+    workspaceId: number,
+    userId: number,
+    minimum: WorkspaceRole,
+    message = '권한이 없습니다.',
+  ) {
+    const role = await this.assertMember(workspaceId, userId);
+    if (RANK[role] < RANK[minimum]) {
+      throw new ForbiddenException(message);
+    }
+    return role;
+  }
+
+  // 게스트에게 보이는 사람: 같은 채널에 있는 사람, 먼저 DM 을 보낸 사람, 봇 (나머지 역할은 모두 보인다)
+  async visibleMemberIds(workspaceId: number, guestId: number) {
+    const rows: { id: number }[] = await this.dataSource.query(
+      `SELECT DISTINCT cm2.UserId AS id
+         FROM channelmembers cm1
+         JOIN channels c ON c.id = cm1.ChannelId AND c.WorkspaceId = ?
+         JOIN channelmembers cm2 ON cm2.ChannelId = cm1.ChannelId
+        WHERE cm1.UserId = ?
+       UNION
+       SELECT d.SenderId FROM dms d
+        WHERE d.WorkspaceId = ? AND d.ReceiverId = ? AND d.SenderId IS NOT NULL
+       UNION
+       SELECT u.id FROM users u
+         JOIN workspacemembers wm ON wm.UserId = u.id AND wm.WorkspaceId = ?
+        WHERE u.bot = 1`,
+      [workspaceId, guestId, workspaceId, guestId, workspaceId],
+    );
+    return new Set([guestId, ...rows.map((r) => Number(r.id))]);
   }
 
   async findMyWorkspaces(myId: number) {
@@ -96,10 +163,11 @@ export class WorkspacesService {
     }
   }
 
+  // 멤버 목록 (역할 포함). 게스트에게는 같은 채널에 있는 사람만 보인다
   async getWorkspaceMembers(url: string, myId: number) {
     const workspace = await this.findWorkspaceByUrl(url);
-    await this.assertMember(workspace.id, myId);
-    return this.usersRepository
+    const myRole = await this.assertMember(workspace.id, myId);
+    const users = await this.usersRepository
       .createQueryBuilder('user')
       .innerJoin('user.WorkspaceMembers', 'members')
       .where('members.WorkspaceId = :workspaceId', {
@@ -107,11 +175,57 @@ export class WorkspacesService {
       })
       .orderBy('user.nickname', 'ASC')
       .getMany();
+    const rows = await this.workspaceMembersRepository.find({
+      where: { WorkspaceId: workspace.id },
+      select: ['UserId', 'role'],
+    });
+    const roles = new Map(rows.map((r) => [r.UserId, r.role || 'member']));
+    const visible =
+      myRole === 'guest'
+        ? await this.visibleMemberIds(workspace.id, myId)
+        : null;
+    return users
+      .filter((u) => !visible || visible.has(u.id))
+      .map((u) => ({
+        ...u,
+        role: (u.id === workspace.OwnerId
+          ? 'owner'
+          : roles.get(u.id) || 'member') as WorkspaceRole,
+      }));
   }
 
-  async inviteMember(url: string, email: string, myId: number) {
+  async inviteMember(
+    url: string,
+    email: string,
+    myId: number,
+    role: 'member' | 'guest' = 'member',
+    channelIds: number[] = [],
+  ) {
     const workspace = await this.findWorkspaceByUrl(url);
-    await this.assertMember(workspace.id, myId);
+    const myRole = await this.assertMember(workspace.id, myId);
+    if (myRole === 'guest') {
+      throw new ForbiddenException('게스트는 사람을 초대할 수 없습니다.');
+    }
+    if (role === 'guest' && !isAdminRole(myRole)) {
+      throw new ForbiddenException('게스트 초대는 관리자만 할 수 있습니다.');
+    }
+    // 게스트는 고른 채널에만 들어간다
+    let guestChannels: Channels[] = [];
+    if (role === 'guest') {
+      const ids = [...new Set(channelIds)];
+      if (!ids.length) {
+        throw new BadRequestException('게스트가 들어갈 채널을 골라 주세요.');
+      }
+      guestChannels = await this.channelsRepository.find({
+        where: ids.map((id) => ({ id, WorkspaceId: workspace.id })),
+      });
+      if (
+        guestChannels.length !== ids.length ||
+        guestChannels.some((c) => c.archived)
+      ) {
+        throw new BadRequestException('고른 채널을 찾을 수 없습니다.');
+      }
+    }
     const user = await this.usersRepository.findOne({ where: { email } });
     if (!user) {
       throw new NotFoundException('존재하지 않는 사용자입니다.');
@@ -126,16 +240,26 @@ export class WorkspacesService {
     await this.workspaceMembersRepository.save({
       WorkspaceId: workspace.id,
       UserId: user.id,
+      role,
     });
-    // 초대받은 사람은 워크스페이스의 '일반' 채널에도 자동 참여
-    const channel = await this.channelsRepository.findOne({
-      where: { WorkspaceId: workspace.id, name: '일반' },
-    });
-    if (channel) {
-      await this.channelMembersRepository.save({
-        ChannelId: channel.id,
-        UserId: user.id,
+    if (role === 'guest') {
+      for (const channel of guestChannels) {
+        await this.channelMembersRepository.save({
+          ChannelId: channel.id,
+          UserId: user.id,
+        });
+      }
+    } else {
+      // 초대받은 사람은 워크스페이스의 '일반' 채널에도 자동 참여
+      const channel = await this.channelsRepository.findOne({
+        where: { WorkspaceId: workspace.id, name: '일반' },
       });
+      if (channel) {
+        await this.channelMembersRepository.save({
+          ChannelId: channel.id,
+          UserId: user.id,
+        });
+      }
     }
     // 초대받은 사람의 화면(다른 워크스페이스에 접속 중이어도)에 워크스페이스 목록 갱신을 알리고,
     // 기존 멤버들의 멤버 목록(DM 목록)도 갱신한다
@@ -145,12 +269,24 @@ export class WorkspacesService {
 
   async kickMember(url: string, targetId: number, myId: number) {
     const workspace = await this.findWorkspaceByUrl(url);
-    // 본인 탈퇴 또는 워크스페이스 소유자의 강퇴만 허용
-    if (targetId !== myId && workspace.OwnerId !== myId) {
-      throw new ForbiddenException('멤버를 내보낼 권한이 없습니다.');
-    }
+    // 본인 탈퇴, 또는 관리자가 멤버·게스트를 (소유자는 관리자도) 내보낸다
+    const myRole = await this.assertMember(workspace.id, myId);
     if (targetId === workspace.OwnerId) {
       throw new BadRequestException('워크스페이스 소유자는 나갈 수 없습니다.');
+    }
+    if (targetId !== myId) {
+      if (!isAdminRole(myRole)) {
+        throw new ForbiddenException('멤버를 내보낼 권한이 없습니다.');
+      }
+      const targetRole = await this.roleOf(workspace.id, targetId);
+      if (!targetRole) {
+        throw new NotFoundException(
+          '워크스페이스에 존재하지 않는 사용자입니다.',
+        );
+      }
+      if (targetRole === 'admin' && myRole !== 'owner') {
+        throw new ForbiddenException('관리자는 소유자만 내보낼 수 있습니다.');
+      }
     }
     await this.workspaceMembersRepository.delete({
       WorkspaceId: workspace.id,
@@ -222,14 +358,62 @@ export class WorkspacesService {
     return updated;
   }
 
+  // 역할 바꾸기: 소유자는 관리자·멤버·게스트 모두, 관리자는 멤버↔게스트만
+  async setMemberRole(
+    url: string,
+    targetId: number,
+    role: MemberRole,
+    myId: number,
+  ) {
+    const workspace = await this.findWorkspaceByUrl(url);
+    const myRole = await this.assertMember(workspace.id, myId);
+    if (!isAdminRole(myRole)) {
+      throw new ForbiddenException('관리자만 역할을 바꿀 수 있습니다.');
+    }
+    if (targetId === myId) {
+      throw new BadRequestException('내 역할은 바꿀 수 없습니다.');
+    }
+    const targetRole = await this.roleOf(workspace.id, targetId);
+    if (!targetRole) {
+      throw new NotFoundException('워크스페이스에 존재하지 않는 사용자입니다.');
+    }
+    if (targetRole === 'owner') {
+      throw new BadRequestException(
+        '소유자의 역할은 바꿀 수 없습니다. 소유권 넘기기를 쓰세요.',
+      );
+    }
+    if (myRole !== 'owner' && (role === 'admin' || targetRole === 'admin')) {
+      throw new ForbiddenException(
+        '관리자 지정·해제는 소유자만 할 수 있습니다.',
+      );
+    }
+    if (await this.botsService.isBot(targetId)) {
+      throw new BadRequestException('봇의 역할은 바꿀 수 없습니다.');
+    }
+    await this.workspaceMembersRepository.update(
+      { WorkspaceId: workspace.id, UserId: targetId },
+      { role },
+    );
+    this.eventsGateway.emitToWorkspace(url, 'membersChanged');
+    return { id: targetId, role };
+  }
+
   // 소유권 넘기기 (소유자만, 워크스페이스 멤버에게)
   async transferOwnership(url: string, targetId: number, myId: number) {
     const workspace = await this.findOwnedWorkspace(url, myId);
     if (targetId === myId) {
       throw new BadRequestException('이미 소유자입니다.');
     }
-    await this.assertMember(workspace.id, targetId);
+    const targetRole = await this.assertMember(workspace.id, targetId);
+    if (targetRole === 'guest') {
+      throw new BadRequestException('게스트에게는 소유권을 넘길 수 없습니다.');
+    }
     await this.workspacesRepository.update(workspace.id, { OwnerId: targetId });
+    // 넘겨준 사람은 관리자로 남는다
+    await this.workspaceMembersRepository.update(
+      { WorkspaceId: workspace.id, UserId: myId },
+      { role: 'admin' },
+    );
     const updated = await this.workspacesRepository.findOne({
       where: { id: workspace.id },
     });
@@ -256,7 +440,13 @@ export class WorkspacesService {
 
   async getWorkspaceMember(url: string, id: number, myId: number) {
     const workspace = await this.findWorkspaceByUrl(url);
-    await this.assertMember(workspace.id, myId);
+    const myRole = await this.assertMember(workspace.id, myId);
+    if (
+      myRole === 'guest' &&
+      !(await this.visibleMemberIds(workspace.id, myId)).has(id)
+    ) {
+      throw new NotFoundException('워크스페이스에 존재하지 않는 사용자입니다.');
+    }
     const user = await this.usersRepository
       .createQueryBuilder('user')
       .innerJoin(

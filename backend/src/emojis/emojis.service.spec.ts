@@ -16,7 +16,10 @@ describe('EmojisService', () => {
   };
   const workspacesService = {
     findWorkspaceByUrl: jest.fn().mockResolvedValue({ id: 1, OwnerId: 9 }),
-    assertMember: jest.fn(),
+    // 9 번은 소유자
+    assertMember: jest.fn((_ws: number, id: number) =>
+      Promise.resolve(id === 9 ? 'owner' : 'member'),
+    ),
   };
   const eventsGateway = { emitToWorkspace: jest.fn() };
 
@@ -57,7 +60,7 @@ describe('EmojisService', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it('올린 사람도 소유자도 아니면 지울 수 없다', async () => {
+  it('올린 사람도 관리자도 아니면 지울 수 없다', async () => {
     emojisRepository.findOne.mockResolvedValue({ id: 3, CreatorId: 2 });
     await expect(service.deleteEmoji('shlack', 3, 1)).rejects.toBeInstanceOf(
       ForbiddenException,

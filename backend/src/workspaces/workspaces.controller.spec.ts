@@ -44,6 +44,8 @@ describe('WorkspacesController', () => {
       'shlack',
       'b@b.com',
       1,
+      'member',
+      [],
     );
   });
 });

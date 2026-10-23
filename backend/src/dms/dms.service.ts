@@ -52,8 +52,17 @@ export class DmsService {
 
   private async findWorkspace(url: string, otherId: number, myId: number) {
     const workspace = await this.workspacesService.findWorkspaceByUrl(url);
-    await this.workspacesService.assertMember(workspace.id, myId);
+    const role = await this.workspacesService.assertMember(workspace.id, myId);
     await this.workspacesService.assertMember(workspace.id, otherId);
+    // 게스트는 같은 채널에 있거나 먼저 말을 건 사람하고만 DM 한다
+    if (
+      role === 'guest' &&
+      !(await this.workspacesService.visibleMemberIds(workspace.id, myId)).has(
+        otherId,
+      )
+    ) {
+      throw new NotFoundException('워크스페이스에 존재하지 않는 사용자입니다.');
+    }
     return workspace;
   }
 

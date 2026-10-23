@@ -134,8 +134,8 @@ export class CalendarService implements OnModuleInit, OnModuleDestroy {
 
   private async findWorkspace(url: string, myId: number) {
     const workspace = await this.workspacesService.findWorkspaceByUrl(url);
-    await this.workspacesService.assertMember(workspace.id, myId);
-    return workspace;
+    const role = await this.workspacesService.assertMember(workspace.id, myId);
+    return Object.assign(workspace, { role });
   }
 
   private parseDate(value: string | undefined, name: string) {
@@ -299,6 +299,16 @@ export class CalendarService implements OnModuleInit, OnModuleDestroy {
     for (const id of unique) {
       await this.workspacesService.assertMember(workspaceId, id);
     }
+    // 게스트는 같은 채널에 있는 사람만 초대할 수 있다
+    if ((await this.workspacesService.roleOf(workspaceId, myId)) === 'guest') {
+      const visible = await this.workspacesService.visibleMemberIds(
+        workspaceId,
+        myId,
+      );
+      if (unique.some((id) => !visible.has(id))) {
+        throw new NotFoundException('존재하지 않는 사용자가 있습니다.');
+      }
+    }
     const users = await this.usersRepository.find({
       where: { id: In(unique) },
       select: ['id', 'bot'],
@@ -318,9 +328,11 @@ export class CalendarService implements OnModuleInit, OnModuleDestroy {
       where: { id, WorkspaceId: workspace.id },
       relations: ['Attendees', 'Attendees.User', 'Owner'],
     });
+    // 게스트는 자기가 들어간 일정만 본다
     if (
       !event ||
-      (event.visibility === 'private' && !this.involved(event, myId))
+      ((event.visibility === 'private' || workspace.role === 'guest') &&
+        !this.involved(event, myId))
     ) {
       throw new NotFoundException('존재하지 않는 일정입니다.');
     }
@@ -351,6 +363,11 @@ export class CalendarService implements OnModuleInit, OnModuleDestroy {
     ];
     if (!users.length) {
       users.push(myId);
+    }
+    if (workspace.role === 'guest' && users.some((id) => id !== myId)) {
+      throw new ForbiddenException(
+        '게스트는 다른 사람의 캘린더를 볼 수 없습니다.',
+      );
     }
     for (const id of users) {
       if (id !== myId) {
@@ -609,6 +626,9 @@ export class CalendarService implements OnModuleInit, OnModuleDestroy {
 
   async getFollows(url: string, myId: number) {
     const workspace = await this.findWorkspace(url, myId);
+    if (workspace.role === 'guest') {
+      return [];
+    }
     const rows = await this.followsRepository.find({
       where: { WorkspaceId: workspace.id, UserId: myId },
       relations: ['Following'],
@@ -620,6 +640,11 @@ export class CalendarService implements OnModuleInit, OnModuleDestroy {
     const workspace = await this.findWorkspace(url, myId);
     if (userId === myId) {
       throw new BadRequestException('내 캘린더는 이미 보입니다.');
+    }
+    if (workspace.role === 'guest') {
+      throw new ForbiddenException(
+        '게스트는 다른 사람의 캘린더를 볼 수 없습니다.',
+      );
     }
     await this.workspacesService.assertMember(workspace.id, userId);
     if (await this.botsService.isBot(userId)) {

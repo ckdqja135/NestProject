@@ -97,6 +97,22 @@ const EachDM: VFC<Props> = ({ member, isOnline }) => {
       )}
       <span className={count && count > 0 ? 'bold' : undefined}>{member.nickname}</span>
       {member.id === userData?.id && <span> (나)</span>}
+      {member.role === 'guest' && (
+        <span
+          className="guest-tag"
+          title="게스트 (초대받은 채널만 봄)"
+          style={{
+            marginLeft: 6,
+            padding: '0 4px',
+            borderRadius: 3,
+            border: '1px solid currentColor',
+            fontSize: 10,
+            opacity: 0.75,
+          }}
+        >
+          게스트
+        </span>
+      )}
       {!isViewing && workspace && loadDraft(draftKey(workspace, `dm:${member.id}`)) && (
         <span className="draft-icon" title="쓰다 만 메시지가 있습니다" aria-label="임시 저장된 메시지">
           <Pencil size={13} />

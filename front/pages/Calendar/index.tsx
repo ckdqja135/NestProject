@@ -1,4 +1,5 @@
 import { ICalendarEvent, IUser } from '@typings/db';
+import useMyRole from '@hooks/useMyRole';
 import fetcher from '@utils/fetcher';
 import axios from 'axios';
 import dayjs, { Dayjs } from 'dayjs';
@@ -34,6 +35,8 @@ const VIEW_LABEL: Record<CalView, string> = { day: '일', week: '주', month: '�
 // 캘린더: 내 일정 + 구독한 동료 일정. 일정 알림은 캘린더 어시스턴트가 DM 으로
 const Calendar = () => {
   const { workspace } = useParams<{ workspace: string }>();
+  // 게스트는 다른 사람의 캘린더를 구독할 수 없다
+  const isGuest = useMyRole(workspace) === 'guest';
   const history = useHistory();
   const location = useLocation();
   const base = calBase(workspace);
@@ -216,48 +219,50 @@ const Calendar = () => {
           <Plus size={16} /> 일정 만들기
         </button>
         <MiniCalendar cursor={cursor} marked={marked} onPick={(day) => setCursor(day)} />
-        <div className="cal-search">
-          <Search size={15} />
-          <input
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setSearchOpen(true);
-            }}
-            onFocus={() => setSearchOpen(true)}
-            onBlur={() => window.setTimeout(() => setSearchOpen(false), 150)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                setQuery('');
-                (e.target as HTMLInputElement).blur();
-              } else if (e.key === 'Enter' && searchResults[0]) {
-                follow(searchResults[0]);
-              }
-            }}
-            placeholder="동료 캘린더 검색"
-            aria-label="동료 캘린더 검색"
-          />
-          {searchOpen && query.trim() && (
-            <ul className="results" role="listbox">
-              {searchResults.length === 0 && <li className="empty">찾는 동료가 없습니다.</li>}
-              {searchResults.map((m) => (
-                <li key={m.id}>
-                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => follow(m)}>
-                    <img src={avatarUrl(m, 24)} alt="" />
-                    <span className="who">
-                      {m.nickname}
-                      <small>{m.email}</small>
-                    </span>
-                    {followIds.has(m.id) ? <span className="tag">구독 중</span> : <Plus size={14} />}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        {!isGuest && (
+          <div className="cal-search">
+            <Search size={15} />
+            <input
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setSearchOpen(true);
+              }}
+              onFocus={() => setSearchOpen(true)}
+              onBlur={() => window.setTimeout(() => setSearchOpen(false), 150)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  setQuery('');
+                  (e.target as HTMLInputElement).blur();
+                } else if (e.key === 'Enter' && searchResults[0]) {
+                  follow(searchResults[0]);
+                }
+              }}
+              placeholder="동료 캘린더 검색"
+              aria-label="동료 캘린더 검색"
+            />
+            {searchOpen && query.trim() && (
+              <ul className="results" role="listbox">
+                {searchResults.length === 0 && <li className="empty">찾는 동료가 없습니다.</li>}
+                {searchResults.map((m) => (
+                  <li key={m.id}>
+                    <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => follow(m)}>
+                      <img src={avatarUrl(m, 24)} alt="" />
+                      <span className="who">
+                        {m.nickname}
+                        <small>{m.email}</small>
+                      </span>
+                      {followIds.has(m.id) ? <span className="tag">구독 중</span> : <Plus size={14} />}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
         {[
           { key: 'mine', label: '내 캘린더', users: [me] },
-          { key: 'follow', label: '팔로잉', users: followList },
+          ...(isGuest ? [] : [{ key: 'follow', label: '팔로잉', users: followList }]),
         ].map((group) => (
           <div key={group.key} className="cal-group">
             <h4>

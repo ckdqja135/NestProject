@@ -74,6 +74,7 @@ describe('ChannelsService', () => {
   const workspacesService = {
     findWorkspaceByUrl: jest.fn(),
     assertMember: jest.fn(),
+    roleOf: jest.fn(),
   };
   const mentionsService = {
     handleNewChat: jest.fn(),
@@ -121,6 +122,8 @@ describe('ChannelsService', () => {
     qb = createQueryBuilderMock();
     channelChatsRepository.createQueryBuilder.mockReturnValue(qb);
     workspacesService.findWorkspaceByUrl.mockResolvedValue({ id: 1 });
+    workspacesService.roleOf.mockResolvedValue('member');
+    workspacesService.assertMember.mockResolvedValue('member');
     channelsRepository.findOne.mockResolvedValue(channel);
     // 기본: 요청한 사람은 채널 멤버
     channelMembersRepository.findOne.mockResolvedValue({
@@ -435,11 +438,36 @@ describe('ChannelsService', () => {
       );
     });
 
-    it('일반 채널은 워크스페이스 소유자라도 보관할 수 없다', async () => {
-      workspacesService.findWorkspaceByUrl.mockResolvedValue({
-        id: 1,
-        OwnerId: 1,
+    it('워크스페이스 관리자는 남이 만든 채널 이름도 바꿀 수 있다', async () => {
+      // 채널 찾기 두 번, 새 이름이 비었는지 한 번
+      channelsRepository.findOne
+        .mockResolvedValueOnce(free)
+        .mockResolvedValueOnce(free)
+        .mockResolvedValueOnce(null);
+      workspacesService.roleOf.mockResolvedValue('admin');
+      channelMembersRepository.find.mockResolvedValue([{ UserId: 1 }]);
+      await service.updateChannel('shlack', '자유', { name: '새이름' }, 1);
+      expect(channelsRepository.update).toHaveBeenCalledWith(4, {
+        name: '새이름',
       });
+    });
+
+    it('게스트는 채널을 만들거나 둘러보거나 스스로 참여할 수 없다', async () => {
+      workspacesService.assertMember.mockResolvedValue('guest');
+      await expect(
+        service.createWorkspaceChannel('shlack', '새채널', false, 1),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(
+        service.browsePublicChannels('shlack', 1),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(
+        service.joinChannel('shlack', '자유', 1),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(channelsRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('일반 채널은 워크스페이스 소유자라도 보관할 수 없다', async () => {
+      workspacesService.roleOf.mockResolvedValue('owner');
       await expect(
         service.setArchived('shlack', '일반', true, 1),
       ).rejects.toBeInstanceOf(BadRequestException);

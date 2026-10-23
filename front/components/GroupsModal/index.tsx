@@ -14,14 +14,16 @@ interface Props {
   show: boolean;
   workspace: string;
   me: IUser;
-  isOwner: boolean; // 워크스페이스 소유자는 모든 그룹을 고칠 수 있다
+  isOwner: boolean; // 워크스페이스 관리자는 모든 그룹을 고칠 수 있다
+  // 게스트는 새로 만들 수 없다
+  canCreate?: boolean;
   onCloseModal: () => void;
 }
 
 const NAME = /^[^\s@()[\]]+$/;
 
 // 사용자 그룹: @그룹이름 으로 멘션하면 그룹 멤버에게 알린다
-const GroupsModal: FC<Props> = ({ show, workspace, me, isOwner, onCloseModal }) => {
+const GroupsModal: FC<Props> = ({ show, workspace, me, isOwner, canCreate, onCloseModal }) => {
   const { data: groups } = useGroups(show ? workspace : undefined);
   const { data: members } = useSWR<IUser[]>(show ? `/api/workspaces/${workspace}/members` : null, fetcher);
   // 편집 중인 그룹 (null 이면 새로 만들기)
@@ -123,58 +125,60 @@ const GroupsModal: FC<Props> = ({ show, workspace, me, isOwner, onCloseModal }) 
           );
         })}
       </GroupList>
-      <form onSubmit={onSubmit}>
-        <h3 style={{ margin: '0 0 10px', fontSize: 15 }}>{editing ? `@${editing.name} 고치기` : '새 그룹'}</h3>
-        <Field>
-          <label htmlFor="group-name">이름</label>
-          <TextInput
-            id="group-name"
-            value={name}
-            maxLength={30}
-            placeholder="디자인팀"
-            onChange={(e) => setName(e.target.value)}
-          />
-        </Field>
-        <Field>
-          <label htmlFor="group-desc">설명 (선택)</label>
-          <TextInput
-            id="group-desc"
-            value={description}
-            maxLength={100}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </Field>
-        <Field>
-          <label>멤버</label>
-          <MemberChecks>
-            {members?.map((member) => (
-              <label key={member.id}>
-                <input
-                  type="checkbox"
-                  checked={memberIds.includes(member.id)}
-                  onChange={(e) =>
-                    setMemberIds((prev) =>
-                      e.target.checked ? [...prev, member.id] : prev.filter((id) => id !== member.id),
-                    )
-                  }
-                />
-                {member.nickname}
-              </label>
-            ))}
-          </MemberChecks>
-        </Field>
-        {error && <FormError role="alert">{error}</FormError>}
-        <Actions>
-          {editing && (
-            <button type="button" onClick={() => reset(null)}>
-              취소
+      {(canCreate !== false || editing) && (
+        <form onSubmit={onSubmit}>
+          <h3 style={{ margin: '0 0 10px', fontSize: 15 }}>{editing ? `@${editing.name} 고치기` : '새 그룹'}</h3>
+          <Field>
+            <label htmlFor="group-name">이름</label>
+            <TextInput
+              id="group-name"
+              value={name}
+              maxLength={30}
+              placeholder="디자인팀"
+              onChange={(e) => setName(e.target.value)}
+            />
+          </Field>
+          <Field>
+            <label htmlFor="group-desc">설명 (선택)</label>
+            <TextInput
+              id="group-desc"
+              value={description}
+              maxLength={100}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </Field>
+          <Field>
+            <label>멤버</label>
+            <MemberChecks>
+              {members?.map((member) => (
+                <label key={member.id}>
+                  <input
+                    type="checkbox"
+                    checked={memberIds.includes(member.id)}
+                    onChange={(e) =>
+                      setMemberIds((prev) =>
+                        e.target.checked ? [...prev, member.id] : prev.filter((id) => id !== member.id),
+                      )
+                    }
+                  />
+                  {member.nickname}
+                </label>
+              ))}
+            </MemberChecks>
+          </Field>
+          {error && <FormError role="alert">{error}</FormError>}
+          <Actions>
+            {editing && (
+              <button type="button" onClick={() => reset(null)}>
+                취소
+              </button>
+            )}
+            <button type="submit" className="primary">
+              {editing ? '저장' : '그룹 만들기'}
             </button>
-          )}
-          <button type="submit" className="primary">
-            {editing ? '저장' : '그룹 만들기'}
-          </button>
-        </Actions>
-      </form>
+          </Actions>
+        </form>
+      )}
     </Modal>
   );
 };

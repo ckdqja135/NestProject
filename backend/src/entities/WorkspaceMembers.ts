@@ -28,6 +28,10 @@ export class WorkspaceMembers {
   @Column('datetime', { name: 'loggedInAt', nullable: true })
   loggedInAt: Date | null;
 
+  // 역할: admin(관리자) member(멤버) guest(게스트: 초대받은 채널만). 소유자는 Workspaces.OwnerId 로 정한다
+  @Column('varchar', { name: 'role', length: 10, default: 'member' })
+  role: 'admin' | 'member' | 'guest';
+
   @ManyToOne(() => Workspaces, (workspaces) => workspaces.WorkspaceMembers, {
     onDelete: 'CASCADE',
     onUpdate: 'CASCADE',

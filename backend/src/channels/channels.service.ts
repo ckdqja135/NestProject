@@ -15,7 +15,10 @@ import { toVersions } from '../common/edit-history';
 import { checkPollVote, parsePoll, toPollContent } from '../common/poll';
 import { Users } from '../entities/Users';
 import { WorkspaceMembers } from '../entities/WorkspaceMembers';
-import { WorkspacesService } from '../workspaces/workspaces.service';
+import {
+  isAdminRole,
+  WorkspacesService,
+} from '../workspaces/workspaces.service';
 import { EventsGateway } from '../events/events.gateway';
 import { MentionsService } from '../mentions/mentions.service';
 import { toFileContent, toFileMeta } from '../common/upload';
@@ -76,13 +79,13 @@ export class ChannelsService {
     return channel;
   }
 
-  // 채널 이름 변경/보관/삭제는 채널을 만든 사람과 워크스페이스 소유자만 할 수 있다
+  // 채널 이름 변경/보관/삭제는 채널을 만든 사람과 워크스페이스 관리자(소유자 포함)만 할 수 있다
   private async findManageableChannel(url: string, name: string, myId: number) {
     const channel = await this.findChannel(url, name, myId);
-    const workspace = await this.workspacesService.findWorkspaceByUrl(url);
-    if (channel.OwnerId !== myId && workspace.OwnerId !== myId) {
+    const role = await this.workspacesService.roleOf(channel.WorkspaceId, myId);
+    if (channel.OwnerId !== myId && !isAdminRole(role)) {
       throw new ForbiddenException(
-        '채널을 만든 사람이나 워크스페이스 소유자만 할 수 있습니다.',
+        '채널을 만든 사람이나 워크스페이스 관리자만 할 수 있습니다.',
       );
     }
     if (channel.name === '일반') {
@@ -133,7 +136,10 @@ export class ChannelsService {
     myId: number,
   ) {
     const workspace = await this.workspacesService.findWorkspaceByUrl(url);
-    await this.workspacesService.assertMember(workspace.id, myId);
+    const role = await this.workspacesService.assertMember(workspace.id, myId);
+    if (role === 'guest') {
+      throw new ForbiddenException('게스트는 채널을 만들 수 없습니다.');
+    }
     this.assertChannelName(name);
     const exists = await this.channelsRepository.findOne({
       where: { WorkspaceId: workspace.id, name },
@@ -157,7 +163,10 @@ export class ChannelsService {
   // 채널 둘러보기: 워크스페이스의 공개 채널 목록 (참여 여부, 멤버 수 포함)
   async browsePublicChannels(url: string, myId: number) {
     const workspace = await this.workspacesService.findWorkspaceByUrl(url);
-    await this.workspacesService.assertMember(workspace.id, myId);
+    const role = await this.workspacesService.assertMember(workspace.id, myId);
+    if (role === 'guest') {
+      throw new ForbiddenException('게스트는 초대받은 채널만 볼 수 있습니다.');
+    }
     const channels = await this.channelsRepository
       .createQueryBuilder('channels')
       .loadRelationCountAndMap(
@@ -184,7 +193,10 @@ export class ChannelsService {
   // 공개 채널에 스스로 참여. 비공개 채널은 초대로만 들어올 수 있다.
   async joinChannel(url: string, name: string, myId: number) {
     const workspace = await this.workspacesService.findWorkspaceByUrl(url);
-    await this.workspacesService.assertMember(workspace.id, myId);
+    const role = await this.workspacesService.assertMember(workspace.id, myId);
+    if (role === 'guest') {
+      throw new ForbiddenException('게스트는 초대받은 채널만 볼 수 있습니다.');
+    }
     const channel = await this.channelsRepository.findOne({
       where: { WorkspaceId: workspace.id, name },
     });
@@ -227,6 +239,13 @@ export class ChannelsService {
     myId: number,
   ) {
     const channel = await this.findWritableChannel(url, name, myId);
+    const myRole = await this.workspacesService.roleOf(
+      channel.WorkspaceId,
+      myId,
+    );
+    if (myRole === 'guest') {
+      throw new ForbiddenException('게스트는 사람을 초대할 수 없습니다.');
+    }
     const user = await this.usersRepository
       .createQueryBuilder('user')
       .innerJoin(
@@ -239,6 +258,16 @@ export class ChannelsService {
       .getOne();
     if (!user) {
       throw new NotFoundException('워크스페이스에 존재하지 않는 사용자입니다.');
+    }
+    // 게스트를 채널에 들이는 것은 관리자만
+    const targetRole = await this.workspacesService.roleOf(
+      channel.WorkspaceId,
+      user.id,
+    );
+    if (targetRole === 'guest' && !isAdminRole(myRole)) {
+      throw new ForbiddenException(
+        '게스트는 관리자만 채널에 초대할 수 있습니다.',
+      );
     }
     const already = await this.channelMembersRepository.findOne({
       where: { ChannelId: channel.id, UserId: user.id },
@@ -407,7 +436,13 @@ export class ChannelsService {
   async deleteChat(url: string, name: string, chatId: number, myId: number) {
     const channel = await this.findWritableChannel(url, name, myId);
     const chat = await this.findChatInChannel(channel, chatId);
-    if (chat.UserId !== myId) {
+    // 관리자는 다른 사람 메시지도 지울 수 있다
+    if (
+      chat.UserId !== myId &&
+      !isAdminRole(
+        await this.workspacesService.roleOf(channel.WorkspaceId, myId),
+      )
+    ) {
       throw new ForbiddenException('내가 보낸 메시지만 삭제할 수 있습니다.');
     }
     // 답글과 리액션은 FK ON DELETE CASCADE 로 함께 삭제된다. 멘션은 FK 가 없으므로 직접 지운다.
@@ -710,7 +745,12 @@ export class ChannelsService {
     if (!poll) {
       throw new BadRequestException('투표 메시지가 아닙니다.');
     }
-    if (chat.UserId !== myId) {
+    if (
+      chat.UserId !== myId &&
+      !isAdminRole(
+        await this.workspacesService.roleOf(channel.WorkspaceId, myId),
+      )
+    ) {
       throw new ForbiddenException('투표를 올린 사람만 마감할 수 있습니다.');
     }
     await this.channelChatsRepository.update(chat.id, {

@@ -13,6 +13,8 @@ interface Props {
   workspace: string;
   me: IUser;
   isOwner: boolean;
+  // 게스트는 새로 만들 수 없다
+  canCreate?: boolean;
   onCloseModal: () => void;
 }
 
@@ -47,7 +49,7 @@ const toDataUrl = (file: File) =>
   });
 
 // 워크스페이스 전용 이모지: 메시지에 :이름: 으로 쓰거나 리액션으로 단다
-const CustomEmojiModal: FC<Props> = ({ show, workspace, me, isOwner, onCloseModal }) => {
+const CustomEmojiModal: FC<Props> = ({ show, workspace, me, isOwner, canCreate, onCloseModal }) => {
   const { emojis } = useCustomEmojis(show ? workspace : undefined);
   const [name, setName] = useState('');
   const [image, setImage] = useState('');
@@ -142,33 +144,35 @@ const CustomEmojiModal: FC<Props> = ({ show, workspace, me, isOwner, onCloseModa
           </li>
         ))}
       </GroupList>
-      <form onSubmit={onSubmit}>
-        <h3 style={{ margin: '0 0 10px', fontSize: 15 }}>새 이모지</h3>
-        <Field>
-          <label htmlFor="emoji-file">그림 (PNG·GIF·JPEG·WEBP, 128KB 넘으면 줄여서 올림)</label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <input id="emoji-file" type="file" accept="image/png,image/gif,image/jpeg,image/webp" onChange={onFile} />
-            {image && <img src={image} alt="미리보기" style={{ width: 32, height: 32, objectFit: 'contain' }} />}
-          </div>
-        </Field>
-        <Field>
-          <label htmlFor="emoji-name">이름</label>
-          <TextInput
-            id="emoji-name"
-            value={name}
-            maxLength={14}
-            placeholder="party_parrot"
-            onChange={(e) => setName(e.target.value.toLowerCase())}
-          />
-          <p className="hint">메시지에 :{name || '이름'}: 으로 씁니다.</p>
-        </Field>
-        {error && <FormError role="alert">{error}</FormError>}
-        <Actions>
-          <button type="submit" className="primary" disabled={busy || !name || !image}>
-            올리기
-          </button>
-        </Actions>
-      </form>
+      {canCreate !== false && (
+        <form onSubmit={onSubmit}>
+          <h3 style={{ margin: '0 0 10px', fontSize: 15 }}>새 이모지</h3>
+          <Field>
+            <label htmlFor="emoji-file">그림 (PNG·GIF·JPEG·WEBP, 128KB 넘으면 줄여서 올림)</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <input id="emoji-file" type="file" accept="image/png,image/gif,image/jpeg,image/webp" onChange={onFile} />
+              {image && <img src={image} alt="미리보기" style={{ width: 32, height: 32, objectFit: 'contain' }} />}
+            </div>
+          </Field>
+          <Field>
+            <label htmlFor="emoji-name">이름</label>
+            <TextInput
+              id="emoji-name"
+              value={name}
+              maxLength={14}
+              placeholder="party_parrot"
+              onChange={(e) => setName(e.target.value.toLowerCase())}
+            />
+            <p className="hint">메시지에 :{name || '이름'}: 으로 씁니다.</p>
+          </Field>
+          {error && <FormError role="alert">{error}</FormError>}
+          <Actions>
+            <button type="submit" className="primary" disabled={busy || !name || !image}>
+              올리기
+            </button>
+          </Actions>
+        </form>
+      )}
     </Modal>
   );
 };

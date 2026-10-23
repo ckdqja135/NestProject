@@ -102,6 +102,11 @@ const ContactDetail: FC<MemberProps | ExternalProps> = (props) => {
           <h2>
             {member.nickname}
             {isMe && <small> (나)</small>}
+            {(member.role === 'admin' || member.role === 'owner' || member.role === 'guest') && (
+              <small className={`role-tag ${member.role}`}>
+                {member.role === 'guest' ? '게스트' : member.role === 'owner' ? '소유자' : '관리자'}
+              </small>
+            )}
           </h2>
           {(member.department || member.jobTitle) && (
             <p className="meta">{[member.department, member.jobTitle].filter(Boolean).join(' · ')}</p>

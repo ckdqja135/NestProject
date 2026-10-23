@@ -22,6 +22,42 @@ export const Field = styled.div`
     font-size: 13px;
     color: #e01e5a;
   }
+
+  & > .select {
+    width: 100%;
+    height: 40px;
+    padding: 0 8px;
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+  }
+
+  /* 여러 개 고르는 체크 목록 (게스트 채널 등) */
+  & > .channel-picks {
+    display: flex;
+    flex-direction: column;
+    max-height: 180px;
+    overflow-y: auto;
+    padding: 4px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+
+    & .pick {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+
+      &:hover {
+        background: var(--bg-hover);
+      }
+    }
+  }
 `;
 
 export const TextInput = styled.input`

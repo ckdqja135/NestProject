@@ -8,7 +8,10 @@ import { randomBytes } from 'crypto';
 import { Repository } from 'typeorm';
 import { ChannelsService } from '../channels/channels.service';
 import { Webhooks } from '../entities/Webhooks';
-import { WorkspacesService } from '../workspaces/workspaces.service';
+import {
+  isAdminRole,
+  WorkspacesService,
+} from '../workspaces/workspaces.service';
 
 @Injectable()
 export class WebhooksService {
@@ -43,6 +46,12 @@ export class WebhooksService {
       name,
       myId,
     );
+    if (
+      (await this.workspacesService.roleOf(channel.WorkspaceId, myId)) ===
+      'guest'
+    ) {
+      throw new ForbiddenException('게스트는 웹훅을 만들 수 없습니다.');
+    }
     return this.webhooksRepository.save({
       ChannelId: channel.id,
       name: botName.trim(),
@@ -51,7 +60,7 @@ export class WebhooksService {
     });
   }
 
-  // 만든 사람이나 워크스페이스 소유자만 지울 수 있다
+  // 만든 사람이나 워크스페이스 관리자만 지울 수 있다
   async deleteWebhook(url: string, name: string, id: number, myId: number) {
     const channel = await this.channelsService.getWorkspaceChannel(
       url,
@@ -64,10 +73,10 @@ export class WebhooksService {
     if (!webhook) {
       throw new NotFoundException('존재하지 않는 웹훅입니다.');
     }
-    const workspace = await this.workspacesService.findWorkspaceByUrl(url);
-    if (webhook.CreatorId !== myId && workspace.OwnerId !== myId) {
+    const role = await this.workspacesService.roleOf(channel.WorkspaceId, myId);
+    if (webhook.CreatorId !== myId && !isAdminRole(role)) {
       throw new ForbiddenException(
-        '웹훅을 만든 사람이나 워크스페이스 소유자만 지울 수 있습니다.',
+        '웹훅을 만든 사람이나 워크스페이스 관리자만 지울 수 있습니다.',
       );
     }
     await this.webhooksRepository.delete(webhook.id);

@@ -14,7 +14,11 @@ import { DocUserStates } from '../entities/DocUserStates';
 import { DocLinks } from '../entities/DocLinks';
 import { DocComments } from '../entities/DocComments';
 import { EventsGateway } from '../events/events.gateway';
-import { WorkspacesService } from '../workspaces/workspaces.service';
+import {
+  isAdminRole,
+  WorkspaceRole,
+  WorkspacesService,
+} from '../workspaces/workspaces.service';
 
 const LIST_LIMIT = 100;
 const TITLES = {
@@ -27,9 +31,14 @@ const TITLES = {
   design: '제목 없는 디자인',
 };
 
-// 볼 수 있는 문서: 내가 만들었거나, 워크스페이스 공개거나, 나와 공유됨
+// 볼 수 있는 문서: 내가 만들었거나, 워크스페이스 공개거나, 나와 공유됨.
+// 게스트는 워크스페이스 공개 문서(위키 포함)는 못 보고, 자기 문서와 공유받은 문서만 본다
 const VISIBLE = `(d.OwnerId = :me OR d.visibility = 'workspace' OR EXISTS (
   SELECT 1 FROM docshares ds WHERE ds.DocId = d.id AND ds.UserId = :me))`;
+const VISIBLE_FOR_GUEST = `(d.OwnerId = :me OR EXISTS (
+  SELECT 1 FROM docshares ds WHERE ds.DocId = d.id AND ds.UserId = :me))`;
+const visibleFor = (role: WorkspaceRole) =>
+  role === 'guest' ? VISIBLE_FOR_GUEST : VISIBLE;
 
 @Injectable()
 export class DocsService {
@@ -51,8 +60,8 @@ export class DocsService {
 
   private async findWorkspace(url: string, myId: number) {
     const workspace = await this.workspacesService.findWorkspaceByUrl(url);
-    await this.workspacesService.assertMember(workspace.id, myId);
-    return workspace;
+    const role = await this.workspacesService.assertMember(workspace.id, myId);
+    return Object.assign(workspace, { role });
   }
 
   // 문서 하나와 내 권한 (보기·편집·관리)
@@ -74,14 +83,15 @@ export class DocsService {
       where: { DocId: doc.id, UserId: myId },
     });
     const isOwner = doc.OwnerId === myId;
-    const canView = isOwner || doc.visibility === 'workspace' || !!share;
+    const openToAll =
+      doc.visibility === 'workspace' && workspace.role !== 'guest';
+    const canView = isOwner || openToAll || !!share;
     if (!canView) {
       // 볼 수 없는 문서는 있는지도 알리지 않는다
       throw new NotFoundException('존재하지 않는 문서입니다.');
     }
-    const canEdit =
-      isOwner || doc.visibility === 'workspace' || share?.role === 'edit';
-    const canManage = isOwner || workspace.OwnerId === myId;
+    const canEdit = isOwner || openToAll || share?.role === 'edit';
+    const canManage = isOwner || isAdminRole(workspace.role);
     return { workspace, doc, canEdit, canManage };
   }
 
@@ -156,14 +166,14 @@ export class DocsService {
 
   // 이 문서를 링크한 문서들 (내가 볼 수 있는 것만)
   async getBacklinks(url: string, id: number, myId: number) {
-    const { doc } = await this.access(url, id, myId);
+    const { doc, workspace } = await this.access(url, id, myId);
     return this.docsRepository
       .createQueryBuilder('d')
       .innerJoin(DocLinks, 'l', 'l.FromId = d.id AND l.ToId = :to', {
         to: doc.id,
       })
       .select(['d.id', 'd.title', 'd.type'])
-      .where(VISIBLE, { me: myId })
+      .where(visibleFor(workspace.role), { me: myId })
       .orderBy('d.updatedAt', 'DESC')
       .limit(50)
       .getMany();
@@ -343,7 +353,7 @@ export class DocsService {
         's.viewedAt AS viewedAt',
       ])
       .where('d.WorkspaceId = :workspaceId', { workspaceId: workspace.id })
-      .andWhere(VISIBLE, { me: myId });
+      .andWhere(visibleFor(workspace.role), { me: myId });
     if (query.q?.trim()) {
       qb.andWhere('d.title LIKE :q', {
         q: `%${query.q.trim().replace(/[\\%_]/g, (c) => `\\${c}`)}%`,
@@ -387,6 +397,9 @@ export class DocsService {
   // 위키: 워크스페이스 공개 위키 페이지 트리 (내용 없이)
   async getWikiTree(url: string, myId: number) {
     const workspace = await this.findWorkspace(url, myId);
+    if (workspace.role === 'guest') {
+      return [];
+    }
     return this.docsRepository.find({
       where: { WorkspaceId: workspace.id, type: 'wiki' },
       select: ['id', 'title', 'ParentId', 'updatedAt'],
@@ -461,6 +474,12 @@ export class DocsService {
   ) {
     const workspace = await this.findWorkspace(url, myId);
     const isWiki = dto.type === 'wiki';
+    if (
+      workspace.role === 'guest' &&
+      (isWiki || dto.visibility === 'workspace')
+    ) {
+      throw new ForbiddenException('게스트는 비공개 문서만 만들 수 있습니다.');
+    }
     if (dto.folderId && !isWiki) {
       await this.assertMyFolder(workspace.id, dto.folderId, myId);
     }
@@ -563,11 +582,16 @@ export class DocsService {
     if (dto.visibility !== undefined || dto.parentId !== undefined) {
       if (!canManage) {
         throw new ForbiddenException(
-          '문서를 만든 사람이나 워크스페이스 소유자만 할 수 있습니다.',
+          '문서를 만든 사람이나 워크스페이스 관리자만 할 수 있습니다.',
         );
       }
     }
     if (dto.visibility !== undefined) {
+      if (dto.visibility === 'workspace' && workspace.role === 'guest') {
+        throw new ForbiddenException(
+          '게스트는 문서를 워크스페이스에 공개할 수 없습니다.',
+        );
+      }
       if (doc.type === 'wiki') {
         throw new BadRequestException(
           '위키 페이지는 항상 워크스페이스 공개입니다.',
@@ -620,7 +644,7 @@ export class DocsService {
     const { workspace, doc, canManage } = await this.access(url, id, myId);
     if (!canManage) {
       throw new ForbiddenException(
-        '문서를 만든 사람이나 워크스페이스 소유자만 공유할 수 있습니다.',
+        '문서를 만든 사람이나 워크스페이스 관리자만 공유할 수 있습니다.',
       );
     }
     if (userId === doc.OwnerId) {
@@ -643,7 +667,7 @@ export class DocsService {
     const { doc, canManage } = await this.access(url, id, myId);
     if (!canManage && userId !== myId) {
       throw new ForbiddenException(
-        '문서를 만든 사람이나 워크스페이스 소유자만 할 수 있습니다.',
+        '문서를 만든 사람이나 워크스페이스 관리자만 할 수 있습니다.',
       );
     }
     await this.sharesRepository.delete({ DocId: doc.id, UserId: userId });
@@ -670,7 +694,7 @@ export class DocsService {
     const { doc, canManage } = await this.access(url, id, myId);
     if (!canManage) {
       throw new ForbiddenException(
-        '문서를 만든 사람이나 워크스페이스 소유자만 지울 수 있습니다.',
+        '문서를 만든 사람이나 워크스페이스 관리자만 지울 수 있습니다.',
       );
     }
     await this.docsRepository.softDelete(doc.id);

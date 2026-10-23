@@ -1,4 +1,5 @@
 import Modal from '@components/Modal';
+import useMyRole from '@hooks/useMyRole';
 import { ChoiceList, Field, FormError, TextInput } from '@components/ModalForm/styles';
 import { IDoc, IUser } from '@typings/db';
 import { avatarUrl } from '@utils/avatar';
@@ -24,6 +25,8 @@ const ROLE_LABEL = { view: '보기만', edit: '고칠 수 있음' } as const;
 
 // 문서 공유: 공개 범위 (나만·워크스페이스) + 사람별 보기/편집 권한
 const ShareDocModal: FC<Props> = ({ show, workspace, doc, me, onCloseModal, onChanged }) => {
+  // 게스트는 워크스페이스 전체에 공개할 수 없다
+  const isGuest = useMyRole(workspace) === 'guest';
   const { data: members } = useSWR<IUser[]>(show ? `/api/workspaces/${workspace}/members` : null, fetcher);
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
@@ -71,23 +74,25 @@ const ShareDocModal: FC<Props> = ({ show, workspace, doc, me, onCloseModal, onCh
                   '워크스페이스 멤버 모두가 보고 고칠 수 있습니다.',
                 ],
               ] as const
-            ).map(([value, icon, label, hint]) => (
-              <label key={value} className={doc.visibility === value ? 'selected' : undefined}>
-                <input
-                  type="radio"
-                  name="doc-visibility"
-                  checked={doc.visibility === value}
-                  disabled={!manage}
-                  onChange={() => run(axios.patch(`${base}/settings`, { visibility: value }))}
-                />
-                <span>
-                  <strong style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {icon} {label}
-                  </strong>
-                  <small>{hint}</small>
-                </span>
-              </label>
-            ))}
+            )
+              .filter(([value]) => !isGuest || value === 'private' || doc.visibility === value)
+              .map(([value, icon, label, hint]) => (
+                <label key={value} className={doc.visibility === value ? 'selected' : undefined}>
+                  <input
+                    type="radio"
+                    name="doc-visibility"
+                    checked={doc.visibility === value}
+                    disabled={!manage}
+                    onChange={() => run(axios.patch(`${base}/settings`, { visibility: value }))}
+                  />
+                  <span>
+                    <strong style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {icon} {label}
+                    </strong>
+                    <small>{hint}</small>
+                  </span>
+                </label>
+              ))}
           </ChoiceList>
         )}
         {!manage && <p className="hint">공개 범위와 공유는 문서를 만든 사람만 바꿀 수 있습니다.</p>}

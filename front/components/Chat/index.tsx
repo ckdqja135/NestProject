@@ -59,6 +59,8 @@ export interface ChatActions {
   onReact?: (chat: IDM | IChat, emoji: string) => void;
   onReply?: (chat: IChat) => void;
   onTogglePin?: (chat: IDM | IChat) => void;
+  // 워크스페이스 관리자: 채널에서 다른 사람 메시지도 지울 수 있다
+  canModerate?: boolean;
 }
 
 interface Props {
@@ -268,7 +270,7 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
       .then(() => toast.info(`${formatWhen(date)}에 이 메시지를 다시 알려드릴게요.`, { position: 'bottom-center' }))
       .catch((error) => toast.error(getErrorMessage(error), { position: 'bottom-center' }));
   };
-  const canDelete = canAct && isMine && !!actions?.onDelete;
+  const canDelete = canAct && (isMine || (!isDM && !!actions?.canModerate)) && !!actions?.onDelete;
   const canReact = canAct && !!actions?.onReact;
   const canReply = canAct && !!channelChat && !channelChat.ParentId && !!actions?.onReply;
   const canPin = canAct && !!actions?.onTogglePin;

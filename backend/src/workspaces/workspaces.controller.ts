@@ -13,9 +13,12 @@ import {
 import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { LoggedInGuard } from '../auth/logged-in.guard';
 import { User } from '../common/decorators/user.decorator';
-import { InviteMemberDto } from '../common/dto/invite-member.dto';
 import { Users } from '../entities/Users';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
+import {
+  InviteWorkspaceMemberDto,
+  SetMemberRoleDto,
+} from './dto/member-role.dto';
 import {
   TransferOwnerDto,
   UpdateWorkspaceDto,
@@ -51,15 +54,35 @@ export class WorkspacesController {
     return this.workspacesService.getWorkspaceMembers(url, user.id);
   }
 
-  @ApiOperation({ summary: '워크스페이스 멤버 초대' })
+  @ApiOperation({
+    summary:
+      '워크스페이스 멤버 초대 (게스트는 관리자만, 고른 채널에만 들어간다)',
+  })
   @Post(':url/members')
   async inviteMembersToWorkspace(
     @Param('url') url: string,
-    @Body() body: InviteMemberDto,
+    @Body() body: InviteWorkspaceMemberDto,
     @User() user: Users,
   ) {
-    await this.workspacesService.inviteMember(url, body.email, user.id);
+    await this.workspacesService.inviteMember(
+      url,
+      body.email,
+      user.id,
+      body.role || 'member',
+      body.channelIds || [],
+    );
     return 'ok';
+  }
+
+  @ApiOperation({ summary: '멤버 역할 바꾸기 (관리자·멤버·게스트)' })
+  @Put(':url/members/:id/role')
+  setMemberRole(
+    @Param('url') url: string,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: SetMemberRoleDto,
+    @User() user: Users,
+  ) {
+    return this.workspacesService.setMemberRole(url, id, body.role, user.id);
   }
 
   @ApiOperation({ summary: '워크스페이스 멤버 강퇴/탈퇴' })

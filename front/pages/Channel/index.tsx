@@ -1,4 +1,5 @@
 import { Archive, ArrowUpToLine, Bell, BellOff, ChartBar, Hash, Headphones, Lock, Pin, Settings } from 'lucide-react';
+import useMyRole, { isAdminRole } from '@hooks/useMyRole';
 import { useHuddle } from '@components/Huddle/HuddleProvider';
 import useSidebarPins from '@hooks/useSidebarPins';
 import { ChatActions } from '@components/Chat';
@@ -55,6 +56,7 @@ const showError = (error: unknown) => toast.error(getErrorMessage(error), { posi
 
 const Channel = () => {
   const { workspace, channel } = useParams<{ workspace: string; channel: string }>();
+  const myRole = useMyRole(workspace);
   const history = useHistory();
   const [socket] = useSocket(workspace);
   const { data: userData } = useSWR<IUser>('/api/users', fetcher);
@@ -387,6 +389,7 @@ const Channel = () => {
       onDelete: (target: IDM | IChat) => {
         axios.delete(`${chatsKey}/${target.id}`).catch(showError);
       },
+      canModerate: isAdminRole(myRole),
       onReact: (target: IDM | IChat, emoji: string) => {
         axios.post(`${chatsKey}/${target.id}/reactions`, { emoji }).catch(showError);
       },
@@ -401,7 +404,7 @@ const Channel = () => {
         request.catch(showError);
       },
     }),
-    [chatsKey],
+    [chatsKey, myRole],
   );
 
   const onClickInviteChannel = useCallback(() => {
@@ -479,9 +482,8 @@ const Channel = () => {
     }
   }, []);
 
-  // 채널 이름 변경·보관·삭제 권한: 채널을 만든 사람 또는 워크스페이스 소유자
-  const currentWorkspace = userData?.Workspaces?.find((w) => w.url === workspace);
-  const canManage = !!userData && (channelData?.OwnerId === userData.id || currentWorkspace?.OwnerId === userData.id);
+  // 채널 이름 변경·보관·삭제 권한: 채널을 만든 사람 또는 워크스페이스 관리자(소유자 포함)
+  const canManage = !!userData && (channelData?.OwnerId === userData.id || isAdminRole(myRole));
 
   if (channelsData && !channelData) {
     return <Redirect to={`/workspace/${workspace}/channel/일반`} />;
@@ -567,15 +569,18 @@ const Channel = () => {
               </HeaderButton>
             )}
             <span>{channelMembersData?.length}</span>
-            <button
-              onClick={onClickInviteChannel}
-              className="c-button-unstyled p-ia__view_header__button"
-              aria-label="채널에 사람 초대"
-              data-sk="tooltip_parent"
-              type="button"
-            >
-              <i className="c-icon p-ia__view_header__button_icon c-icon--add-user" aria-hidden="true" />
-            </button>
+            {/* 게스트는 사람을 초대할 수 없다 */}
+            {myRole !== 'guest' && (
+              <button
+                onClick={onClickInviteChannel}
+                className="c-button-unstyled p-ia__view_header__button"
+                aria-label="채널에 사람 초대"
+                data-sk="tooltip_parent"
+                type="button"
+              >
+                <i className="c-icon p-ia__view_header__button_icon c-icon--add-user" aria-hidden="true" />
+              </button>
+            )}
           </div>
         </Header>
         {huddle && !inHuddle && (

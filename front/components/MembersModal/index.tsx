@@ -1,7 +1,8 @@
 import Modal from '@components/Modal';
 import { Field, FormError, TextInput } from '@components/ModalForm/styles';
+import useMyRole, { isAdminRole, ROLE_LABELS } from '@hooks/useMyRole';
 import useOnlineList from '@hooks/useOnlineList';
-import { IUser, IWorkspace } from '@typings/db';
+import { IUser, IWorkspace, WorkspaceRole } from '@typings/db';
 import fetcher from '@utils/fetcher';
 import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
@@ -19,7 +20,8 @@ interface Props {
   onInvite: () => void;
 }
 
-// 워크스페이스 멤버 목록. 소유자는 멤버를 내보낼 수 있고, 소유자가 아니면 스스로 나갈 수 있다.
+// 워크스페이스 멤버 목록. 관리자는 역할을 바꾸고 멤버를 내보낼 수 있고, 소유자가 아니면 스스로 나갈 수 있다.
+// (관리자 지정·해제와 관리자 내보내기는 소유자만)
 const MembersModal: FC<Props> = ({ show, onCloseModal, workspace, me, onInvite }) => {
   const membersKey = `/api/workspaces/${workspace.url}/members`;
   const { data: members, mutate } = useSWR<IUser[]>(show ? membersKey : null, fetcher);
@@ -29,7 +31,9 @@ const MembersModal: FC<Props> = ({ show, onCloseModal, workspace, me, onInvite }
   const [confirmId, setConfirmId] = useState<number | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
+  const myRole = useMyRole(workspace.url);
   const isOwner = workspace.OwnerId === me.id;
+  const amAdmin = isAdminRole(myRole);
 
   useEffect(() => {
     if (show) {
@@ -44,9 +48,12 @@ const MembersModal: FC<Props> = ({ show, onCloseModal, workspace, me, onInvite }
     return (members || [])
       .filter((m) => !q || m.nickname.toLowerCase().includes(q) || m.email.toLowerCase().includes(q))
       .sort((a, b) => {
-        // 소유자 → 나 → 온라인 → 이름순
+        // 소유자 → 관리자 → 나 → 온라인 → 이름순 (게스트는 뒤로)
+        const order: Record<WorkspaceRole, number> = { owner: 0, admin: 8, member: 16, guest: 24 };
         const rank = (m: IUser) =>
-          (m.id === workspace.OwnerId ? 0 : 4) + (m.id === me.id ? 0 : 2) + (onlineList.includes(m.id) ? 0 : 1);
+          order[m.id === workspace.OwnerId ? 'owner' : m.role || 'member'] +
+          (m.id === me.id ? 0 : 2) +
+          (onlineList.includes(m.id) ? 0 : 1);
         return rank(a) - rank(b) || a.nickname.localeCompare(b.nickname);
       });
   }, [members, query, workspace.OwnerId, me.id, onlineList]);
@@ -75,6 +82,22 @@ const MembersModal: FC<Props> = ({ show, onCloseModal, workspace, me, onInvite }
     [me.id, workspace, onCloseModal, revalidateUser, mutate],
   );
 
+  const onRole = useCallback(
+    (member: IUser, role: WorkspaceRole) => {
+      setError('');
+      axios
+        .put(`/api/workspaces/${workspace.url}/members/${member.id}/role`, { role })
+        .then(() => {
+          toast.success(`${member.nickname} 님을 ${ROLE_LABELS[role]}(으)로 바꿨습니다.`, {
+            position: 'bottom-center',
+          });
+          return mutate();
+        })
+        .catch((err) => setError(getErrorMessage(err)));
+    },
+    [workspace.url, mutate],
+  );
+
   return (
     <Modal
       show={show}
@@ -98,7 +121,10 @@ const MembersModal: FC<Props> = ({ show, onCloseModal, workspace, me, onInvite }
         {filtered.map((member) => {
           const isMe = member.id === me.id;
           const isMemberOwner = member.id === workspace.OwnerId;
-          const canRemove = (isOwner && !isMe) || (isMe && !isOwner);
+          const role: WorkspaceRole = isMemberOwner ? 'owner' : member.role || 'member';
+          // 관리자는 멤버·게스트를, 소유자는 관리자도 내보낸다
+          const canManageMember = !isMe && !isMemberOwner && !member.bot && amAdmin && (role !== 'admin' || isOwner);
+          const canRemove = canManageMember || (isMe && !isOwner);
           return (
             <MemberRow key={member.id}>
               <span className="avatar">
@@ -109,10 +135,22 @@ const MembersModal: FC<Props> = ({ show, onCloseModal, workspace, me, onInvite }
                 <b>
                   {member.nickname}
                   {isMe && <span className="me"> (나)</span>}
-                  {isMemberOwner && <span className="badge">소유자</span>}
+                  {role !== 'member' && <span className={`badge ${role}`}>{ROLE_LABELS[role]}</span>}
                 </b>
                 <small>{member.email}</small>
               </div>
+              {canManageMember && confirmId !== member.id && (
+                <select
+                  className="role-select"
+                  value={role}
+                  onChange={(e) => onRole(member, e.target.value as WorkspaceRole)}
+                  aria-label={`${member.nickname} 역할`}
+                >
+                  {isOwner && <option value="admin">관리자</option>}
+                  <option value="member">멤버</option>
+                  <option value="guest">게스트</option>
+                </select>
+              )}
               {canRemove &&
                 (confirmId === member.id ? (
                   <span className="confirm">
@@ -134,13 +172,22 @@ const MembersModal: FC<Props> = ({ show, onCloseModal, workspace, me, onInvite }
       </MemberList>
       <p className="footer-hint" style={{ margin: '16px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>
         {isOwner ? '소유자는 워크스페이스를 나갈 수 없습니다. ' : ''}
-        <button
-          type="button"
-          onClick={onInvite}
-          style={{ border: 'none', background: 'none', color: '#1264a3', cursor: 'pointer', padding: 0, fontSize: 13 }}
-        >
-          사람 초대하기
-        </button>
+        {myRole !== 'guest' && (
+          <button
+            type="button"
+            onClick={onInvite}
+            style={{
+              border: 'none',
+              background: 'none',
+              color: '#1264a3',
+              cursor: 'pointer',
+              padding: 0,
+              fontSize: 13,
+            }}
+          >
+            사람 초대하기
+          </button>
+        )}
       </p>
     </Modal>
   );

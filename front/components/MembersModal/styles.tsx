@@ -70,6 +70,16 @@ export const MemberRow = styled.div`
       font-size: 11px;
       font-weight: 700;
       vertical-align: middle;
+
+      &.admin {
+        background: rgba(18, 100, 163, 0.12);
+        color: #1264a3;
+      }
+
+      &.guest {
+        background: rgba(232, 137, 29, 0.15);
+        color: #b8640b;
+      }
     }
 
     & small {
@@ -109,5 +119,16 @@ export const MemberRow = styled.div`
   & .confirm {
     display: flex;
     gap: 6px;
+  }
+
+  & > .role-select {
+    flex: none;
+    height: 28px;
+    padding: 0 4px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 12px;
   }
 `;

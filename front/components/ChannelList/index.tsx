@@ -2,6 +2,7 @@ import { CollapseButton } from '@components/DMList/styles';
 import BrowseChannelsModal from '@components/BrowseChannelsModal';
 import EachChannel from '@components/EachChannel';
 import useMentions from '@hooks/useMentions';
+import useMyRole from '@hooks/useMyRole';
 import useSidebarPins from '@hooks/useSidebarPins';
 import { IChannel, IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
@@ -16,6 +17,8 @@ interface Props {
 
 const ChannelList: FC<Props> = () => {
   const { workspace } = useParams<{ workspace?: string }>();
+  // 게스트는 초대받은 채널만 본다 (둘러보기 없음)
+  const isGuest = useMyRole(workspace) === 'guest';
   const [channelCollapse, setChannelCollapse] = useState(false);
   const [showBrowse, setShowBrowse] = useState(false);
   const { data: mentions } = useMentions(workspace);
@@ -51,7 +54,7 @@ const ChannelList: FC<Props> = () => {
                 <EachChannel key={channel.id} channel={channel} mentionCount={mentions?.unreadByChannel[channel.id]} />
               );
             })}
-        {!channelCollapse && (
+        {!channelCollapse && !isGuest && (
           <button
             type="button"
             onClick={() => setShowBrowse(true)}

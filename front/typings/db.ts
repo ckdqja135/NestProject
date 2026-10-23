@@ -12,8 +12,12 @@ export interface IUser {
   theme?: 'system' | 'light' | 'dark' | null; // 계정에 저장한 화면 테마 (모든 기기 공통)
   notificationsPaused?: boolean; // 데스크톱 알림 일시 중지 (모든 기기 공통)
   bot?: boolean; // 봇 계정 (캘린더 어시스턴트)
+  role?: WorkspaceRole; // 멤버 목록에서: 이 워크스페이스에서의 역할
   Workspaces: IWorkspace[];
 }
+
+// 워크스페이스 역할: 소유자 > 관리자 > 멤버 > 게스트(초대받은 채널만)
+export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'guest';
 
 export interface IUserWithOnline extends IUser {
   online: boolean;

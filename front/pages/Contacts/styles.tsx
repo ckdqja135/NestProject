@@ -356,6 +356,16 @@ export const List = styled.div`
         font-size: 13px;
         color: var(--text-muted);
       }
+
+      & .role-tag {
+        margin-left: 6px;
+        padding: 1px 5px;
+        border-radius: 4px;
+        background: rgba(232, 137, 29, 0.15);
+        color: #b8640b;
+        font-size: 11px;
+        font-weight: 700;
+      }
     }
 
     & .meta {
@@ -502,6 +512,22 @@ export const Detail = styled.aside`
       width: 16px;
       height: 16px;
       border-width: 3px;
+    }
+
+    & h2 .role-tag {
+      margin-left: 6px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: rgba(18, 100, 163, 0.12);
+      color: #1264a3;
+      font-size: 12px;
+      font-weight: 700;
+      vertical-align: middle;
+
+      &.guest {
+        background: rgba(232, 137, 29, 0.15);
+        color: #b8640b;
+      }
     }
 
     & h2 {

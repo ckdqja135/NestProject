@@ -39,7 +39,8 @@ describe('CalendarService', () => {
   const workspace = { id: 1, url: 'ws', OwnerId: 1 };
   const workspacesService = {
     findWorkspaceByUrl: jest.fn().mockResolvedValue(workspace),
-    assertMember: jest.fn(),
+    assertMember: jest.fn().mockResolvedValue('member'),
+    roleOf: jest.fn().mockResolvedValue('member'),
   };
   const dmsService = { createWorkspaceDMChats: jest.fn() };
   const botsService = {

@@ -8,6 +8,8 @@ import { Gallery } from './styles';
 interface Props {
   show: boolean;
   wikiOnly: boolean;
+  // 게스트: 위키 템플릿을 보이지 않는다
+  noWiki?: boolean;
   onClose: () => void;
   onPick: (template: DocTemplate) => void;
 }
@@ -21,7 +23,7 @@ interface Section {
 const TYPE_ORDER: DocType[] = ['doc', 'database', 'design', 'slides', 'sheet', 'board'];
 
 // 템플릿 고르기: 왼쪽 분류, 위 검색, 오른쪽 카드
-const TemplateGallery: FC<Props> = ({ show, wikiOnly, onClose, onPick }) => {
+const TemplateGallery: FC<Props> = ({ show, wikiOnly, noWiki, onClose, onPick }) => {
   const [query, setQuery] = useState('');
   const [section, setSection] = useState('all');
   useEffect(() => {
@@ -33,7 +35,7 @@ const TemplateGallery: FC<Props> = ({ show, wikiOnly, onClose, onPick }) => {
 
   const sections = useMemo<Section[]>(
     () => [
-      { key: 'all', label: '전체', match: (t) => !wikiOnly || t.type === 'wiki' },
+      { key: 'all', label: '전체', match: (t) => (wikiOnly ? t.type === 'wiki' : !noWiki || t.type !== 'wiki') },
       ...(wikiOnly
         ? []
         : TYPE_ORDER.map((type) => ({
@@ -41,13 +43,15 @@ const TemplateGallery: FC<Props> = ({ show, wikiOnly, onClose, onPick }) => {
             label: DOC_TYPE_INFO[type].label,
             match: (t: DocTemplate) => t.type === type,
           }))),
-      ...WIKI_CATEGORIES.map((category) => ({
-        key: `wiki:${category}`,
-        label: category,
-        match: (t: DocTemplate) => t.type === 'wiki' && t.category === category,
-      })),
+      ...(noWiki
+        ? []
+        : WIKI_CATEGORIES.map((category) => ({
+            key: `wiki:${category}`,
+            label: category,
+            match: (t: DocTemplate) => t.type === 'wiki' && t.category === category,
+          }))),
     ],
-    [wikiOnly],
+    [wikiOnly, noWiki],
   );
   const current = sections.find((s) => s.key === section) || sections[0];
   const keyword = query.trim().toLowerCase();

@@ -15,6 +15,7 @@ import ScheduledModal from '@components/ScheduledModal';
 import GroupsModal from '@components/GroupsModal';
 import CustomEmojiModal from '@components/CustomEmojiModal';
 import useCustomEmojis from '@hooks/useCustomEmojis';
+import useMyRole, { isAdminRole } from '@hooks/useMyRole';
 import Menu from '@components/Menu';
 import SearchModal from '@components/SearchModal';
 import useSocket from '@hooks/useSocket';
@@ -181,6 +182,9 @@ const Workspace = () => {
   const onClickCreateWorkspace = useCallback(() => {
     setShowCreateWorkspaceModal(true);
   }, []);
+
+  // 이 워크스페이스에서 내 역할 (게스트에게는 초대·채널 만들기를 숨긴다)
+  const myRole = useMyRole(workspace);
 
   const onClickAddChannel = useCallback(() => {
     setShowWorkspaceModal(false);
@@ -862,16 +866,20 @@ const Workspace = () => {
                           커스텀 이모지
                         </button>
                       </li>
-                      <li>
-                        <button type="button" role="menuitem" onClick={onClickInviteWorkspace}>
-                          워크스페이스에 사용자 초대
-                        </button>
-                      </li>
-                      <li>
-                        <button type="button" role="menuitem" onClick={onClickAddChannel}>
-                          채널 만들기
-                        </button>
-                      </li>
+                      {myRole !== 'guest' && (
+                        <>
+                          <li>
+                            <button type="button" role="menuitem" onClick={onClickInviteWorkspace}>
+                              워크스페이스에 사용자 초대
+                            </button>
+                          </li>
+                          <li>
+                            <button type="button" role="menuitem" onClick={onClickAddChannel}>
+                              채널 만들기
+                            </button>
+                          </li>
+                        </>
+                      )}
                       <li className="divider" role="separator" />
                       <li>
                         <button type="button" role="menuitem" className="danger" onClick={onLogOut}>
@@ -913,7 +921,8 @@ const Workspace = () => {
             show={showEmojis}
             workspace={workspace}
             me={userData}
-            isOwner={currentWorkspace?.OwnerId === userData.id}
+            isOwner={isAdminRole(myRole)}
+            canCreate={myRole !== 'guest'}
             onCloseModal={() => setShowEmojis(false)}
           />
         )}
@@ -922,7 +931,8 @@ const Workspace = () => {
             show={showGroups}
             workspace={workspace}
             me={userData}
-            isOwner={currentWorkspace?.OwnerId === userData.id}
+            isOwner={isAdminRole(myRole)}
+            canCreate={myRole !== 'guest'}
             onCloseModal={() => setShowGroups(false)}
           />
         )}

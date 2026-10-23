@@ -26,9 +26,25 @@ describe('WorkspacesService', () => {
     findOne: jest.fn(),
     find: jest.fn(),
     delete: jest.fn(),
+    update: jest.fn(),
+    save: jest.fn(),
   };
-  const channelsRepository = { find: jest.fn() };
-  const channelMembersRepository = { delete: jest.fn() };
+  const channelsRepository = { find: jest.fn(), findOne: jest.fn() };
+  const channelMembersRepository = { delete: jest.fn(), save: jest.fn() };
+  const usersRepository = { findOne: jest.fn() };
+  const dataSource = { query: jest.fn() };
+  // 멤버 표: 사용자 id → 역할 (10 번이 소유자)
+  let roles: Record<number, string> = {};
+  const memberRow = ({ where }: { where: { UserId: number } }) =>
+    Promise.resolve(
+      roles[where.UserId]
+        ? {
+            UserId: where.UserId,
+            role: roles[where.UserId],
+            Workspace: { OwnerId: 10 },
+          }
+        : null,
+    );
   const eventsGateway = {
     removeUserFromWorkspace: jest.fn(),
     notifyWorkspacesChanged: jest.fn(),
@@ -53,8 +69,8 @@ describe('WorkspacesService', () => {
           provide: getRepositoryToken(ChannelMembers),
           useValue: channelMembersRepository,
         },
-        { provide: getRepositoryToken(Users), useValue: {} },
-        { provide: DataSource, useValue: {} },
+        { provide: getRepositoryToken(Users), useValue: usersRepository },
+        { provide: DataSource, useValue: dataSource },
         { provide: EventsGateway, useValue: eventsGateway },
         {
           provide: BotsService,
@@ -142,6 +158,31 @@ describe('WorkspacesService', () => {
   describe('kickMember', () => {
     beforeEach(() => {
       workspacesRepository.findOne.mockResolvedValue({ id: 1, OwnerId: 10 });
+      roles = {
+        10: 'member',
+        2: 'member',
+        3: 'member',
+        4: 'admin',
+        5: 'admin',
+      };
+      workspaceMembersRepository.findOne.mockImplementation(memberRow);
+    });
+
+    it('관리자는 멤버를 내보낼 수 있지만 다른 관리자는 소유자만 내보낸다', async () => {
+      channelsRepository.find.mockResolvedValue([]);
+      await service.kickMember('shlack', 3, 4);
+      expect(workspaceMembersRepository.delete).toHaveBeenCalledWith({
+        WorkspaceId: 1,
+        UserId: 3,
+      });
+      await expect(service.kickMember('shlack', 5, 4)).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+      await service.kickMember('shlack', 5, 10);
+      expect(workspaceMembersRepository.delete).toHaveBeenCalledWith({
+        WorkspaceId: 1,
+        UserId: 5,
+      });
     });
 
     it('소유자가 아닌 사람이 다른 멤버를 내보내면 ForbiddenException', async () => {
@@ -193,6 +234,73 @@ describe('WorkspacesService', () => {
     it('권한이 없어 실패하면 소켓은 건드리지 않는다', async () => {
       await expect(service.kickMember('shlack', 3, 2)).rejects.toThrow();
       expect(eventsGateway.removeUserFromWorkspace).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('역할', () => {
+    beforeEach(() => {
+      workspacesRepository.findOne.mockResolvedValue({
+        id: 1,
+        url: 'shlack',
+        OwnerId: 10,
+      });
+      roles = { 10: 'member', 2: 'member', 3: 'guest', 4: 'admin', 5: 'admin' };
+      workspaceMembersRepository.findOne.mockImplementation(memberRow);
+    });
+
+    it('소유자는 관리자를 지정하고, 관리자는 멤버↔게스트만 바꾼다', async () => {
+      await service.setMemberRole('shlack', 2, 'admin', 10);
+      expect(workspaceMembersRepository.update).toHaveBeenCalledWith(
+        { WorkspaceId: 1, UserId: 2 },
+        { role: 'admin' },
+      );
+      await service.setMemberRole('shlack', 2, 'guest', 4);
+      expect(workspaceMembersRepository.update).toHaveBeenLastCalledWith(
+        { WorkspaceId: 1, UserId: 2 },
+        { role: 'guest' },
+      );
+      await expect(
+        service.setMemberRole('shlack', 2, 'admin', 4),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(
+        service.setMemberRole('shlack', 5, 'member', 4),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(
+        service.setMemberRole('shlack', 3, 'member', 2),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(
+        service.setMemberRole('shlack', 10, 'member', 4),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('게스트 초대는 관리자만, 고른 채널에만 넣는다', async () => {
+      usersRepository.findOne.mockResolvedValue({ id: 7 });
+      channelsRepository.find.mockResolvedValue([
+        { id: 3, WorkspaceId: 1, archived: false },
+      ]);
+      await expect(
+        service.inviteMember('shlack', 'g@g.com', 2, 'guest', [3]),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(
+        service.inviteMember('shlack', 'g@g.com', 4, 'guest', []),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      await service.inviteMember('shlack', 'g@g.com', 4, 'guest', [3]);
+      expect(workspaceMembersRepository.save).toHaveBeenCalledWith({
+        WorkspaceId: 1,
+        UserId: 7,
+        role: 'guest',
+      });
+      expect(channelMembersRepository.save).toHaveBeenCalledWith({
+        ChannelId: 3,
+        UserId: 7,
+      });
+      expect(channelsRepository.findOne).not.toHaveBeenCalled();
+    });
+
+    it('게스트는 사람을 초대할 수 없다', async () => {
+      await expect(
+        service.inviteMember('shlack', 'x@x.com', 3),
+      ).rejects.toBeInstanceOf(ForbiddenException);
     });
   });
 });

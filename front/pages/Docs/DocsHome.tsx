@@ -1,4 +1,5 @@
 import { IDocFolder, IDocListItem, IUser } from '@typings/db';
+import useMyRole from '@hooks/useMyRole';
 import { avatarUrl } from '@utils/avatar';
 import { DOC_TYPE_INFO, DocType } from '@utils/docTemplates';
 import fetcher from '@utils/fetcher';
@@ -105,6 +106,8 @@ interface Props {
 
 const DocsHome: FC<Props> = ({ mode, me }) => {
   const { workspace, folderId: folderParam } = useParams<{ workspace: string; folderId?: string }>();
+  // 게스트는 위키를 만들거나 볼 수 없다
+  const isGuest = useMyRole(workspace) === 'guest';
   const history = useHistory();
   const location = useLocation();
   const q = new URLSearchParams(location.search).get('q')?.trim() || '';
@@ -350,15 +353,17 @@ const DocsHome: FC<Props> = ({ mode, me }) => {
               menu={
                 dropdown.open === 'new' && (
                   <DropMenu role="menu">
-                    {(Object.keys(DOC_TYPE_INFO) as (keyof typeof DOC_TYPE_INFO)[]).map((type) => (
-                      <button type="button" role="menuitem" key={type} onClick={() => newDoc(type)}>
-                        <DocIcon type={type} size={18} />
-                        <span>
-                          {DOC_TYPE_INFO[type].label}
-                          <small>{DOC_TYPE_INFO[type].description}</small>
-                        </span>
-                      </button>
-                    ))}
+                    {(Object.keys(DOC_TYPE_INFO) as (keyof typeof DOC_TYPE_INFO)[])
+                      .filter((type) => !isGuest || type !== 'wiki')
+                      .map((type) => (
+                        <button type="button" role="menuitem" key={type} onClick={() => newDoc(type)}>
+                          <DocIcon type={type} size={18} />
+                          <span>
+                            {DOC_TYPE_INFO[type].label}
+                            <small>{DOC_TYPE_INFO[type].description}</small>
+                          </span>
+                        </button>
+                      ))}
                   </DropMenu>
                 )
               }
@@ -544,6 +549,7 @@ const DocsHome: FC<Props> = ({ mode, me }) => {
       <TemplateGallery
         show={showTemplates}
         wikiOnly={mode === 'wiki'}
+        noWiki={isGuest}
         onClose={() => setShowTemplates(false)}
         onPick={(t) => {
           setShowTemplates(false);

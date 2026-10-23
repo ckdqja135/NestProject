@@ -10,7 +10,10 @@ import { UserGroupMembers } from '../entities/UserGroupMembers';
 import { UserGroups } from '../entities/UserGroups';
 import { WorkspaceMembers } from '../entities/WorkspaceMembers';
 import { EventsGateway } from '../events/events.gateway';
-import { WorkspacesService } from '../workspaces/workspaces.service';
+import {
+  isAdminRole,
+  WorkspacesService,
+} from '../workspaces/workspaces.service';
 
 // @channel, @here 와 헷갈리는 이름은 쓸 수 없다
 const RESERVED = ['channel', 'here'];
@@ -30,8 +33,8 @@ export class GroupsService {
 
   private async findWorkspace(url: string, myId: number) {
     const workspace = await this.workspacesService.findWorkspaceByUrl(url);
-    await this.workspacesService.assertMember(workspace.id, myId);
-    return workspace;
+    const role = await this.workspacesService.assertMember(workspace.id, myId);
+    return Object.assign(workspace, { role });
   }
 
   // 그룹 목록 (멤버 포함)
@@ -90,6 +93,9 @@ export class GroupsService {
     myId: number,
   ) {
     const workspace = await this.findWorkspace(url, myId);
+    if (workspace.role === 'guest') {
+      throw new ForbiddenException('게스트는 그룹을 만들 수 없습니다.');
+    }
     const name = dto.name.trim();
     await this.assertNameAvailable(workspace.id, name);
     const group = await this.groupsRepository.save({
@@ -106,7 +112,7 @@ export class GroupsService {
     return group;
   }
 
-  // 이름·설명·멤버 변경과 삭제는 만든 사람과 워크스페이스 소유자만
+  // 이름·설명·멤버 변경과 삭제는 만든 사람과 워크스페이스 관리자만
   private async findManageableGroup(url: string, id: number, myId: number) {
     const workspace = await this.findWorkspace(url, myId);
     const group = await this.groupsRepository.findOne({
@@ -115,9 +121,9 @@ export class GroupsService {
     if (!group) {
       throw new NotFoundException('존재하지 않는 그룹입니다.');
     }
-    if (group.CreatorId !== myId && workspace.OwnerId !== myId) {
+    if (group.CreatorId !== myId && !isAdminRole(workspace.role)) {
       throw new ForbiddenException(
-        '그룹을 만든 사람이나 워크스페이스 소유자만 할 수 있습니다.',
+        '그룹을 만든 사람이나 워크스페이스 관리자만 할 수 있습니다.',
       );
     }
     return { workspace, group };

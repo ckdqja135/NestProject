@@ -18,7 +18,10 @@ describe('WebhooksService', () => {
     getWorkspaceChannel: jest.fn().mockResolvedValue({ id: 4 }),
     postBotMessage: jest.fn().mockResolvedValue({ id: 99 }),
   };
-  const workspacesService = { findWorkspaceByUrl: jest.fn() };
+  const workspacesService = {
+    findWorkspaceByUrl: jest.fn(),
+    roleOf: jest.fn().mockResolvedValue('member'),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -69,9 +72,8 @@ describe('WebhooksService', () => {
     );
   });
 
-  it('만든 사람도 소유자도 아니면 지울 수 없다', async () => {
+  it('만든 사람도 관리자도 아니면 지울 수 없다', async () => {
     webhooksRepository.findOne.mockResolvedValue({ id: 3, CreatorId: 2 });
-    workspacesService.findWorkspaceByUrl.mockResolvedValue({ OwnerId: 9 });
     await expect(
       service.deleteWebhook('shlack', '일반', 3, 1),
     ).rejects.toBeInstanceOf(ForbiddenException);

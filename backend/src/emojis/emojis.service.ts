@@ -7,7 +7,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CustomEmojis } from '../entities/CustomEmojis';
 import { EventsGateway } from '../events/events.gateway';
-import { WorkspacesService } from '../workspaces/workspaces.service';
+import {
+  isAdminRole,
+  WorkspacesService,
+} from '../workspaces/workspaces.service';
 
 @Injectable()
 export class EmojisService {
@@ -20,8 +23,8 @@ export class EmojisService {
 
   private async findWorkspace(url: string, myId: number) {
     const workspace = await this.workspacesService.findWorkspaceByUrl(url);
-    await this.workspacesService.assertMember(workspace.id, myId);
-    return workspace;
+    const role = await this.workspacesService.assertMember(workspace.id, myId);
+    return Object.assign(workspace, { role });
   }
 
   async getEmojis(url: string, myId: number) {
@@ -34,6 +37,9 @@ export class EmojisService {
 
   async createEmoji(url: string, name: string, image: string, myId: number) {
     const workspace = await this.findWorkspace(url, myId);
+    if (workspace.role === 'guest') {
+      throw new ForbiddenException('게스트는 이모지를 올릴 수 없습니다.');
+    }
     const exists = await this.emojisRepository.findOne({
       where: { WorkspaceId: workspace.id, name },
     });
@@ -59,9 +65,9 @@ export class EmojisService {
     if (!emoji) {
       throw new NotFoundException('존재하지 않는 이모지입니다.');
     }
-    if (emoji.CreatorId !== myId && workspace.OwnerId !== myId) {
+    if (emoji.CreatorId !== myId && !isAdminRole(workspace.role)) {
       throw new ForbiddenException(
-        '이모지를 올린 사람이나 워크스페이스 소유자만 지울 수 있습니다.',
+        '이모지를 올린 사람이나 워크스페이스 관리자만 지울 수 있습니다.',
       );
     }
     await this.emojisRepository.delete(emoji.id);

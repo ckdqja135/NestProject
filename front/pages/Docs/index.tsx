@@ -1,3 +1,4 @@
+import useMyRole from '@hooks/useMyRole';
 import { IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
 import React from 'react';
@@ -14,6 +15,7 @@ const Docs = () => {
   const { workspace } = useParams<{ workspace: string }>();
   const { path } = useRouteMatch();
   const { data: me } = useSWR<IUser>('/api/users', fetcher);
+  const myRole = useMyRole(workspace);
   if (!me) {
     return null;
   }
@@ -26,9 +28,11 @@ const Docs = () => {
           <NavLink exact to={home} activeClassName="active">
             <House size={14} /> 홈
           </NavLink>
-          <NavLink to={`${home}/wiki`} activeClassName="active">
-            <BookOpen size={14} /> Wiki
-          </NavLink>
+          {myRole !== 'guest' && (
+            <NavLink to={`${home}/wiki`} activeClassName="active">
+              <BookOpen size={14} /> Wiki
+            </NavLink>
+          )}
           <NavLink to={`${home}/mine`} activeClassName="active">
             <Library size={14} /> 내 문서
           </NavLink>
