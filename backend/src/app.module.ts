@@ -43,11 +43,16 @@ import { ContactStars } from './entities/ContactStars';
 import { PasswordResets } from './entities/PasswordResets';
 import { DocLinks } from './entities/DocLinks';
 import { DocComments } from './entities/DocComments';
+import { DocAccessRequests } from './entities/DocAccessRequests';
+import { Apps } from './entities/Apps';
+import { AppCommands } from './entities/AppCommands';
 import { PinsModule } from './pins/pins.module';
 import { SectionsModule } from './sections/sections.module';
 import { PushModule } from './push/push.module';
 import { TasksModule } from './tasks/tasks.module';
 import { ApprovalsModule } from './approvals/approvals.module';
+import { AppsModule } from './apps/apps.module';
+import { AppEventsModule } from './apps/app-events.module';
 import { Approvals } from './entities/Approvals';
 import { ApprovalSteps } from './entities/ApprovalSteps';
 import { DocTasks } from './entities/DocTasks';
@@ -116,6 +121,9 @@ import { Workspaces } from './entities/Workspaces';
         PasswordResets,
         DocLinks,
         DocComments,
+        DocAccessRequests,
+        Apps,
+        AppCommands,
         ScheduledMessages,
         Reminders,
         MessageEdits,
@@ -156,6 +164,8 @@ import { Workspaces } from './entities/Workspaces';
     PushModule,
     TasksModule,
     ApprovalsModule,
+    AppEventsModule,
+    AppsModule,
     ContactsModule,
     LinksModule,
     ForwardModule,

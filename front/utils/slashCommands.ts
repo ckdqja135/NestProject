@@ -5,6 +5,8 @@ export interface SlashCommand {
   usage: string;
   description: string;
   channelOnly?: boolean;
+  // 외부 앱이 등록한 명령이면 앱 이름
+  app?: string;
 }
 
 export const SLASH_COMMANDS: SlashCommand[] = [
@@ -26,7 +28,8 @@ export const SLASH_COMMANDS: SlashCommand[] = [
 
 // '/명령 나머지' → { name, args }
 export const parseCommand = (text: string) => {
-  const match = /^\/([a-zA-Z]+)(?:\s+([\s\S]*))?$/.exec(text.trim());
+  // 앱 명령은 숫자·_·- 도 쓴다 (/deploy-prod)
+  const match = /^\/([a-zA-Z][a-zA-Z0-9_-]*)(?:\s+([\s\S]*))?$/.exec(text.trim());
   return match ? { name: match[1].toLowerCase(), args: (match[2] || '').trim() } : null;
 };
 

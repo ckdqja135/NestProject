@@ -118,7 +118,7 @@ export class CalendarController {
     return this.calendarService.unfollow(url, userId, user.id);
   }
 
-  @ApiOperation({ summary: '캘린더 어시스턴트 봇 계정 id' })
+  @ApiOperation({ summary: '슐랙봇(알림 봇) 계정 id' })
   @Get('bot')
   getBot(@Param('url') url: string, @User() user: Users) {
     return this.calendarService.getBot(url, user.id);

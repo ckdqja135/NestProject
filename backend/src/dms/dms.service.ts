@@ -18,6 +18,7 @@ import { EventsGateway } from '../events/events.gateway';
 import { BotsService } from '../bots/bots.service';
 import { onlineMap } from '../events/onlineMap';
 import { toFileContent, toFileMeta } from '../common/upload';
+import { AppEventsService } from '../apps/app-events.service';
 import { PushService } from '../push/push.service';
 import { previewText } from '../common/preview';
 
@@ -32,8 +33,8 @@ const botReply = (url: string) => {
     '',
   );
   return [
-    '안녕하세요, 캘린더 어시스턴트입니다 🤖',
-    '일정 초대·변경·취소와 시작 전 알림을 여기로 보내 드려요. 제게 보낸 메시지에는 답하지 못해요.',
+    '안녕하세요, 슐랙봇입니다 🤖',
+    '일정 초대·알림, 맡은 할 일, 결재 요청, 문서 권한 요청을 여기로 보내 드려요. 제게 보낸 메시지에는 답하지 못해요.',
     `일정 만들기: ${appUrl}/workspace/${url}/calendar`,
   ].join('\n');
 };
@@ -53,6 +54,8 @@ export class DmsService {
     private botsService: BotsService,
     // 테스트처럼 푸시 모듈이 없으면 푸시 없이 동작한다
     @Optional() private pushService?: PushService,
+    // 앱 봇에게 온 DM 은 앱에 보낸다
+    @Optional() private appEvents?: AppEventsService,
   ) {}
 
   private async findWorkspace(url: string, otherId: number, myId: number) {
@@ -154,6 +157,7 @@ export class DmsService {
       relations: ['Sender', 'Receiver', 'Reactions'],
     });
     this.emitToPair(url, id, myId, 'dm', dmWithSender);
+    void this.appEvents?.directMessage(url, workspaceId, dmWithSender);
     // 받는 사람이 접속해 있지 않으면 브라우저 푸시로
     this.pushService
       ?.notify(id, {
@@ -180,8 +184,11 @@ export class DmsService {
       id,
       myId,
     );
-    // 봇에게 보낸 메시지에는 안내 답장
-    if (await this.botsService.isBot(id)) {
+    // (캘린더 같은) 기본 봇에게 보낸 메시지에는 안내 답장. 앱 봇은 앱이 직접 답한다
+    if (
+      (await this.botsService.isBot(id)) &&
+      !(await this.appEvents?.isAppBot(workspace.id, id))
+    ) {
       await this.saveAndBroadcast(url, workspace.id, botReply(url), myId, id);
     }
     return saved;

@@ -3,7 +3,9 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
@@ -13,6 +15,10 @@ import { DocShares } from '../entities/DocShares';
 import { DocUserStates } from '../entities/DocUserStates';
 import { DocLinks } from '../entities/DocLinks';
 import { DocComments } from '../entities/DocComments';
+import { DocAccessRequests } from '../entities/DocAccessRequests';
+import { Users } from '../entities/Users';
+import { BotsService } from '../bots/bots.service';
+import { DmsService } from '../dms/dms.service';
 import { EventsGateway } from '../events/events.gateway';
 import {
   isAdminRole,
@@ -31,7 +37,12 @@ const TITLES = {
   design: '제목 없는 디자인',
 };
 
+const ROLE_TEXT = { view: '보기', edit: '편집' } as const;
+// 같은 사람이 같은 문서 권한을 다시 요청해도 이 시간 안에는 다시 알리지 않는다
+const REQUEST_RENOTIFY_MS = 10 * 60_000;
+
 // 볼 수 있는 문서: 내가 만들었거나, 워크스페이스 공개거나, 나와 공유됨.
+// (고칠 수 있는지는 공유 권한과 공개 문서의 linkRole 로 따로 정한다)
 // 게스트는 워크스페이스 공개 문서(위키 포함)는 못 보고, 자기 문서와 공유받은 문서만 본다
 const VISIBLE = `(d.OwnerId = :me OR d.visibility = 'workspace' OR EXISTS (
   SELECT 1 FROM docshares ds WHERE ds.DocId = d.id AND ds.UserId = :me))`;
@@ -42,6 +53,8 @@ export const visibleFor = (role: WorkspaceRole) =>
 
 @Injectable()
 export class DocsService {
+  private logger = new Logger('DocsService');
+
   constructor(
     @InjectRepository(Docs) private docsRepository: Repository<Docs>,
     @InjectRepository(DocFolders)
@@ -56,7 +69,39 @@ export class DocsService {
     private commentsRepository: Repository<DocComments>,
     private workspacesService: WorkspacesService,
     private eventsGateway: EventsGateway,
+    @InjectRepository(DocAccessRequests)
+    private requestsRepository: Repository<DocAccessRequests>,
+    // 접근 요청을 봇 DM 으로 알린다 (테스트처럼 없으면 화면 알림만)
+    @Optional() private botsService?: BotsService,
+    @Optional() private dmsService?: DmsService,
   ) {}
+
+  // 이 사람이 이 문서를 볼 수 있는지·고칠 수 있는지
+  private async permissionOf(doc: Docs, role: WorkspaceRole, userId: number) {
+    const share = await this.sharesRepository.findOne({
+      where: { DocId: doc.id, UserId: userId },
+    });
+    const isOwner = doc.OwnerId === userId;
+    const openToAll = doc.visibility === 'workspace' && role !== 'guest';
+    return {
+      canView: isOwner || openToAll || !!share,
+      canEdit:
+        isOwner ||
+        share?.role === 'edit' ||
+        (openToAll && doc.linkRole === 'edit'),
+    };
+  }
+
+  // 워크스페이스 멤버가 아니면 볼 수 없다
+  private async canViewDoc(doc: Docs, userId: number) {
+    const role = await this.workspacesService.roleOf(doc.WorkspaceId, userId);
+    return !!role && (await this.permissionOf(doc, role, userId)).canView;
+  }
+
+  // 권한이 바뀌었다: 이미 열어 둔 공동 편집 연결의 권한을 다시 계산한다 (userId 가 있으면 그 사람만)
+  private accessChanged(url: string, docId: number, userId?: number) {
+    this.eventsGateway.docAccessChanged(url, docId, userId);
+  }
 
   private async findWorkspace(url: string, myId: number) {
     const workspace = await this.workspacesService.findWorkspaceByUrl(url);
@@ -79,19 +124,16 @@ export class DocsService {
     if (!doc) {
       throw new NotFoundException('존재하지 않는 문서입니다.');
     }
-    const share = await this.sharesRepository.findOne({
-      where: { DocId: doc.id, UserId: myId },
-    });
-    const isOwner = doc.OwnerId === myId;
-    const openToAll =
-      doc.visibility === 'workspace' && workspace.role !== 'guest';
-    const canView = isOwner || openToAll || !!share;
+    const { canView, canEdit } = await this.permissionOf(
+      doc,
+      workspace.role,
+      myId,
+    );
     if (!canView) {
       // 볼 수 없는 문서는 있는지도 알리지 않는다
       throw new NotFoundException('존재하지 않는 문서입니다.');
     }
-    const canEdit = isOwner || openToAll || share?.role === 'edit';
-    const canManage = isOwner || isAdminRole(workspace.role);
+    const canManage = doc.OwnerId === myId || isAdminRole(workspace.role);
     return { workspace, doc, canEdit, canManage };
   }
 
@@ -238,14 +280,16 @@ export class DocsService {
         (userId): userId is number => !!userId && userId !== myId,
       ),
     );
-    targets.forEach((userId) =>
+    for (const userId of targets) {
+      // 그 사이 권한을 잃은 사람에게는 제목·내용을 보내지 않는다
+      if (!(await this.canViewDoc(doc, userId))) continue;
       this.eventsGateway.emitToUser(url, userId, 'docComment', {
         docId: doc.id,
         title: doc.title,
         authorId: myId,
         content: content.slice(0, 100),
-      }),
-    );
+      });
+    }
     return saved;
   }
 
@@ -430,7 +474,17 @@ export class DocsService {
       favorite: state?.favorite || false,
       viewedAt: new Date(),
     });
-    return { ...full, canEdit, canManage, favorite: !!state?.favorite };
+    // 관리할 수 있으면 기다리는 접근 요청 수도 알려 준다
+    const accessRequests = canManage
+      ? await this.requestsRepository.count({ where: { DocId: doc.id } })
+      : 0;
+    return {
+      ...full,
+      canEdit,
+      canManage,
+      accessRequests,
+      favorite: !!state?.favorite,
+    };
   }
 
   private async assertMyFolder(
@@ -470,6 +524,7 @@ export class DocsService {
       title?: string;
       content?: string;
       visibility?: 'private' | 'workspace';
+      linkRole?: 'view' | 'edit';
       folderId?: number;
       parentId?: number;
     },
@@ -499,8 +554,9 @@ export class DocsService {
       type: dto.type,
       title: dto.title?.trim() || TITLES[dto.type],
       content: dto.content || '',
-      // 위키는 워크스페이스 모두의 공간
+      // 위키는 워크스페이스 모두의 공간 (모두 고칠 수 있게 시작한다)
       visibility: isWiki ? 'workspace' : dto.visibility || 'private',
+      linkRole: dto.linkRole || (isWiki ? 'edit' : 'view'),
       FolderId: isWiki ? null : dto.folderId || null,
       ParentId: isWiki ? dto.parentId || null : null,
       OwnerId: myId,
@@ -565,6 +621,7 @@ export class DocsService {
     id: number,
     dto: {
       visibility?: 'private' | 'workspace';
+      linkRole?: 'view' | 'edit';
       folderId?: number | null;
       parentId?: number | null;
     },
@@ -582,7 +639,11 @@ export class DocsService {
       }
       update.FolderId = dto.folderId;
     }
-    if (dto.visibility !== undefined || dto.parentId !== undefined) {
+    if (
+      dto.visibility !== undefined ||
+      dto.linkRole !== undefined ||
+      dto.parentId !== undefined
+    ) {
       if (!canManage) {
         throw new ForbiddenException(
           '문서를 만든 사람이나 워크스페이스 관리자만 할 수 있습니다.',
@@ -601,6 +662,9 @@ export class DocsService {
         );
       }
       update.visibility = dto.visibility;
+    }
+    if (dto.linkRole !== undefined) {
+      update.linkRole = dto.linkRole;
     }
     if (dto.parentId !== undefined) {
       if (doc.type !== 'wiki') {
@@ -633,6 +697,9 @@ export class DocsService {
     if (Object.keys(update).length) {
       await this.docsRepository.update(doc.id, update);
       this.notify(url, { id: doc.id });
+      if (update.visibility !== undefined || update.linkRole !== undefined) {
+        this.accessChanged(url, doc.id);
+      }
     }
     return this.docsRepository.findOne({ where: { id: doc.id } });
   }
@@ -657,7 +724,10 @@ export class DocsService {
     }
     await this.workspacesService.assertMember(workspace.id, userId);
     await this.sharesRepository.save({ DocId: doc.id, UserId: userId, role });
+    // 권한을 받았으니 그 사람의 기다리던 요청은 지운다
+    await this.requestsRepository.delete({ DocId: doc.id, UserId: userId });
     this.notify(url, { id: doc.id });
+    this.accessChanged(url, doc.id, userId);
     // 공유받은 사람에게 알린다
     this.eventsGateway.emitToUser(url, userId, 'docShared', {
       id: doc.id,
@@ -721,6 +791,7 @@ export class DocsService {
     }
     await this.sharesRepository.delete({ DocId: doc.id, UserId: userId });
     this.notify(url, { id: doc.id });
+    this.accessChanged(url, doc.id, userId);
   }
 
   async setFavorite(url: string, id: number, favorite: boolean, myId: number) {
@@ -748,6 +819,8 @@ export class DocsService {
     }
     await this.docsRepository.softDelete(doc.id);
     this.notify(url, { id: doc.id });
+    // 휴지통에 들어간 문서는 아무도 계속 고칠 수 없다
+    this.accessChanged(url, doc.id);
   }
 
   async restoreDoc(url: string, id: number, myId: number) {
@@ -767,6 +840,177 @@ export class DocsService {
       );
     }
     await this.docsRepository.delete(doc.id);
+  }
+
+  // ── 접근 요청 (링크로 열었는데 권한이 없을 때)
+
+  // 권한이 없는 사람이 문서 주인에게 보기·편집 권한을 요청한다.
+  // 요청한 사람은 아직 볼 수 없으므로 제목 같은 내용은 돌려주지 않는다
+  async requestAccess(
+    url: string,
+    id: number,
+    dto: { role: 'view' | 'edit'; message?: string },
+    myId: number,
+  ) {
+    const workspace = await this.findWorkspace(url, myId);
+    const doc = await this.docsRepository.findOne({
+      where: { id, WorkspaceId: workspace.id },
+    });
+    if (!doc) {
+      throw new NotFoundException('존재하지 않는 문서입니다.');
+    }
+    const current = await this.permissionOf(doc, workspace.role, myId);
+    if (current.canEdit || (dto.role === 'view' && current.canView)) {
+      throw new BadRequestException('이미 그 권한이 있습니다.');
+    }
+    const message = dto.message?.trim().slice(0, 300) || null;
+    const existing = await this.requestsRepository.findOne({
+      where: { DocId: doc.id, UserId: myId },
+    });
+    const now = new Date();
+    const renotify =
+      !existing ||
+      now.getTime() - new Date(existing.requestedAt).getTime() >
+        REQUEST_RENOTIFY_MS ||
+      (existing.role === 'view' && dto.role === 'edit');
+    await this.requestsRepository.save({
+      id: existing?.id,
+      DocId: doc.id,
+      UserId: myId,
+      role: dto.role,
+      message,
+      requestedAt: renotify ? now : existing!.requestedAt,
+    });
+    if (renotify) {
+      await this.notifyAccessRequest(
+        url,
+        workspace,
+        doc,
+        myId,
+        dto.role,
+        message,
+      );
+    }
+    return { requested: true };
+  }
+
+  // 요청을 받을 사람: 문서 주인 (없거나 워크스페이스를 떠났으면 워크스페이스 소유자)
+  private async notifyAccessRequest(
+    url: string,
+    workspace: { id: number; OwnerId: number },
+    doc: Docs,
+    requesterId: number,
+    role: 'view' | 'edit',
+    message: string | null,
+  ) {
+    const ownerRole = doc.OwnerId
+      ? await this.workspacesService.roleOf(workspace.id, doc.OwnerId)
+      : null;
+    const managerId = ownerRole ? doc.OwnerId! : workspace.OwnerId;
+    this.eventsGateway.emitToUser(url, managerId, 'docsChanged', {
+      id: doc.id,
+    });
+    if (!this.botsService || !this.dmsService) return;
+    try {
+      const requester = await this.docsRepository.manager.findOne(Users, {
+        where: { id: requesterId },
+        select: ['id', 'nickname'],
+      });
+      const botId = await this.botsService.ensureMember(workspace.id);
+      const text = `🔐 ${requester?.nickname || '누군가'} 님이 문서 **${
+        doc.title
+      }** ${ROLE_TEXT[role]} 권한을 요청했어요${
+        message ? `: “${message}”` : ''
+      }\n공유 창에서 허락하거나 거절할 수 있어요.\n/workspace/${url}/docs/d/${
+        doc.id
+      }`;
+      await this.dmsService.createWorkspaceDMChats(url, text, managerId, botId);
+    } catch (error) {
+      this.logger.warn(
+        `접근 요청을 알리지 못했습니다: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  // 기다리는 접근 요청 (문서 주인·관리자)
+  async listAccessRequests(url: string, id: number, myId: number) {
+    const { doc, canManage } = await this.access(url, id, myId);
+    if (!canManage) {
+      throw new ForbiddenException(
+        '문서를 만든 사람이나 워크스페이스 관리자만 볼 수 있습니다.',
+      );
+    }
+    return this.requestsRepository
+      .createQueryBuilder('r')
+      .leftJoin('r.User', 'u')
+      .select([
+        'r.id',
+        'r.UserId',
+        'r.role',
+        'r.message',
+        'r.requestedAt',
+        'u.id',
+        'u.nickname',
+        'u.email',
+        'u.avatarStyle',
+      ])
+      .where('r.DocId = :id', { id: doc.id })
+      .orderBy('r.requestedAt', 'ASC')
+      .getMany();
+  }
+
+  // 요청 허락(공유 추가) 또는 거절. 어느 쪽이든 요청한 사람에게 알린다
+  async decideAccessRequest(
+    url: string,
+    id: number,
+    requestId: number,
+    dto: { decision: 'approve' | 'deny'; role?: 'view' | 'edit' },
+    myId: number,
+  ) {
+    const { workspace, doc, canManage } = await this.access(url, id, myId);
+    if (!canManage) {
+      throw new ForbiddenException(
+        '문서를 만든 사람이나 워크스페이스 관리자만 할 수 있습니다.',
+      );
+    }
+    const request = await this.requestsRepository.findOne({
+      where: { id: requestId, DocId: doc.id },
+    });
+    if (!request) {
+      throw new NotFoundException('이미 처리된 요청입니다.');
+    }
+    const role = dto.role || request.role;
+    if (dto.decision === 'approve') {
+      // 요청한 사람이 워크스페이스를 떠났으면 여기서 막힌다
+      await this.setShare(url, doc.id, request.UserId, role, myId);
+    }
+    await this.requestsRepository.delete(request.id);
+    this.notify(url, { id: doc.id });
+    this.eventsGateway.emitToUser(url, request.UserId, 'docAccess', {
+      id: doc.id,
+      decision: dto.decision,
+    });
+    if (this.botsService && this.dmsService) {
+      try {
+        const botId = await this.botsService.ensureMember(workspace.id);
+        // 거절이면 제목을 알리지 않는다 (볼 권한이 없으니)
+        const text =
+          dto.decision === 'approve'
+            ? `✅ 문서 **${doc.title}** ${ROLE_TEXT[role]} 권한을 받았어요.\n/workspace/${url}/docs/d/${doc.id}`
+            : `요청하신 문서 권한은 허락되지 않았어요. (문서 번호 ${doc.id})`;
+        await this.dmsService.createWorkspaceDMChats(
+          url,
+          text,
+          request.UserId,
+          botId,
+        );
+      } catch (error) {
+        this.logger.warn(
+          `요청 결과를 알리지 못했습니다: ${(error as Error).message}`,
+        );
+      }
+    }
+    return { decision: dto.decision, role };
   }
 
   // ── 폴더 (내 문서 라이브러리)

@@ -451,6 +451,20 @@ export const EditorHeader = styled.header`
     &.error {
       color: #e01e5a;
     }
+
+    & button.link {
+      margin-left: 6px;
+      padding: 0;
+      border: none;
+      background: none;
+      color: #1264a3;
+      font-size: 12px;
+      cursor: pointer;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
   }
 
   & button.btn {
@@ -471,6 +485,19 @@ export const EditorHeader = styled.header`
       border-color: #1264a3;
       background: #1264a3;
       color: white;
+    }
+
+    & .badge {
+      min-width: 16px;
+      margin-left: 6px;
+      padding: 0 5px;
+      border-radius: 8px;
+      background: #e01e5a;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 16px;
+      text-align: center;
     }
 
     &.on {
@@ -1184,6 +1211,102 @@ export const MentionMenu = styled.div`
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       word-break: break-word;
+    }
+  }
+`;
+
+// 권한 없는 문서를 열었을 때
+export const NoAccessBox = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 440px;
+  margin: 80px auto;
+  padding: 0 16px;
+  color: var(--text);
+  text-align: center;
+
+  & > svg {
+    color: var(--text-muted);
+  }
+
+  & h2 {
+    margin: 4px 0 0;
+    font-size: 20px;
+  }
+
+  & p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  & .done {
+    margin-top: 8px;
+    color: #007a5a;
+    font-weight: 600;
+  }
+
+  & .error {
+    color: #e01e5a;
+  }
+
+  & .request {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    margin-top: 12px;
+  }
+
+  & .roles {
+    display: flex;
+    gap: 8px;
+
+    & label {
+      position: relative;
+      flex: 1;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+
+      &.on {
+        border-color: #1264a3;
+        background: var(--bg-selected);
+        color: #1264a3;
+        font-weight: 600;
+      }
+
+      & input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+    }
+  }
+
+  & .request > input {
+    padding: 8px 10px;
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  & button.primary {
+    padding: 9px;
+    border: none;
+    border-radius: 6px;
+    background: #007a5a;
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.6;
     }
   }
 `;

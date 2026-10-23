@@ -11,6 +11,7 @@ import { toast } from 'react-toastify';
 import useSWR, { mutate as mutateKey } from 'swr';
 import { createDoc, docPath, docsBase, toastError } from './api';
 import ShareDocModal from './ShareDocModal';
+import NoAccess from './NoAccess';
 import CommentsPanel, { DocComment } from './CommentsPanel';
 import MarginComments from './MarginComments';
 import DocMentions from './DocMentions';
@@ -31,6 +32,7 @@ import {
   Star,
   Trash2,
   TriangleAlert,
+  UserPlus,
 } from 'lucide-react';
 import DocIcon from './DocIcon';
 import SheetEditor from './sheet/SheetEditor';
@@ -251,6 +253,32 @@ const DocPage: FC<Props> = ({ me, area = 'docs' }) => {
     };
   }, [socket, mutate]);
 
+  // 공개 범위·공유가 바뀌면 내 권한을 다시 받는다 (볼 수 없게 되면 권한 없음 화면으로, 보기만 되면 보기 전용으로)
+  useEffect(() => {
+    const onChanged = (data?: { id?: number }) => {
+      if (data?.id === id) mutate();
+    };
+    const onAccess = (data?: { id?: number }) => {
+      if (!data?.id || data.id === id) mutate();
+    };
+    socket?.on('docsChanged', onChanged);
+    socket?.on('docAccess', onAccess);
+    return () => {
+      socket?.off('docsChanged', onChanged);
+      socket?.off('docAccess', onAccess);
+    };
+  }, [socket, id, mutate]);
+  const [editRequested, setEditRequested] = useState(false);
+  useEffect(() => setEditRequested(false), [id]);
+  const requestEdit = () =>
+    axios
+      .post(`${base}/docs/${id}/access-requests`, { role: 'edit' })
+      .then(() => {
+        setEditRequested(true);
+        toast.info('편집 권한을 요청했어요.', { position: 'bottom-center' });
+      })
+      .catch(toastError);
+
   const reloadLatest = () => {
     editSeq.current = 0;
     savedSeq.current = 0;
@@ -315,7 +343,11 @@ const DocPage: FC<Props> = ({ me, area = 'docs' }) => {
   const children = doc?.type === 'wiki' ? (wiki || []).filter((p) => p.ParentId === doc.id) : [];
 
   if (error) {
-    return <Empty>문서를 찾을 수 없거나 볼 권한이 없습니다.</Empty>;
+    return error?.response?.status === 404 || error?.response?.status === 403 ? (
+      <NoAccess workspace={workspace} docId={id} onGranted={() => mutate()} />
+    ) : (
+      <Empty>문서를 불러오지 못했습니다.</Empty>
+    );
   }
   if (!doc) {
     return null;
@@ -410,6 +442,13 @@ const DocPage: FC<Props> = ({ me, area = 'docs' }) => {
           ) : (
             <>
               <Eye size={13} style={{ verticalAlign: '-2px' }} /> 보기 전용
+              {!editRequested ? (
+                <button type="button" className="link" onClick={requestEdit}>
+                  편집 권한 요청
+                </button>
+              ) : (
+                ' · 편집 권한 요청함'
+              )}
             </>
           )}
           {status === 'saved' && doc.LastEditor && (
@@ -457,11 +496,17 @@ const DocPage: FC<Props> = ({ me, area = 'docs' }) => {
         >
           <MessageSquare size={14} style={{ verticalAlign: '-3px' }} /> {openThreads > 0 ? openThreads : '댓글'}
         </button>
-        <button type="button" className="btn primary" onClick={() => setShowShare(true)}>
+        <button
+          type="button"
+          className="btn primary"
+          onClick={() => setShowShare(true)}
+          aria-label={doc.accessRequests ? `공유 (접근 요청 ${doc.accessRequests}건)` : '공유'}
+        >
           {doc.visibility === 'private' && doc.type !== 'wiki' && (
             <Lock size={12} style={{ verticalAlign: '-1px', marginRight: 4 }} />
           )}
           공유
+          {!!doc.accessRequests && <span className="badge">{doc.accessRequests}</span>}
         </button>
         <span style={{ position: 'relative' }}>
           <button
@@ -539,6 +584,14 @@ const DocPage: FC<Props> = ({ me, area = 'docs' }) => {
               <ArchiveRestore size={13} style={{ verticalAlign: '-2px' }} /> 되살리기
             </button>
           )}
+        </Banner>
+      )}
+      {!!doc.accessRequests && doc.canManage && !doc.deletedAt && (
+        <Banner role="status">
+          <UserPlus size={16} color="#1264a3" /> 이 문서에 접근 요청 {doc.accessRequests}건이 기다리고 있어요.
+          <button type="button" onClick={() => setShowShare(true)}>
+            확인하기
+          </button>
         </Banner>
       )}
       {status === 'conflict' && (

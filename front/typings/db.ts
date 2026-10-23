@@ -201,6 +201,8 @@ export interface IDoc {
   type: 'doc' | 'wiki' | 'slides' | 'sheet' | 'board' | 'database' | 'design';
   content: string;
   visibility: 'private' | 'workspace';
+  // 워크스페이스에 공개했을 때 초대받지 않은 멤버의 권한
+  linkRole: 'view' | 'edit';
   FolderId: number | null;
   ParentId: number | null;
   OwnerId: number | null;
@@ -214,6 +216,8 @@ export interface IDoc {
   Shares: { UserId: number; role: 'view' | 'edit'; User: IUser }[];
   canEdit: boolean;
   canManage: boolean;
+  // 기다리는 접근 요청 수 (관리할 수 있을 때만)
+  accessRequests?: number;
   favorite: boolean;
 }
 

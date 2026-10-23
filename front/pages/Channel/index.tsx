@@ -26,6 +26,9 @@ import useDraft from '@hooks/useDraft';
 import useJumpToMessage from '@hooks/useJumpToMessage';
 import useFirstUnread from '@hooks/useFirstUnread';
 import useSlashCommands from '@hooks/useSlashCommands';
+import useAppCommands from '@hooks/useAppCommands';
+import useAppEphemeral from '@hooks/useAppEphemeral';
+import AppEphemeral from '@components/AppEphemeral';
 import { SLASH_COMMANDS } from '@utils/slashCommands';
 import { markRead } from '@utils/readState';
 import { canClosePanelWithEscape, requestEdit } from '@utils/editRequest';
@@ -235,7 +238,21 @@ const Channel = () => {
   );
 
   // 입력창의 /명령 (/remind, /poll, /status …)
-  const runCommand = useSlashCommands({ workspace, me: userData, channel, sendMessage });
+  const appCommands = useAppCommands(workspace);
+  const appReplies = useAppEphemeral(workspace, { channel });
+  // 앱의 답 칸이 생기면 대화 칸이 줄어드니 맨 아래(방금 올라온 메시지)를 계속 보이게 한다
+  useEffect(() => {
+    if (appReplies.items.length) {
+      setTimeout(() => scrollbarRef.current?.scrollToBottom(), 50);
+    }
+  }, [appReplies.items.length]);
+  const runCommand = useSlashCommands({
+    workspace,
+    me: userData,
+    channel,
+    sendMessage,
+    onAppReply: appReplies.push,
+  });
   const onSubmitForm = useCallback(
     (e) => {
       e.preventDefault();
@@ -700,31 +717,36 @@ const Channel = () => {
             )}
           </ArchivedNotice>
         ) : (
-          <ChatBox
-            onSubmitForm={onSubmitForm}
-            chat={chat}
-            onChangeChat={onChangeChatWithTyping}
-            placeholder={`${channelData?.private ? '' : '#'}${channel}에 메시지 보내기`}
-            data={channelMembersData}
-            allowBroadcast
-            onEditLast={onEditLast}
-            commands={SLASH_COMMANDS}
-            onAttachFiles={upload}
-            uploading={uploading}
-            uploadProgress={progress}
-            toolbarExtra={
-              <>
-                <GifPicker onSelect={onSelectGif} />
-                <AttachButton type="button" onClick={() => setShowPollModal(true)} title="투표 만들기">
-                  <ChartBar size={14} /> 투표
-                </AttachButton>
-                <AttachButton type="button" onClick={() => setShowApproval(true)} title="결재 요청 (승인·반려)">
-                  <FileCheck2 size={14} /> 결재
-                </AttachButton>
-                <ScheduleButton disabled={!chat?.trim()} onSchedule={onSchedule} />
-              </>
-            }
-          />
+          <>
+            {workspace && (
+              <AppEphemeral workspace={workspace} items={appReplies.items} onDismiss={appReplies.dismiss} />
+            )}
+            <ChatBox
+              onSubmitForm={onSubmitForm}
+              chat={chat}
+              onChangeChat={onChangeChatWithTyping}
+              placeholder={`${channelData?.private ? '' : '#'}${channel}에 메시지 보내기`}
+              data={channelMembersData}
+              allowBroadcast
+              onEditLast={onEditLast}
+              commands={[...SLASH_COMMANDS, ...appCommands]}
+              onAttachFiles={upload}
+              uploading={uploading}
+              uploadProgress={progress}
+              toolbarExtra={
+                <>
+                  <GifPicker onSelect={onSelectGif} />
+                  <AttachButton type="button" onClick={() => setShowPollModal(true)} title="투표 만들기">
+                    <ChartBar size={14} /> 투표
+                  </AttachButton>
+                  <AttachButton type="button" onClick={() => setShowApproval(true)} title="결재 요청 (승인·반려)">
+                    <FileCheck2 size={14} /> 결재
+                  </AttachButton>
+                  <ScheduleButton disabled={!chat?.trim()} onSchedule={onSchedule} />
+                </>
+              }
+            />
+          </>
         )}
         {channelData && workspace && (
           <ChannelSettingsModal

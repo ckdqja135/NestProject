@@ -34,6 +34,8 @@ interface Room {
   awareness: Awareness;
   // 소켓 id → 그 소켓의 커서(awareness) clientID 들
   sockets: Map<string, Set<number>>;
+  // 소켓 id → 소켓과 사용자 (권한이 바뀌면 다시 계산하려고)
+  clients: Map<string, { socket: Socket; userId: number }>;
   // 고칠 수 있는 소켓들
   editors: Set<string>;
   // 예전(마크다운) 문서를 처음 열 때: 한 사람만 마크다운을 블록으로 옮겨 넣는다 (여럿이 넣으면 내용이 겹친다)
@@ -121,6 +123,7 @@ export class CollabService implements OnModuleInit, OnModuleDestroy {
           ydoc,
           awareness,
           sockets: new Map(),
+          clients: new Map(),
           editors: new Set(),
           needsSeed,
           seeder: null,
@@ -231,9 +234,12 @@ export class CollabService implements OnModuleInit, OnModuleDestroy {
       if (!room.sockets.has(socket.id)) {
         room.sockets.set(socket.id, new Set());
       }
+      room.clients.set(socket.id, { socket, userId: user.id });
       this.joined(socket).set(docId, { canEdit });
       if (canEdit) {
         room.editors.add(socket.id);
+      } else {
+        room.editors.delete(socket.id);
       }
       // 옮겨 넣을 사람이 아직 없으면 이 사람에게 맡긴다
       if (
@@ -326,6 +332,7 @@ export class CollabService implements OnModuleInit, OnModuleDestroy {
     }
     const ids = room.sockets.get(socket.id);
     room.sockets.delete(socket.id);
+    room.clients.delete(socket.id);
     room.editors.delete(socket.id);
     // 옮겨 넣기로 한 사람이 넣기 전에 나가면 남은 사람에게 넘긴다
     if (room.needsSeed && room.seeder === socket.id) {
@@ -356,6 +363,61 @@ export class CollabService implements OnModuleInit, OnModuleDestroy {
         room.ydoc.destroy();
         this.rooms.delete(docId);
       }, UNLOAD_DELAY_MS);
+    }
+  }
+
+  // 권한이 바뀌면 이미 들어와 있는 사람들의 권한을 다시 계산한다.
+  // 볼 수 없게 되면 방에서 내보내고, 고칠 수 없게 되면 보기 전용으로 바꾼다 (반대로 바뀌면 고칠 수 있게)
+  async refreshAccess(docId: number, userId?: number) {
+    const room = this.rooms.get(docId);
+    if (!room) {
+      return;
+    }
+    for (const [socketId, client] of [...room.clients]) {
+      if (userId !== undefined && client.userId !== userId) {
+        continue;
+      }
+      const membership = this.joined(client.socket).get(docId);
+      if (!membership) {
+        continue;
+      }
+      let canEdit: boolean | null;
+      try {
+        ({ canEdit } = await this.docsService.collabAccess(
+          room.url,
+          docId,
+          client.userId,
+        ));
+      } catch {
+        canEdit = null;
+      }
+      if (canEdit === null) {
+        this.leave(client.socket, docId);
+        client.socket.emit('collab', { type: 'revoked', docId });
+        continue;
+      }
+      if (canEdit === membership.canEdit) {
+        continue;
+      }
+      membership.canEdit = canEdit;
+      if (canEdit) {
+        room.editors.add(socketId);
+      } else {
+        room.editors.delete(socketId);
+        if (room.seeder === socketId) {
+          room.seeder = [...room.editors][0] || null;
+        }
+      }
+      client.socket.emit('collab', { type: 'access', docId, canEdit });
+    }
+  }
+
+  // 그 사람이 이 워크스페이스에서 열어 둔 문서들을 모두 다시 본다
+  async refreshMember(url: string, userId: number) {
+    for (const room of [...this.rooms.values()]) {
+      if (room.url === url) {
+        await this.refreshAccess(room.docId, userId);
+      }
     }
   }
 

@@ -223,7 +223,7 @@ const EventModal: FC<Props> = ({ show, workspace, me, members, draft, onClose, o
                 </option>
               ))}
             </TextInput>
-            <p className="hint">캘린더 어시스턴트가 DM 으로 알려 드려요. 접속해 있지 않으면 이메일로도.</p>
+            <p className="hint">슐랙봇이 DM 으로 알려 드려요. 접속해 있지 않으면 이메일로도.</p>
           </Field>
         </Row>
         <Field>
@@ -249,7 +249,7 @@ const EventModal: FC<Props> = ({ show, workspace, me, members, draft, onClose, o
             ))}
           </PeopleList>
           {!editing && attendeeIds.length > 0 && (
-            <p className="hint">만들면 캘린더 어시스턴트가 참석자에게 초대 DM 을 보냅니다.</p>
+            <p className="hint">만들면 슐랙봇이 참석자에게 초대 DM 을 보냅니다.</p>
           )}
         </Field>
         <Field>

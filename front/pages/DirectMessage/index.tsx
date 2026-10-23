@@ -7,6 +7,9 @@ import useDraft from '@hooks/useDraft';
 import useJumpToMessage from '@hooks/useJumpToMessage';
 import useFirstUnread from '@hooks/useFirstUnread';
 import useSlashCommands from '@hooks/useSlashCommands';
+import useAppCommands from '@hooks/useAppCommands';
+import useAppEphemeral from '@hooks/useAppEphemeral';
+import AppEphemeral from '@components/AppEphemeral';
 import { SLASH_COMMANDS } from '@utils/slashCommands';
 import { markRead } from '@utils/readState';
 import { canClosePanelWithEscape, requestEdit } from '@utils/editRequest';
@@ -216,7 +219,21 @@ const DirectMessage = () => {
   );
 
   // 입력창의 /명령 (/remind, /poll, /status …)
-  const runCommand = useSlashCommands({ workspace, me: myData, sendMessage });
+  const appCommands = useAppCommands(workspace);
+  const appReplies = useAppEphemeral(workspace, { dmUserId: Number(id) });
+  // 앱의 답 칸이 생기면 대화 칸이 줄어드니 맨 아래(방금 올라온 메시지)를 계속 보이게 한다
+  useEffect(() => {
+    if (appReplies.items.length) {
+      setTimeout(() => scrollbarRef.current?.scrollToBottom(), 50);
+    }
+  }, [appReplies.items.length]);
+  const runCommand = useSlashCommands({
+    workspace,
+    me: myData,
+    dmUserId: Number(id),
+    sendMessage,
+    onAppReply: appReplies.push,
+  });
   const onSubmitForm = useCallback(
     (e) => {
       e.preventDefault();
@@ -509,6 +526,7 @@ const DirectMessage = () => {
             onClose={() => setShowApproval(false)}
           />
         )}
+        {workspace && <AppEphemeral workspace={workspace} items={appReplies.items} onDismiss={appReplies.dismiss} />}
         <ChatBox
           onSubmitForm={onSubmitForm}
           chat={chat}
@@ -516,7 +534,7 @@ const DirectMessage = () => {
           placeholder={isSelf ? '나에게 메모 남기기' : `${userData.nickname}님에게 메시지 보내기`}
           data={mentionTargets}
           onEditLast={onEditLast}
-          commands={SLASH_COMMANDS.filter((c) => !c.channelOnly)}
+          commands={[...SLASH_COMMANDS.filter((c) => !c.channelOnly), ...appCommands]}
           onAttachFiles={upload}
           uploading={uploading}
           uploadProgress={progress}

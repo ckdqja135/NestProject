@@ -21,6 +21,9 @@ import { ContactStars } from './src/entities/ContactStars';
 import { PasswordResets } from './src/entities/PasswordResets';
 import { DocLinks } from './src/entities/DocLinks';
 import { DocComments } from './src/entities/DocComments';
+import { DocAccessRequests } from './src/entities/DocAccessRequests';
+import { Apps } from './src/entities/Apps';
+import { AppCommands } from './src/entities/AppCommands';
 import { ScheduledMessages } from './src/entities/ScheduledMessages';
 import { Reminders } from './src/entities/Reminders';
 import { MessageEdits } from './src/entities/MessageEdits';
@@ -77,6 +80,9 @@ const options: DataSourceOptions & SeederOptions = {
     PasswordResets,
     DocLinks,
     DocComments,
+    DocAccessRequests,
+    Apps,
+    AppCommands,
     ScheduledMessages,
     Reminders,
     MessageEdits,

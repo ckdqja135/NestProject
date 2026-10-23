@@ -173,6 +173,66 @@ describe('CollabService', () => {
     expect(c.sent[0].data.seed).toBe(false);
   });
 
+  it('권한이 바뀌면 열어 둔 사람을 보기 전용으로 바꾸거나 내보낸다', async () => {
+    docsService.collabAccess.mockResolvedValue({
+      canEdit: true,
+      doc: { type: 'board' },
+    });
+    const a = fakeSocket('a');
+    const b = fakeSocket('b');
+    await service.handle(a.socket, { id: 1 }, { type: 'join', docId: 9 });
+    await service.handle(b.socket, { id: 2 }, { type: 'join', docId: 9 });
+    // 2 번은 보기만, 그다음엔 아예 못 보게
+    docsService.collabAccess.mockImplementation(async (_url, _id, userId) => {
+      if (userId === 2) return { canEdit: false, doc: { type: 'board' } };
+      return { canEdit: true, doc: { type: 'board' } };
+    });
+    await service.refreshAccess(9);
+    expect(b.sent.at(-1)?.data).toEqual({
+      type: 'access',
+      docId: 9,
+      canEdit: false,
+    });
+    // 보기 전용이 된 뒤 보낸 변경은 받지 않는다
+    await service.handle(
+      b.socket,
+      { id: 2 },
+      { type: 'update', docId: 9, update: edit('몰래') },
+    );
+    expect(b.toRoom).toEqual([]);
+    expect(a.sent.some((m) => m.data.type === 'access')).toBe(false);
+
+    docsService.collabAccess.mockImplementation(async (_url, _id, userId) => {
+      if (userId === 2) throw new Error('not-found');
+      return { canEdit: true, doc: { type: 'board' } };
+    });
+    await service.refreshAccess(9, 2);
+    expect(b.sent.at(-1)?.data).toEqual({ type: 'revoked', docId: 9 });
+    expect(b.socket.rooms.has('collab-9')).toBe(false);
+    // 나간 뒤에는 다른 사람의 변경도 받지 못한다 (방에서 빠졌다)
+    await service.handle(
+      b.socket,
+      { id: 2 },
+      { type: 'awareness', docId: 9, update: new Uint8Array([0]) },
+    );
+    expect(b.toRoom).toEqual([]);
+  });
+
+  it('멤버 권한이 바뀌면 그 사람이 열어 둔 문서들을 모두 다시 본다', async () => {
+    docsService.collabAccess.mockResolvedValue({
+      canEdit: true,
+      doc: { type: 'board' },
+    });
+    const a = fakeSocket('a');
+    await service.handle(a.socket, { id: 4 }, { type: 'join', docId: 11 });
+    await service.handle(a.socket, { id: 4 }, { type: 'join', docId: 12 });
+    docsService.collabAccess.mockRejectedValue(new Error('not-member'));
+    await service.refreshMember('shlack', 4);
+    expect(
+      a.sent.filter((m) => m.data.type === 'revoked').map((m) => m.data.docId),
+    ).toEqual([11, 12]);
+  });
+
   it('보드는 옮겨 넣을 예전 내용이 없다', async () => {
     docsService.collabAccess.mockResolvedValue({
       canEdit: true,

@@ -152,7 +152,7 @@ export class WorkspacesService {
         .getRepository(ChannelMembers)
         .save({ UserId: myId, ChannelId: channel.id });
       await queryRunner.commitTransaction();
-      // 캘린더 어시스턴트 봇도 멤버로 (알림 DM 을 받을 수 있게)
+      // 슐랙봇도 멤버로 (알림 DM 을 받을 수 있게)
       await this.botsService.ensureMember(workspace.id).catch(() => undefined);
       return workspace;
     } catch (error) {
@@ -308,6 +308,8 @@ export class WorkspacesService {
       targetId,
       targetId === myId ? 'left' : 'kicked',
     );
+    // 열어 둔 문서 공동 편집에서도 바로 나가게 한다
+    this.eventsGateway.memberAccessChanged(url, targetId);
     this.eventsGateway.emitToWorkspace(url, 'membersChanged');
   }
 
@@ -395,6 +397,8 @@ export class WorkspacesService {
       { role },
     );
     this.eventsGateway.emitToWorkspace(url, 'membersChanged');
+    // 게스트가 되면 공개 문서를 더 볼 수 없다: 열어 둔 문서 권한을 바로 다시 계산한다
+    this.eventsGateway.memberAccessChanged(url, targetId);
     return { id: targetId, role };
   }
 

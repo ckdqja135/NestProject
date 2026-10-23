@@ -65,10 +65,39 @@ export class EventsGateway
   private collabHandler?: {
     handle(socket: Socket, user: { id: number }, message: any): Promise<void>;
     disconnect(socket: Socket): void;
+    // 권한이 바뀐 문서(또는 사람)의 열려 있는 연결 권한을 다시 계산한다
+    refreshAccess(docId: number, userId?: number): Promise<void>;
+    refreshMember(url: string, userId: number): Promise<void>;
   };
 
   setCollabHandler(handler: EventsGateway['collabHandler']) {
     this.collabHandler = handler;
+  }
+
+  // 문서 권한이 바뀌었다 (공개 범위·공유·휴지통). userId 가 있으면 그 사람만 다시 본다
+  docAccessChanged(url: string, docId: number, userId?: number) {
+    this.collabHandler
+      ?.refreshAccess(docId, userId)
+      .catch((error: Error) =>
+        this.logger.warn(
+          `문서 권한을 다시 확인하지 못했습니다: ${error.message}`,
+        ),
+      );
+    if (userId) {
+      this.emitToUser(url, userId, 'docAccess', { id: docId });
+    }
+  }
+
+  // 멤버의 역할이 바뀌거나 내보내졌다: 그 사람이 열어 둔 모든 문서를 다시 본다
+  memberAccessChanged(url: string, userId: number) {
+    this.collabHandler
+      ?.refreshMember(url, userId)
+      .catch((error: Error) =>
+        this.logger.warn(
+          `멤버 권한을 다시 확인하지 못했습니다: ${error.message}`,
+        ),
+      );
+    this.emitToUser(url, userId, 'docAccess', {});
   }
 
   constructor(

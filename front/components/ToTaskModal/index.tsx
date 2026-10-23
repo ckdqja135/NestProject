@@ -115,7 +115,9 @@ const ToTaskModal: FC<Props> = ({ show, workspace, me, members, initialTitle, me
       if (assignee && Number(assignee) !== me.id && isPrivate) {
         await axios
           .put(`/api/workspaces/${workspace}/docs/${docId}/shares`, { userId: Number(assignee), role: 'edit' })
-          .catch(() => toast.info('담당자가 이 데이터베이스를 볼 수 있게 공유해 주세요.', { position: 'bottom-center' }));
+          .catch(() =>
+            toast.info('담당자가 이 데이터베이스를 볼 수 있게 공유해 주세요.', { position: 'bottom-center' }),
+          );
       }
       try {
         localStorage.setItem(LAST_KEY, String(docId));

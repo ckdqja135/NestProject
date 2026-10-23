@@ -7,10 +7,11 @@ import { Users } from '../entities/Users';
 import { WorkspaceMembers } from '../entities/WorkspaceMembers';
 import { Workspaces } from '../entities/Workspaces';
 
-// 캘린더 어시스턴트: 일정 알림을 DM 으로 보내는 봇 계정
+// 슐랙봇: 일정·할 일·결재·문서 권한 요청 알림을 DM 으로 보내는 기본 봇 계정
+// (처음에는 캘린더 알림만 보내서 이메일이 calendar@ 이다. 같은 계정을 계속 쓰려고 그대로 둔다)
 export const CALENDAR_BOT = {
   email: 'calendar@bot.shlack',
-  nickname: '캘린더 어시스턴트',
+  nickname: '슐랙봇',
 };
 
 @Injectable()
@@ -56,6 +57,12 @@ export class BotsService implements OnModuleInit {
         bot: true,
         // 로그인할 수 없도록 아무도 모르는 비밀번호
         password: await bcrypt.hash(randomBytes(32).toString('hex'), 4),
+      });
+    }
+    // 예전 이름(캘린더 어시스턴트)이면 지금 이름으로 바꾼다
+    if (bot.nickname !== CALENDAR_BOT.nickname) {
+      await this.usersRepository.update(bot.id, {
+        nickname: CALENDAR_BOT.nickname,
       });
     }
     this.calendarBotId = bot.id;

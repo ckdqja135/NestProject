@@ -26,7 +26,10 @@ type Message =
   | { type: 'seed'; docId: number }
   | { type: 'update'; docId: number; update: ArrayBuffer }
   | { type: 'awareness'; docId: number; update: ArrayBuffer }
-  | { type: 'error'; docId: number; reason: string };
+  | { type: 'error'; docId: number; reason: string }
+  // 접속 중에 권한이 바뀌었다: 보기 전용으로(또는 다시 편집으로), 볼 수 없게 되면 revoked
+  | { type: 'access'; docId: number; canEdit: boolean }
+  | { type: 'revoked'; docId: number };
 
 export default class CollabProvider {
   readonly doc = new Y.Doc();
@@ -82,8 +85,16 @@ export default class CollabProvider {
 
   private onMessage = (message: Message) => {
     if (message?.docId !== this.docId) return;
-    if (message.type === 'error') {
+    if (message.type === 'error' || message.type === 'revoked') {
+      this.canEdit = false;
+      this.synced = false;
       this.setStatus('error');
+      return;
+    }
+    if (message.type === 'access') {
+      this.canEdit = message.canEdit;
+      // 다시 고칠 수 있게 되면 그동안 받은 내용 위에서 이어 고친다 (보기 전용 동안 내 변경은 없었다)
+      this.listeners.forEach((l) => l());
       return;
     }
     if (message.type === 'seed') {

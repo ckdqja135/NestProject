@@ -1,3 +1,5 @@
+import useAppCommands from '@hooks/useAppCommands';
+import { AppReply } from '@hooks/useAppEphemeral';
 import { IUser } from '@typings/db';
 import getErrorMessage from '@utils/getErrorMessage';
 import { toPollContent } from '@utils/poll';
@@ -12,14 +14,18 @@ interface Options {
   workspace: string;
   me?: IUser;
   channel?: string; // 채널에서 쓰면 채널 이름
+  dmUserId?: number; // DM 에서 쓰면 상대 id (앱 명령에 알려 준다)
   sendMessage: (content: string) => void;
+  // 앱 명령의 나에게만 보이는 답
+  onAppReply?: (reply: Omit<AppReply, 'id'>) => void;
 }
 
 const info = (message: string) => toast.info(message, { position: 'bottom-center' });
 const fail = (error: unknown) => toast.error(getErrorMessage(error), { position: 'bottom-center' });
 
 // 입력창의 '/명령' 을 처리한다. 명령이면 true (입력창을 비운다), 아니면 false (그냥 메시지로 보낸다)
-export default function useSlashCommands({ workspace, me, channel, sendMessage }: Options) {
+export default function useSlashCommands({ workspace, me, channel, dmUserId, sendMessage, onAppReply }: Options) {
+  const appCommands = useAppCommands(workspace);
   return useCallback(
     (text: string): boolean => {
       const command = parseCommand(text);
@@ -28,6 +34,19 @@ export default function useSlashCommands({ workspace, me, channel, sendMessage }
       }
       const { name, args } = command;
       const known = SLASH_COMMANDS.find((c) => c.name === name);
+      // 외부 앱 명령: 서버가 앱 주소로 보내고, 앱의 답을 채널에 올리거나 나에게만 보여 준다
+      if (!known && appCommands.some((c) => c.name === name)) {
+        axios
+          .post<{ posted?: boolean; ephemeral?: Omit<AppReply, 'id'> }>(
+            `/api/workspaces/${workspace}/apps/commands/run`,
+            { command: name, text: args, ...(channel ? { channel } : { dmUserId }) },
+          )
+          .then(({ data }) => {
+            if (data.ephemeral) onAppReply?.(data.ephemeral);
+          })
+          .catch(fail);
+        return true;
+      }
       if (!known) {
         toast.error(`알 수 없는 명령입니다: /${name} (/help 로 목록 보기)`, { position: 'bottom-center' });
         return true;
@@ -40,7 +59,7 @@ export default function useSlashCommands({ workspace, me, channel, sendMessage }
       switch (name) {
         case 'help':
           toast.info(
-            SLASH_COMMANDS.filter((c) => channel || !c.channelOnly)
+            [...SLASH_COMMANDS.filter((c) => channel || !c.channelOnly), ...appCommands]
               .map((c) => `${c.usage} — ${c.description}`)
               .join('\n'),
             { position: 'bottom-center', autoClose: 15000, style: { whiteSpace: 'pre-line' } },
@@ -122,6 +141,6 @@ export default function useSlashCommands({ workspace, me, channel, sendMessage }
           return false;
       }
     },
-    [workspace, me, channel, sendMessage],
+    [workspace, me, channel, dmUserId, sendMessage, onAppReply, appCommands],
   );
 }

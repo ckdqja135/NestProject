@@ -44,9 +44,13 @@ export class Docs {
   @Column('longblob', { name: 'ydoc', nullable: true, select: false })
   ydoc: Buffer | null;
 
-  // 공개 범위: private(나와 공유한 사람만) workspace(워크스페이스 누구나 보기·편집)
+  // 공개 범위: private(초대한 사람만) workspace(워크스페이스 멤버 누구나, 권한은 linkRole)
   @Column('varchar', { name: 'visibility', length: 10, default: 'private' })
   visibility: 'private' | 'workspace';
+
+  // 워크스페이스에 공개했을 때 초대받지 않은 멤버의 권한 (보기만·편집)
+  @Column('varchar', { name: 'linkRole', length: 10, default: 'view' })
+  linkRole: 'view' | 'edit';
 
   @Column('int', { name: 'FolderId', nullable: true })
   FolderId: number | null;

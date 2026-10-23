@@ -6,6 +6,7 @@ import HuddleProvider from '@components/Huddle/HuddleProvider';
 import PinnedList from '@components/PinnedList';
 import InviteWorkspaceModal from '@components/InviteWorkspaceModal';
 import MembersModal from '@components/MembersModal';
+import AppsModal from '@components/AppsModal';
 import MentionsButton from '@components/MentionsButton';
 import SavedButton from '@components/SavedButton';
 import ThreadsButton from '@components/ThreadsButton';
@@ -105,6 +106,7 @@ const Workspace = () => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
   const [showMembersModal, setShowMembersModal] = useState(false);
+  const [showApps, setShowApps] = useState(false);
   const [showStorageModal, setShowStorageModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
@@ -914,6 +916,20 @@ const Workspace = () => {
                           사용자 그룹
                         </button>
                       </li>
+                      {isAdminRole(myRole) && (
+                        <li>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setShowWorkspaceModal(false);
+                              setShowApps(true);
+                            }}
+                          >
+                            앱 연동
+                          </button>
+                        </li>
+                      )}
                       <li>
                         <button
                           type="button"
@@ -1034,6 +1050,9 @@ const Workspace = () => {
             onCloseModal={() => setShowProfileModal(false)}
             onUpdated={() => revalidateUser()}
           />
+        )}
+        {showApps && workspace && (
+          <AppsModal show={showApps} workspace={workspace} onCloseModal={() => setShowApps(false)} />
         )}
         {currentWorkspace && userData && (
           <MembersModal

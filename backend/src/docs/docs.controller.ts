@@ -26,6 +26,8 @@ import {
   FolderDto,
   UpdateDocDto,
   DocChannelShareDto,
+  DocAccessRequestDto,
+  DocAccessDecisionDto,
 } from './dto/docs.dto';
 import { DocsService } from './docs.service';
 
@@ -129,6 +131,47 @@ export class DocsController {
   ) {
     await this.docsService.removeShare(url, id, userId, user.id);
     return 'ok';
+  }
+
+  @ApiOperation({
+    summary: '접근 요청 (권한이 없는 문서를 링크로 열었을 때 주인에게)',
+  })
+  @Post('docs/:id/access-requests')
+  requestAccess(
+    @Param('url') url: string,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: DocAccessRequestDto,
+    @User() user: Users,
+  ) {
+    return this.docsService.requestAccess(url, id, body, user.id);
+  }
+
+  @ApiOperation({ summary: '기다리는 접근 요청 (문서 주인·관리자)' })
+  @Get('docs/:id/access-requests')
+  listAccessRequests(
+    @Param('url') url: string,
+    @Param('id', ParseIntPipe) id: number,
+    @User() user: Users,
+  ) {
+    return this.docsService.listAccessRequests(url, id, user.id);
+  }
+
+  @ApiOperation({ summary: '접근 요청 허락·거절 (문서 주인·관리자)' })
+  @Post('docs/:id/access-requests/:requestId')
+  decideAccessRequest(
+    @Param('url') url: string,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('requestId', ParseIntPipe) requestId: number,
+    @Body() body: DocAccessDecisionDto,
+    @User() user: Users,
+  ) {
+    return this.docsService.decideAccessRequest(
+      url,
+      id,
+      requestId,
+      body,
+      user.id,
+    );
   }
 
   @ApiOperation({ summary: '즐겨찾기(고정)' })

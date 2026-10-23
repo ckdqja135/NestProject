@@ -12,6 +12,7 @@ import { DocShares } from '../entities/DocShares';
 import { DocUserStates } from '../entities/DocUserStates';
 import { DocLinks } from '../entities/DocLinks';
 import { DocComments } from '../entities/DocComments';
+import { DocAccessRequests } from '../entities/DocAccessRequests';
 import { EventsGateway } from '../events/events.gateway';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { DocsService } from './docs.service';
@@ -32,11 +33,22 @@ describe('DocsService', () => {
     delete: jest.fn(),
   };
   const statesRepository = { findOne: jest.fn(), save: jest.fn() };
+  const requestsRepository = {
+    findOne: jest.fn(),
+    save: jest.fn(),
+    delete: jest.fn(),
+    count: jest.fn().mockResolvedValue(0),
+  };
   const workspacesService = {
     findWorkspaceByUrl: jest.fn().mockResolvedValue({ id: 1, OwnerId: 99 }),
     assertMember: jest.fn(),
+    roleOf: jest.fn().mockResolvedValue('member'),
   };
-  const eventsGateway = { emitToWorkspace: jest.fn(), emitToUser: jest.fn() };
+  const eventsGateway = {
+    emitToWorkspace: jest.fn(),
+    emitToUser: jest.fn(),
+    docAccessChanged: jest.fn(),
+  };
   const doc = (over = {}) => ({
     id: 5,
     WorkspaceId: 1,
@@ -65,6 +77,10 @@ describe('DocsService', () => {
         },
         { provide: getRepositoryToken(DocLinks), useValue: {} },
         { provide: getRepositoryToken(DocComments), useValue: {} },
+        {
+          provide: getRepositoryToken(DocAccessRequests),
+          useValue: requestsRepository,
+        },
         { provide: WorkspacesService, useValue: workspacesService },
         { provide: EventsGateway, useValue: eventsGateway },
       ],
@@ -153,5 +169,106 @@ describe('DocsService', () => {
       'docShared',
       expect.objectContaining({ id: 5 }),
     );
+  });
+
+  it('워크스페이스 공개 문서는 기본으로 보기만, 편집으로 바꾸면 초대받지 않은 멤버도 고친다', async () => {
+    workspacesService.assertMember.mockResolvedValue('member');
+    docsRepository.findOne.mockResolvedValue(
+      doc({ visibility: 'workspace', linkRole: 'view' }),
+    );
+    await expect(
+      service.updateDoc('shlack', 5, { content: 'x', version: 3 }, 2),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    docsRepository.findOne.mockResolvedValue(
+      doc({ visibility: 'workspace', linkRole: 'edit' }),
+    );
+    await expect(
+      service.updateDoc('shlack', 5, { content: 'x', version: 3 }, 2),
+    ).resolves.toEqual(expect.objectContaining({ version: 4 }));
+    // 게스트는 공개 문서라도 초대받지 않으면 볼 수 없다
+    workspacesService.assertMember.mockResolvedValue('guest');
+    await expect(
+      service.updateDoc('shlack', 5, { content: 'x', version: 3 }, 2),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    workspacesService.assertMember.mockResolvedValue(undefined);
+  });
+
+  it('공개 범위·공유를 바꾸면 열어 둔 연결의 권한을 다시 계산한다', async () => {
+    docsRepository.findOne.mockResolvedValue(doc());
+    await service.updateSettings('shlack', 5, { linkRole: 'edit' }, 1);
+    expect(eventsGateway.docAccessChanged).toHaveBeenCalledWith(
+      'shlack',
+      5,
+      undefined,
+    );
+    await service.removeShare('shlack', 5, 3, 1);
+    expect(eventsGateway.docAccessChanged).toHaveBeenCalledWith('shlack', 5, 3);
+  });
+
+  it('권한이 없으면 주인에게 접근을 요청하고, 이미 있으면 요청할 필요가 없다', async () => {
+    docsRepository.findOne.mockResolvedValue(doc());
+    requestsRepository.findOne.mockResolvedValue(null);
+    await expect(
+      service.requestAccess(
+        'shlack',
+        5,
+        { role: 'edit', message: ' 부탁해요 ' },
+        2,
+      ),
+    ).resolves.toEqual({ requested: true });
+    expect(requestsRepository.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        DocId: 5,
+        UserId: 2,
+        role: 'edit',
+        message: '부탁해요',
+      }),
+    );
+    // 주인(1)에게 알린다
+    expect(eventsGateway.emitToUser).toHaveBeenCalledWith(
+      'shlack',
+      1,
+      'docsChanged',
+      { id: 5 },
+    );
+    sharesRepository.findOne.mockResolvedValue({ role: 'view' });
+    await expect(
+      service.requestAccess('shlack', 5, { role: 'view' }, 2),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('요청을 허락하면 공유하고, 거절하면 요청만 지운다 (주인·관리자만)', async () => {
+    docsRepository.findOne.mockResolvedValue(doc());
+    requestsRepository.findOne.mockResolvedValue({
+      id: 8,
+      DocId: 5,
+      UserId: 3,
+      role: 'view',
+    });
+    await expect(
+      service.decideAccessRequest('shlack', 5, 8, { decision: 'approve' }, 2),
+    ).rejects.toBeInstanceOf(NotFoundException); // 2 는 문서를 볼 수도 없다
+    await service.decideAccessRequest(
+      'shlack',
+      5,
+      8,
+      { decision: 'approve', role: 'edit' },
+      1,
+    );
+    expect(sharesRepository.save).toHaveBeenCalledWith({
+      DocId: 5,
+      UserId: 3,
+      role: 'edit',
+    });
+    expect(requestsRepository.delete).toHaveBeenCalledWith(8);
+    expect(eventsGateway.emitToUser).toHaveBeenCalledWith(
+      'shlack',
+      3,
+      'docAccess',
+      { id: 5, decision: 'approve' },
+    );
+    sharesRepository.save.mockClear();
+    await service.decideAccessRequest('shlack', 5, 8, { decision: 'deny' }, 1);
+    expect(sharesRepository.save).not.toHaveBeenCalled();
   });
 });

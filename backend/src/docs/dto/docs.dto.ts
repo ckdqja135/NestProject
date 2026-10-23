@@ -87,6 +87,16 @@ export class CreateDocDto {
   public visibility?: 'private' | 'workspace';
 
   @IsOptional()
+  @IsIn(['view', 'edit'])
+  @ApiProperty({
+    required: false,
+    enum: ['view', 'edit'],
+    description:
+      '워크스페이스 공개일 때 초대받지 않은 멤버의 권한 (기본 보기만, 위키는 편집)',
+  })
+  public linkRole?: 'view' | 'edit';
+
+  @IsOptional()
   @IsInt()
   @ApiProperty({ required: false, description: '넣을 폴더 (내 폴더)' })
   public folderId?: number;
@@ -123,6 +133,15 @@ export class DocSettingsDto {
   @ApiProperty({ required: false, enum: VISIBILITIES })
   public visibility?: 'private' | 'workspace';
 
+  @IsOptional()
+  @IsIn(['view', 'edit'])
+  @ApiProperty({
+    required: false,
+    enum: ['view', 'edit'],
+    description: '워크스페이스에 공개했을 때 초대받지 않은 멤버의 권한',
+  })
+  public linkRole?: 'view' | 'edit';
+
   // null 이면 폴더 밖으로
   @IsOptional()
   @ValidateIf((_, v) => v !== null)
@@ -145,6 +164,30 @@ export class DocShareDto {
   @IsIn(['view', 'edit'])
   @ApiProperty({ enum: ['view', 'edit'] })
   public role: 'view' | 'edit';
+}
+
+export class DocAccessRequestDto {
+  @IsIn(['view', 'edit'])
+  @ApiProperty({ enum: ['view', 'edit'] })
+  public role: 'view' | 'edit';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  @ApiProperty({ required: false, description: '문서 주인에게 남길 말' })
+  public message?: string;
+}
+
+export class DocAccessDecisionDto {
+  @IsIn(['approve', 'deny'])
+  @ApiProperty({ enum: ['approve', 'deny'] })
+  public decision: 'approve' | 'deny';
+
+  // 허락할 때 요청과 다른 권한을 줄 수 있다
+  @IsOptional()
+  @IsIn(['view', 'edit'])
+  @ApiProperty({ required: false, enum: ['view', 'edit'] })
+  public role?: 'view' | 'edit';
 }
 
 export class FolderDto {

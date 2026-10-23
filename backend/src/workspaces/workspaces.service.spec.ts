@@ -49,6 +49,7 @@ describe('WorkspacesService', () => {
     removeUserFromWorkspace: jest.fn(),
     notifyWorkspacesChanged: jest.fn(),
     emitToWorkspace: jest.fn(),
+    memberAccessChanged: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -228,6 +229,11 @@ describe('WorkspacesService', () => {
       expect(eventsGateway.emitToWorkspace).toHaveBeenCalledWith(
         'shlack',
         'membersChanged',
+      );
+      // 열어 둔 문서 공동 편집에서도 나가게 한다
+      expect(eventsGateway.memberAccessChanged).toHaveBeenCalledWith(
+        'shlack',
+        2,
       );
     });
 

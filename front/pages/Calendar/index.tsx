@@ -32,7 +32,7 @@ import {
 
 const VIEW_LABEL: Record<CalView, string> = { day: '일', week: '주', month: '월' };
 
-// 캘린더: 내 일정 + 구독한 동료 일정. 일정 알림은 캘린더 어시스턴트가 DM 으로
+// 캘린더: 내 일정 + 구독한 동료 일정. 일정 알림은 슐랙봇이 DM 으로
 const Calendar = () => {
   const { workspace } = useParams<{ workspace: string }>();
   // 게스트는 다른 사람의 캘린더를 구독할 수 없다
@@ -313,7 +313,7 @@ const Calendar = () => {
         ))}
         {bot && (
           <Link className="bot" to={`/workspace/${workspace}/dm/${bot.id}`} title="일정 알림이 오는 대화">
-            <Bot size={16} /> 캘린더 어시스턴트
+            <Bot size={16} /> 슐랙봇
           </Link>
         )}
       </Side>

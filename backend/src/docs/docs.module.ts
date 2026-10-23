@@ -6,6 +6,10 @@ import { DocShares } from '../entities/DocShares';
 import { DocUserStates } from '../entities/DocUserStates';
 import { DocLinks } from '../entities/DocLinks';
 import { DocComments } from '../entities/DocComments';
+import { DocAccessRequests } from '../entities/DocAccessRequests';
+import { Users } from '../entities/Users';
+import { BotsModule } from '../bots/bots.module';
+import { DmsModule } from '../dms/dms.module';
 import { WorkspacesModule } from '../workspaces/workspaces.module';
 import { DocsController } from './docs.controller';
 import { DocsService } from './docs.service';
@@ -19,8 +23,12 @@ import { DocsService } from './docs.service';
       DocUserStates,
       DocLinks,
       DocComments,
+      DocAccessRequests,
+      Users,
     ]),
     WorkspacesModule,
+    BotsModule,
+    DmsModule,
   ],
   providers: [DocsService],
   controllers: [DocsController],

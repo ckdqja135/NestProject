@@ -25,6 +25,8 @@ describe('문서 댓글·링크', () => {
   const gateway = { emitToWorkspace: jest.fn(), emitToUser: jest.fn() };
   let service: DocsService;
   const doc = { id: 3, title: '기획서', OwnerId: 7 };
+  // 지금 문서를 볼 수 있는 사람
+  let viewers: Set<number>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -37,10 +39,17 @@ describe('문서 댓글·링크', () => {
       comments as any,
       {} as any,
       gateway as any,
+      {} as any,
     );
     jest
       .spyOn(service as any, 'access')
       .mockResolvedValue({ doc, canEdit: false, canManage: false });
+    viewers = new Set([5, 7, 9]);
+    jest
+      .spyOn(service as any, 'canViewDoc')
+      .mockImplementation(async (_doc: unknown, userId: unknown) =>
+        viewers.has(userId as number),
+      );
   });
 
   it('보기만 가능한 사람도 댓글을 달고, 문서 주인과 스레드 참여자에게 알린다 (나 빼고)', async () => {
@@ -66,6 +75,19 @@ describe('문서 댓글·링크', () => {
       'docCommentsChanged',
       { docId: 3 },
     );
+  });
+
+  it('권한을 잃은 스레드 참여자에게는 댓글 내용을 알리지 않는다', async () => {
+    comments.findOne.mockResolvedValue({ id: 1, threadId: 'th-1234' });
+    viewers.delete(9);
+    await service.addComment(
+      'shlack',
+      3,
+      { threadId: 'th-1234', content: '비밀 내용' },
+      5,
+    );
+    const notified = gateway.emitToUser.mock.calls.map((c) => c[1]);
+    expect(notified).toEqual([7]);
   });
 
   it('새 스레드의 첫 댓글에는 고른 글을 남긴다', async () => {

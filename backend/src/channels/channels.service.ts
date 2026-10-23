@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, MoreThan, Not, Repository } from 'typeorm';
@@ -21,6 +22,7 @@ import {
 } from '../workspaces/workspaces.service';
 import { EventsGateway } from '../events/events.gateway';
 import { MentionsService } from '../mentions/mentions.service';
+import { AppEventsService } from '../apps/app-events.service';
 import { toFileContent, toFileMeta } from '../common/upload';
 
 // 스레드 모아 보기에 보여줄 최대 개수
@@ -46,6 +48,8 @@ export class ChannelsService {
     private workspacesService: WorkspacesService,
     private eventsGateway: EventsGateway,
     private mentionsService: MentionsService,
+    // 앱 봇이 들어간 채널의 메시지·리액션을 앱에 보낸다 (테스트처럼 없으면 건너뛴다)
+    @Optional() private appEvents?: AppEventsService,
   ) {}
 
   // 채널 멤버만 채널을 다룰 수 있다. 비공개 채널은 존재 여부도 숨기도록 404 로 응답한다.
@@ -393,6 +397,7 @@ export class ChannelsService {
       channel.WorkspaceId,
       chatWithUser,
     );
+    void this.appEvents?.channelMessage(url, channel, chatWithUser);
     return chatWithUser;
   }
 
@@ -545,6 +550,7 @@ export class ChannelsService {
         UserId: myId,
         emoji,
       });
+      void this.appEvents?.reactionAdded(url, channel, chat.id, myId, emoji);
     }
     const reactions = await this.reactionsRepository.find({
       where: { ChatId: chat.id },

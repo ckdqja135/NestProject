@@ -34,7 +34,8 @@ const DocLinkCard: FC<{ workspace: string; id: number; row?: string }> = ({ work
   );
   if (error) {
     return (
-      <CardBox className="doc-card denied" data-doc-card={id}>
+      // 누르면 권한 요청 화면으로 간다
+      <Card to={`/workspace/${workspace}/docs/d/${id}`} className="doc-card denied" data-doc-card={id}>
         <span className="icon">
           <Lock size={16} />
         </span>
@@ -42,8 +43,8 @@ const DocLinkCard: FC<{ workspace: string; id: number; row?: string }> = ({ work
           <small>문서</small>
           <b>볼 수 없는 문서예요</b>
         </span>
-        <span className="hint">만든 사람에게 공유를 부탁하세요</span>
-      </CardBox>
+        <span className="hint">눌러서 권한 요청 →</span>
+      </Card>
     );
   }
   if (!data) {
