@@ -1,5 +1,7 @@
 import { Editor, Range } from '@tiptap/core';
 import {
+  FileSymlink,
+  FilePlus2,
   CheckSquare,
   Code2,
   Heading1,
@@ -26,6 +28,8 @@ export interface SlashItem {
 
 // 이미지 넣기는 창을 띄워야 해서 편집기 화면에 알린다
 export const INSERT_IMAGE_EVENT = 'shlack:insert-image';
+// 새 하위 페이지는 서버에 문서를 만들어야 해서 편집기 화면에 알린다
+export const NEW_SUBPAGE_EVENT = 'shlack:new-subpage';
 
 const chain = (editor: Editor, range: Range) => editor.chain().focus().deleteRange(range);
 
@@ -118,6 +122,25 @@ export const SLASH_ITEMS: SlashItem[] = [
     Icon: Table,
     keywords: ['표', 'table'],
     run: (e, r) => chain(e, r).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+  },
+  {
+    key: 'page-link',
+    title: '페이지 링크',
+    description: '다른 문서로 가는 링크 ([[ 로도 넣을 수 있어요)',
+    Icon: FileSymlink,
+    keywords: ['페이지', '링크', '문서', 'link', 'page', 'mention'],
+    run: (e, r) => chain(e, r).insertContent('[[').run(),
+  },
+  {
+    key: 'subpage',
+    title: '새 하위 페이지',
+    description: '이 문서 안에 새 페이지를 만들고 링크',
+    Icon: FilePlus2,
+    keywords: ['하위', '페이지', '새', 'subpage', 'page', 'new'],
+    run: (e, r) => {
+      chain(e, r).run();
+      window.dispatchEvent(new CustomEvent(NEW_SUBPAGE_EVENT));
+    },
   },
   {
     key: 'image',

@@ -17,7 +17,10 @@ import { User } from '../common/decorators/user.decorator';
 import { Users } from '../entities/Users';
 import {
   CreateDocDto,
+  DocCommentDto,
   DocListQuery,
+  EditDocCommentDto,
+  ResolveThreadDto,
   DocSettingsDto,
   DocShareDto,
   FolderDto,
@@ -211,6 +214,97 @@ export class DocsController {
     @User() user: Users,
   ) {
     await this.docsService.deleteFolder(url, id, user.id);
+    return 'ok';
+  }
+
+  @ApiOperation({ summary: '문서 제목만 (페이지 링크 표시용)' })
+  @Get('docs/:id/title')
+  title(
+    @Param('url') url: string,
+    @Param('id', ParseIntPipe) id: number,
+    @User() user: Users,
+  ) {
+    return this.docsService.getDocTitle(url, id, user.id);
+  }
+
+  @ApiOperation({ summary: '이 문서를 링크한 문서들 (백링크)' })
+  @Get('docs/:id/backlinks')
+  backlinks(
+    @Param('url') url: string,
+    @Param('id', ParseIntPipe) id: number,
+    @User() user: Users,
+  ) {
+    return this.docsService.getBacklinks(url, id, user.id);
+  }
+
+  @ApiOperation({ summary: '문서 댓글 (스레드별로 묶어 보여 준다)' })
+  @Get('docs/:id/comments')
+  comments(
+    @Param('url') url: string,
+    @Param('id', ParseIntPipe) id: number,
+    @User() user: Users,
+  ) {
+    return this.docsService.listComments(url, id, user.id);
+  }
+
+  @ApiOperation({ summary: '댓글 달기 (새 스레드 또는 답글)' })
+  @Post('docs/:id/comments')
+  addComment(
+    @Param('url') url: string,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: DocCommentDto,
+    @User() user: Users,
+  ) {
+    return this.docsService.addComment(url, id, body, user.id);
+  }
+
+  @ApiOperation({ summary: '내 댓글 고치기' })
+  @Patch('docs/:id/comments/:commentId')
+  async editComment(
+    @Param('url') url: string,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('commentId', ParseIntPipe) commentId: number,
+    @Body() body: EditDocCommentDto,
+    @User() user: Users,
+  ) {
+    await this.docsService.editComment(
+      url,
+      id,
+      commentId,
+      body.content,
+      user.id,
+    );
+    return 'ok';
+  }
+
+  @ApiOperation({ summary: '댓글 지우기 (내 댓글, 문서 주인·관리자는 모두)' })
+  @Delete('docs/:id/comments/:commentId')
+  async deleteComment(
+    @Param('url') url: string,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('commentId', ParseIntPipe) commentId: number,
+    @User() user: Users,
+  ) {
+    await this.docsService.deleteComment(url, id, commentId, user.id);
+    return 'ok';
+  }
+
+  @ApiOperation({ summary: '스레드 해결함 / 다시 열기' })
+  @Put('docs/:id/comment-threads/:threadId')
+  async resolveThread(
+    @Param('url') url: string,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('threadId') threadId: string,
+    @Body() body: ResolveThreadDto,
+    @User() user: Users,
+  ) {
+    await this.docsService.resolveThread(
+      url,
+      id,
+      threadId,
+      body.resolved,
+      user.id,
+    );
     return 'ok';
   }
 }

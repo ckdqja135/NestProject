@@ -6,11 +6,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { DocFolders } from '../entities/DocFolders';
 import { Docs } from '../entities/Docs';
 import { DocShares } from '../entities/DocShares';
 import { DocUserStates } from '../entities/DocUserStates';
+import { DocLinks } from '../entities/DocLinks';
+import { DocComments } from '../entities/DocComments';
 import { EventsGateway } from '../events/events.gateway';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 
@@ -38,6 +40,10 @@ export class DocsService {
     private sharesRepository: Repository<DocShares>,
     @InjectRepository(DocUserStates)
     private statesRepository: Repository<DocUserStates>,
+    @InjectRepository(DocLinks)
+    private linksRepository: Repository<DocLinks>,
+    @InjectRepository(DocComments)
+    private commentsRepository: Repository<DocComments>,
     private workspacesService: WorkspacesService,
     private eventsGateway: EventsGateway,
   ) {}
@@ -108,6 +114,190 @@ export class DocsService {
       update.content = content;
     }
     await this.docsRepository.update({ id }, update);
+    if (content !== undefined) {
+      await this.updateLinks(url, id, content);
+    }
+  }
+
+  // 문서 안의 다른 문서 링크(/workspace/주소/docs/d/번호)를 기억한다 (백링크용)
+  private async updateLinks(url: string, id: number, content: string) {
+    const escaped = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = new RegExp(`/workspace/${escaped}/docs/d/(\\d+)`, 'g');
+    const ids = [
+      ...new Set([...content.matchAll(pattern)].map((m) => Number(m[1]))),
+    ]
+      .filter((to) => to !== id)
+      .slice(0, 500);
+    const doc = await this.docsRepository.findOne({
+      where: { id },
+      select: ['id', 'WorkspaceId'],
+    });
+    const valid = ids.length
+      ? await this.docsRepository.find({
+          where: { id: In(ids), WorkspaceId: doc?.WorkspaceId },
+          select: ['id'],
+          withDeleted: true,
+        })
+      : [];
+    await this.linksRepository.delete({ FromId: id });
+    if (valid.length) {
+      await this.linksRepository.insert(
+        valid.map((d) => ({ FromId: id, ToId: d.id })),
+      );
+    }
+  }
+
+  // 페이지 링크에 보여 줄 제목 (최근 목록에 올리지 않는다)
+  async getDocTitle(url: string, id: number, myId: number) {
+    const { doc } = await this.access(url, id, myId);
+    return { id: doc.id, title: doc.title, type: doc.type };
+  }
+
+  // 이 문서를 링크한 문서들 (내가 볼 수 있는 것만)
+  async getBacklinks(url: string, id: number, myId: number) {
+    const { doc } = await this.access(url, id, myId);
+    return this.docsRepository
+      .createQueryBuilder('d')
+      .innerJoin(DocLinks, 'l', 'l.FromId = d.id AND l.ToId = :to', {
+        to: doc.id,
+      })
+      .select(['d.id', 'd.title', 'd.type'])
+      .where(VISIBLE, { me: myId })
+      .orderBy('d.updatedAt', 'DESC')
+      .limit(50)
+      .getMany();
+  }
+
+  // ---- 댓글 ----
+
+  private commentNotify(url: string, docId: number) {
+    this.eventsGateway.emitToWorkspace(url, 'docCommentsChanged', { docId });
+  }
+
+  async listComments(url: string, id: number, myId: number) {
+    const { doc } = await this.access(url, id, myId);
+    return this.commentsRepository
+      .createQueryBuilder('c')
+      .leftJoin('c.User', 'u')
+      .addSelect(['u.id', 'u.nickname', 'u.email', 'u.avatarStyle'])
+      .where('c.DocId = :id', { id: doc.id })
+      .orderBy('c.createdAt', 'ASC')
+      .addOrderBy('c.id', 'ASC')
+      .getMany();
+  }
+
+  // 댓글은 볼 수 있는 사람이면 누구나 단다 (보기만 가능한 사람도 의견을 남길 수 있게)
+  async addComment(
+    url: string,
+    id: number,
+    dto: { threadId: string; content: string; quote?: string },
+    myId: number,
+  ) {
+    const { doc } = await this.access(url, id, myId);
+    const content = dto.content.trim();
+    if (!content) {
+      throw new BadRequestException('댓글을 입력해주세요.');
+    }
+    const first = await this.commentsRepository.findOne({
+      where: { DocId: doc.id, threadId: dto.threadId },
+      order: { id: 'ASC' },
+    });
+    const saved = await this.commentsRepository.save({
+      DocId: doc.id,
+      UserId: myId,
+      threadId: dto.threadId,
+      content,
+      // 인용한 글은 스레드 첫 댓글에만
+      quote: first ? null : dto.quote?.trim().slice(0, 300) || null,
+    });
+    this.commentNotify(url, doc.id);
+    // 문서 주인과 이 스레드에 댓글을 단 사람들에게 알린다 (나 빼고)
+    const participants = first
+      ? await this.commentsRepository
+          .createQueryBuilder('c')
+          .select('DISTINCT c.UserId', 'userId')
+          .where('c.DocId = :id AND c.threadId = :threadId', {
+            id: doc.id,
+            threadId: dto.threadId,
+          })
+          .getRawMany<{ userId: number }>()
+      : [];
+    const targets = new Set(
+      [doc.OwnerId, ...participants.map((p) => Number(p.userId))].filter(
+        (userId): userId is number => !!userId && userId !== myId,
+      ),
+    );
+    targets.forEach((userId) =>
+      this.eventsGateway.emitToUser(url, userId, 'docComment', {
+        docId: doc.id,
+        title: doc.title,
+        authorId: myId,
+        content: content.slice(0, 100),
+      }),
+    );
+    return saved;
+  }
+
+  private async findComment(docId: number, commentId: number) {
+    const comment = await this.commentsRepository.findOne({
+      where: { id: commentId, DocId: docId },
+    });
+    if (!comment) {
+      throw new NotFoundException('존재하지 않는 댓글입니다.');
+    }
+    return comment;
+  }
+
+  async editComment(
+    url: string,
+    id: number,
+    commentId: number,
+    content: string,
+    myId: number,
+  ) {
+    const { doc } = await this.access(url, id, myId);
+    const comment = await this.findComment(doc.id, commentId);
+    if (comment.UserId !== myId) {
+      throw new ForbiddenException('내가 쓴 댓글만 고칠 수 있습니다.');
+    }
+    if (!content.trim()) {
+      throw new BadRequestException('댓글을 입력해주세요.');
+    }
+    await this.commentsRepository.update(comment.id, {
+      content: content.trim(),
+      editedAt: new Date(),
+    });
+    this.commentNotify(url, doc.id);
+  }
+
+  async deleteComment(
+    url: string,
+    id: number,
+    commentId: number,
+    myId: number,
+  ) {
+    const { doc, canManage } = await this.access(url, id, myId);
+    const comment = await this.findComment(doc.id, commentId);
+    if (comment.UserId !== myId && !canManage && doc.OwnerId !== myId) {
+      throw new ForbiddenException('내가 쓴 댓글만 지울 수 있습니다.');
+    }
+    await this.commentsRepository.delete(comment.id);
+    this.commentNotify(url, doc.id);
+  }
+
+  async resolveThread(
+    url: string,
+    id: number,
+    threadId: string,
+    resolved: boolean,
+    myId: number,
+  ) {
+    const { doc } = await this.access(url, id, myId);
+    await this.commentsRepository.update(
+      { DocId: doc.id, threadId },
+      { resolved },
+    );
+    this.commentNotify(url, doc.id);
   }
 
   private notify(url: string, data: Record<string, unknown>) {

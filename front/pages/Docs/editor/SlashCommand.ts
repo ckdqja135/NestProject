@@ -1,5 +1,6 @@
 import { Extension } from '@tiptap/core';
 import { ReactRenderer } from '@tiptap/react';
+import { PluginKey } from '@tiptap/pm/state';
 import Suggestion, { SuggestionOptions } from '@tiptap/suggestion';
 import SlashMenu, { SlashMenuHandle } from './SlashMenu';
 import { filterSlashItems, SlashItem } from './slashItems';
@@ -10,6 +11,8 @@ const SlashCommand = Extension.create({
   addProseMirrorPlugins() {
     const options: Omit<SuggestionOptions<SlashItem>, 'editor'> = {
       char: '/',
+      // 다른 목록('[[' 문서 링크)과 구분되는 이름
+      pluginKey: new PluginKey('slashCommand'),
       // 코드 블록 안에서는 띄우지 않는다
       allow: ({ state, range }) => !state.doc.resolve(range.from).parent.type.spec.code,
       items: ({ query }) => filterSlashItems(query),

@@ -163,6 +163,8 @@ const Workspace = () => {
     userData ? `/api/workspaces/${workspace}/members` : null,
     fetcher,
   );
+  const membersRef = useRef(membersData);
+  membersRef.current = membersData;
 
   const onLogOut = useCallback(() => {
     axios
@@ -479,7 +481,31 @@ const Workspace = () => {
     socket?.on('dm', onDM);
     socket?.on('reminder', onReminder);
     socket?.on('scheduledFailed', onScheduledFailed);
+    // 내 문서·내가 참여한 댓글 스레드에 새 댓글
+    const onDocComment = ({
+      docId,
+      title,
+      authorId,
+      content,
+    }: {
+      docId: number;
+      title: string;
+      authorId: number;
+      content: string;
+    }) => {
+      const author = membersRef.current?.find((m) => m.id === authorId)?.nickname || '누군가';
+      const path = `/workspace/${workspace}/docs/d/${docId}?comments=1`;
+      const text = `${author}님이 ‘${title}’에 댓글: ${content}`;
+      const go = () => history.push(path);
+      if (document.visibilityState !== 'visible') {
+        notifyIfHidden(`${author}님의 댓글`, `‘${title}’: ${content}`, go);
+      } else if (!locationRef.current.endsWith(`/docs/d/${docId}`)) {
+        toast.info(text, { position: 'bottom-center', onClick: go });
+      }
+    };
+    socket?.on('docComment', onDocComment);
     return () => {
+      socket?.off('docComment', onDocComment);
       socket?.off('reminder', onReminder);
       socket?.off('scheduledFailed', onScheduledFailed);
       socket?.off('mention', onMention);

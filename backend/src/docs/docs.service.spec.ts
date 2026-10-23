@@ -10,6 +10,8 @@ import { DocFolders } from '../entities/DocFolders';
 import { Docs } from '../entities/Docs';
 import { DocShares } from '../entities/DocShares';
 import { DocUserStates } from '../entities/DocUserStates';
+import { DocLinks } from '../entities/DocLinks';
+import { DocComments } from '../entities/DocComments';
 import { EventsGateway } from '../events/events.gateway';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { DocsService } from './docs.service';
@@ -61,6 +63,8 @@ describe('DocsService', () => {
           provide: getRepositoryToken(DocUserStates),
           useValue: statesRepository,
         },
+        { provide: getRepositoryToken(DocLinks), useValue: {} },
+        { provide: getRepositoryToken(DocComments), useValue: {} },
         { provide: WorkspacesService, useValue: workspacesService },
         { provide: EventsGateway, useValue: eventsGateway },
       ],

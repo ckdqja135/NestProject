@@ -5,11 +5,14 @@ import fetcher from '@utils/fetcher';
 import axios from 'axios';
 import dayjs from 'dayjs';
 import React, { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
+import type { Editor } from '@tiptap/react';
 import { toast } from 'react-toastify';
 import useSWR, { mutate as mutateKey } from 'swr';
 import { createDoc, docPath, docsBase, toastError } from './api';
 import ShareDocModal from './ShareDocModal';
+import CommentsPanel, { DocComment } from './CommentsPanel';
+import { removeCommentMark, scrollToThread } from './editor/commentMarks';
 import {
   ArchiveRestore,
   CornerLeftUp,
@@ -18,6 +21,7 @@ import {
   Folder,
   FolderInput,
   Lock,
+  MessageSquare,
   Play,
   Plus,
   Star,
@@ -83,6 +87,12 @@ const DocPage: FC<Props> = ({ me }) => {
   const statusRef = useRef(status);
   statusRef.current = status;
   const [showShare, setShowShare] = useState(false);
+  // 댓글 창: 알림에서 ?comments=1 로 들어오면 연다
+  const location = useLocation();
+  const [showComments, setShowComments] = useState(() => new URLSearchParams(location.search).has('comments'));
+  const [commentDraft, setCommentDraft] = useState<{ threadId: string; quote: string } | null>(null);
+  const [activeThread, setActiveThread] = useState<string | null>(null);
+  const editorRef = useRef<Editor | null>(null);
   const [showMenu, setShowMenu] = useState(false);
   const [presenting, setPresenting] = useState<number | null>(null);
   const [slideIndex, setSlideIndex] = useState(0);
@@ -239,6 +249,31 @@ const DocPage: FC<Props> = ({ me }) => {
       })
       .catch(toastError);
 
+  const { data: comments } = useSWR<DocComment[]>(Number.isInteger(id) ? `${base}/docs/${id}/comments` : null, fetcher);
+  const openThreads = useMemo(
+    () => new Set((comments || []).filter((c) => !c.resolved).map((c) => c.threadId)).size,
+    [comments],
+  );
+  const { data: backlinks } = useSWR<{ id: number; title: string; type: string }[]>(
+    Number.isInteger(id) && (doc?.type === 'doc' || doc?.type === 'wiki') ? `${base}/docs/${id}/backlinks` : null,
+    fetcher,
+  );
+  // 다른 사람이 댓글을 달면 개수도 맞춘다
+  useEffect(() => {
+    const onChanged = ({ docId: changed }: { docId: number }) => {
+      if (changed === id) mutateKey(`${base}/docs/${id}/comments`);
+    };
+    socket?.on('docCommentsChanged', onChanged);
+    return () => {
+      socket?.off('docCommentsChanged', onChanged);
+    };
+  }, [socket, id, base]);
+  // 다른 문서로 옮기면 댓글 창 상태를 비운다
+  useEffect(() => {
+    setCommentDraft(null);
+    setActiveThread(null);
+  }, [id]);
+
   const deckSlides = useMemo(() => (doc?.type === 'slides' ? parseDeck(content).slides : []), [doc?.type, content]);
 
   // 위키 상위 페이지 경로
@@ -360,6 +395,15 @@ const DocPage: FC<Props> = ({ me }) => {
             fill={doc.favorite ? '#f2c94c' : 'none'}
             color={doc.favorite ? '#d4a20f' : 'currentColor'}
           />
+        </button>
+        <button
+          type="button"
+          className={`btn${showComments ? ' on' : ''}`}
+          onClick={() => setShowComments((v) => !v)}
+          aria-pressed={showComments}
+          title="댓글"
+        >
+          <MessageSquare size={14} style={{ verticalAlign: '-3px' }} /> {openThreads > 0 ? openThreads : '댓글'}
         </button>
         <button type="button" className="btn primary" onClick={() => setShowShare(true)}>
           {doc.visibility === 'private' && doc.type !== 'wiki' && (
@@ -497,24 +541,82 @@ const DocPage: FC<Props> = ({ me }) => {
         <BlockEditor
           workspace={workspace}
           docId={doc.id}
+          docType={doc.type}
+          visibility={doc.visibility}
           me={me}
           readOnly={!canEdit}
           initialContent={doc.content}
+          onEditor={(editor) => {
+            editorRef.current = editor;
+          }}
+          onComment={(threadId, quote) => {
+            setCommentDraft({ threadId, quote });
+            setActiveThread(threadId);
+            setShowComments(true);
+          }}
+          onOpenThread={(threadId) => {
+            setActiveThread(threadId);
+            setShowComments(true);
+          }}
           footer={
-            children.length > 0 && (
+            (children.length > 0 || !!backlinks?.length) && (
               <div className="subpages">
-                <h3>하위 페이지</h3>
-                <ul>
-                  {children.map((p) => (
-                    <li key={p.id}>
-                      <Link to={docPath(workspace, p.id)}>{p.title}</Link>
-                    </li>
-                  ))}
-                </ul>
+                {children.length > 0 && (
+                  <>
+                    <h3>하위 페이지</h3>
+                    <ul>
+                      {children.map((p) => (
+                        <li key={p.id}>
+                          <Link to={docPath(workspace, p.id)}>{p.title}</Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {!!backlinks?.length && (
+                  <>
+                    <h3>이 페이지를 링크한 문서</h3>
+                    <ul className="backlinks">
+                      {backlinks.map((p) => (
+                        <li key={p.id}>
+                          <DocIcon type={p.type as 'doc'} size={14} />{' '}
+                          <Link to={docPath(workspace, p.id)}>{p.title}</Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
               </div>
             )
           }
         />
+      )}
+      {showComments && (
+        <CommentsPanel
+          workspace={workspace}
+          docId={doc.id}
+          me={me}
+          canManage={!!doc.canManage}
+          draft={commentDraft}
+          active={activeThread}
+          onActive={setActiveThread}
+          onDraftDone={(threadId, posted) => {
+            if (!posted && editorRef.current) removeCommentMark(editorRef.current, threadId);
+            setCommentDraft(null);
+          }}
+          onResolved={(threadId, resolved) => {
+            if (resolved && editorRef.current) removeCommentMark(editorRef.current, threadId);
+          }}
+          onJump={(threadId) => editorRef.current && scrollToThread(editorRef.current, threadId)}
+          onClose={() => {
+            if (commentDraft && editorRef.current) removeCommentMark(editorRef.current, commentDraft.threadId);
+            setCommentDraft(null);
+            setShowComments(false);
+          }}
+        />
+      )}
+      {activeThread && /^[\w-]+$/.test(activeThread) && (
+        <style>{`.comment-mark[data-thread="${activeThread}"] { background: rgba(255, 170, 0, 0.55); }`}</style>
       )}
       <ShareDocModal
         show={showShare}

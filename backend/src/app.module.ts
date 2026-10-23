@@ -37,6 +37,8 @@ import { SidebarPins } from './entities/SidebarPins';
 import { Contacts } from './entities/Contacts';
 import { ContactStars } from './entities/ContactStars';
 import { PasswordResets } from './entities/PasswordResets';
+import { DocLinks } from './entities/DocLinks';
+import { DocComments } from './entities/DocComments';
 import { PinsModule } from './pins/pins.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { LinksModule } from './links/links.module';
@@ -94,6 +96,8 @@ import { Workspaces } from './entities/Workspaces';
         Contacts,
         ContactStars,
         PasswordResets,
+        DocLinks,
+        DocComments,
         ScheduledMessages,
         Reminders,
         MessageEdits,

@@ -1,8 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsIn,
   IsInt,
+  Matches,
   IsOptional,
   IsString,
   MaxLength,
@@ -140,4 +142,35 @@ export class FolderDto {
   @IsInt()
   @ApiProperty({ required: false, nullable: true })
   public parentId?: number | null;
+}
+
+export class DocCommentDto {
+  @IsString()
+  @Matches(/^[\w-]{6,40}$/, { message: '스레드 id 가 올바르지 않습니다.' })
+  @ApiProperty({ description: '스레드 id (새 스레드면 화면에서 만든다)' })
+  public threadId: string;
+
+  @IsString()
+  @MaxLength(4000)
+  @ApiProperty({ description: '댓글 내용' })
+  public content: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  @ApiProperty({ required: false, description: '댓글을 단 글 (첫 댓글에만)' })
+  public quote?: string;
+}
+
+export class EditDocCommentDto {
+  @IsString()
+  @MaxLength(4000)
+  @ApiProperty({ description: '고친 내용' })
+  public content: string;
+}
+
+export class ResolveThreadDto {
+  @IsBoolean()
+  @ApiProperty({ description: '해결함 / 다시 열기' })
+  public resolved: boolean;
 }

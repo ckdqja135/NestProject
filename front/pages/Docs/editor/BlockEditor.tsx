@@ -15,16 +15,32 @@ import StarterKit from '@tiptap/starter-kit';
 import useCollab from '@hooks/useCollab';
 import { IUser } from '@typings/db';
 import CollabProvider from '@utils/collab/CollabProvider';
-import { Bold, Code, Highlighter, Italic, Link2, Strikethrough, Underline as UnderlineIcon } from 'lucide-react';
+import {
+  Bold,
+  Code,
+  Highlighter,
+  Italic,
+  Link2,
+  MessageSquarePlus,
+  Strikethrough,
+  Underline as UnderlineIcon,
+} from 'lucide-react';
+import axios from 'axios';
+import { toast } from 'react-toastify';
+import getErrorMessage from '@utils/getErrorMessage';
 import { Global } from '@emotion/react';
 import React, { FC, useEffect, useRef, useState } from 'react';
 import GlobalDragHandle from 'tiptap-extension-global-drag-handle';
 import { ySyncPluginKey } from 'y-prosemirror';
 import { Markdown } from 'tiptap-markdown';
 import CollabCursor from './CollabCursor';
+import CommentMark from './CommentMark';
+import PageLink from './PageLink';
+import PageLinkSuggestion from './PageLinkSuggestion';
+import { PageItem } from './PageMenu';
 import ImageModal from './ImageModal';
 import SlashCommand from './SlashCommand';
-import { INSERT_IMAGE_EVENT } from './slashItems';
+import { INSERT_IMAGE_EVENT, NEW_SUBPAGE_EVENT } from './slashItems';
 import { EditorWrap, slashMenuStyles } from './styles';
 
 // 블록 편집기 (Notion 처럼): 쓰는 대로 서식이 보이고, '/' 로 블록을 넣고, 블록을 끌어 옮긴다.
@@ -52,7 +68,20 @@ const headingsOf = (editor: Editor): Heading[] => {
   return list;
 };
 
-interface InnerProps {
+export interface EditorHooks {
+  // 편집기가 만들어지면 (댓글 표시 지우기·옮겨 가기에 쓴다)
+  onEditor?: (editor: Editor | null) => void;
+  // 고른 글에 댓글 달기를 눌렀다
+  onComment?: (threadId: string, quote: string) => void;
+  // 댓글이 달린 글을 눌렀다
+  onOpenThread?: (threadId: string) => void;
+}
+
+interface InnerProps extends EditorHooks {
+  workspace: string;
+  docId: number;
+  docType: string;
+  visibility: string;
   provider: CollabProvider;
   synced: boolean;
   shouldSeed: boolean;
@@ -61,7 +90,23 @@ interface InnerProps {
   footer?: React.ReactNode;
 }
 
-const Inner: FC<InnerProps> = ({ provider, synced, shouldSeed, editable, initialContent, footer }) => {
+const newThreadId = () => `th-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`;
+
+const Inner: FC<InnerProps> = ({
+  workspace,
+  docId,
+  docType,
+  visibility,
+  provider,
+  synced,
+  shouldSeed,
+  editable,
+  initialContent,
+  footer,
+  onEditor,
+  onComment,
+  onOpenThread,
+}) => {
   const snapshotTimer = useRef<number | null>(null);
   const [headings, setHeadings] = useState<Heading[]>([]);
   const [showImage, setShowImage] = useState(false);
@@ -69,6 +114,25 @@ const Inner: FC<InnerProps> = ({ provider, synced, shouldSeed, editable, initial
   const [linkUrl, setLinkUrl] = useState('');
   const editableRef = useRef(editable);
   editableRef.current = editable;
+  const hooksRef = useRef({ onComment, onOpenThread });
+  hooksRef.current = { onComment, onOpenThread };
+
+  // 새 페이지: 위키면 이 페이지의 하위 페이지로, 문서면 이 문서와 같은 공개 범위로 만든다
+  const createPage = async (title: string): Promise<PageItem | null> => {
+    try {
+      const isWiki = docType === 'wiki';
+      const { data } = await axios.post<{ id: number; title: string; type: string }>(
+        `/api/workspaces/${workspace}/docs`,
+        isWiki ? { type: 'wiki', title, parentId: docId } : { type: 'doc', title, visibility },
+      );
+      return { id: data.id, title: data.title, type: data.type };
+    } catch (error) {
+      toast.error(getErrorMessage(error), { position: 'bottom-center' });
+      return null;
+    }
+  };
+  const createPageRef = useRef(createPage);
+  createPageRef.current = createPage;
 
   const editor = useEditor({
     extensions: [
@@ -95,12 +159,22 @@ const Inner: FC<InnerProps> = ({ provider, synced, shouldSeed, editable, initial
       Markdown.configure({ html: false, tightLists: true, linkify: true, transformPastedText: true }),
       GlobalDragHandle.configure({ dragHandleWidth: 22 }),
       SlashCommand,
+      PageLink.configure({ workspace }),
+      PageLinkSuggestion.configure({ workspace, docId, createPage: (title) => createPageRef.current(title) }),
+      CommentMark,
       Collaboration.configure({ document: provider.doc }),
       CollabCursor.configure({ awareness: provider.awareness }),
     ],
     editable: false,
     editorProps: {
       attributes: { class: 'block-editor', 'aria-label': '문서 내용' },
+      // 댓글이 달린 글을 누르면 그 스레드를 연다
+      handleClick: (_view, _pos, event) => {
+        const mark = (event.target as HTMLElement).closest?.('.comment-mark') as HTMLElement | null;
+        const threadId = mark?.dataset.thread;
+        if (threadId) hooksRef.current.onOpenThread?.(threadId);
+        return false;
+      },
       // 붙여 넣은 작은 그림은 문서에 바로 넣는다
       handlePaste: (view, event) => {
         const file = Array.from(event.clipboardData?.files || []).find((f) => f.type.startsWith('image/'));
@@ -141,9 +215,34 @@ const Inner: FC<InnerProps> = ({ provider, synced, shouldSeed, editable, initial
 
   useEffect(() => {
     const open = () => setShowImage(true);
+    // '/새 하위 페이지': 만들고 그 자리에 링크
+    const subpage = () =>
+      createPageRef.current(docType === 'wiki' ? '제목 없는 페이지' : '제목 없는 문서').then((page) => {
+        if (page && editor) {
+          editor
+            .chain()
+            .focus()
+            .insertContent([
+              { type: 'pageLink', attrs: { id: page.id, title: page.title, type: page.type } },
+              { type: 'text', text: ' ' },
+            ])
+            .run();
+          toast.success('하위 페이지를 만들었어요. 링크를 눌러 열어 보세요.', { position: 'bottom-center' });
+        }
+      });
     window.addEventListener(INSERT_IMAGE_EVENT, open);
-    return () => window.removeEventListener(INSERT_IMAGE_EVENT, open);
-  }, []);
+    window.addEventListener(NEW_SUBPAGE_EVENT, subpage);
+    return () => {
+      window.removeEventListener(INSERT_IMAGE_EVENT, open);
+      window.removeEventListener(NEW_SUBPAGE_EVENT, subpage);
+    };
+  }, [editor, docType]);
+
+  useEffect(() => {
+    onEditor?.(editor);
+    return () => onEditor?.(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor]);
 
   useEffect(
     () => () => {
@@ -215,6 +314,24 @@ const Inner: FC<InnerProps> = ({ provider, synced, shouldSeed, editable, initial
                   {mark('strike', () => editor.chain().focus().toggleStrike().run(), Strikethrough, '취소선')}
                   {mark('code', () => editor.chain().focus().toggleCode().run(), Code, '코드')}
                   {mark('highlight', () => editor.chain().focus().toggleHighlight().run(), Highlighter, '형광펜')}
+                  {onComment && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const { from, to } = editor.state.selection;
+                        const quote = editor.state.doc
+                          .textBetween(from, to, ' ', (leaf) => (leaf.type.name === 'pageLink' ? leaf.attrs.title : ''))
+                          .slice(0, 300);
+                        const threadId = newThreadId();
+                        editor.chain().focus().setMark('comment', { threadId }).run();
+                        onComment(threadId, quote);
+                      }}
+                      aria-label="댓글"
+                      title="댓글"
+                    >
+                      <MessageSquarePlus size={15} />
+                    </button>
+                  )}
                   {mark(
                     'link',
                     () => {
@@ -259,16 +376,30 @@ const Inner: FC<InnerProps> = ({ provider, synced, shouldSeed, editable, initial
   );
 };
 
-interface Props {
+interface Props extends EditorHooks {
   workspace: string;
   docId: number;
+  docType: string;
+  visibility: string;
   me: IUser;
   readOnly: boolean;
   initialContent: string;
   footer?: React.ReactNode;
 }
 
-const BlockEditor: FC<Props> = ({ workspace, docId, me, readOnly, initialContent, footer }) => {
+const BlockEditor: FC<Props> = ({
+  workspace,
+  docId,
+  docType,
+  visibility,
+  me,
+  readOnly,
+  initialContent,
+  footer,
+  onEditor,
+  onComment,
+  onOpenThread,
+}) => {
   const { provider, synced, canEdit, shouldSeed, status } = useCollab(workspace, docId, me);
   return (
     <EditorWrap>
@@ -283,6 +414,13 @@ const BlockEditor: FC<Props> = ({ workspace, docId, me, readOnly, initialContent
       {provider && (
         <Inner
           key={provider.doc.guid}
+          workspace={workspace}
+          docId={docId}
+          docType={docType}
+          visibility={visibility}
+          onEditor={onEditor}
+          onComment={onComment}
+          onOpenThread={onOpenThread}
           provider={provider}
           synced={synced}
           shouldSeed={shouldSeed}

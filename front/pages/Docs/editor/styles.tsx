@@ -33,6 +33,44 @@ export const EditorWrap = styled.div`
     }
   }
 
+  /* 문서 아래: 하위 페이지와 이 페이지를 링크한 문서 */
+  & .subpages {
+    max-width: 860px;
+    margin: 32px 0 0 28px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+
+    & h3 {
+      margin: 12px 0 6px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    & ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    & li {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 0;
+      font-size: 14px;
+    }
+
+    & a {
+      color: var(--text);
+      text-decoration: none;
+      border-bottom: 1px solid var(--border-strong);
+
+      &:hover {
+        background: var(--bg-hover);
+      }
+    }
+  }
+
   & .outline {
     position: sticky;
     top: 12px;
@@ -244,6 +282,42 @@ export const EditorWrap = styled.div`
       }
     }
 
+    /* 다른 문서로 가는 링크 */
+    & .page-link {
+      & a {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        padding: 0 3px;
+        border-radius: 4px;
+        border-bottom: 1px solid var(--border-strong);
+        color: var(--text);
+        font-weight: 500;
+        text-decoration: none;
+        vertical-align: baseline;
+
+        &:hover {
+          background: var(--bg-hover);
+        }
+      }
+
+      &.selected a {
+        outline: 2px solid #1d9bd1;
+      }
+    }
+
+    & .page-link-missing {
+      color: var(--text-faint);
+      text-decoration: line-through;
+    }
+
+    /* 댓글이 달린 글 */
+    & .comment-mark {
+      background: rgba(255, 212, 0, 0.28);
+      border-bottom: 2px solid rgba(232, 160, 29, 0.8);
+      cursor: pointer;
+    }
+
     /* 빈 줄 안내 글 */
     & .is-empty::before,
     & p.is-editor-empty:first-of-type::before {
@@ -374,6 +448,13 @@ export const EditorWrap = styled.div`
 export const slashMenuStyles = css`
   .slash-menu {
     width: 290px;
+
+    & .menu-title {
+      padding: 6px 8px 4px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
     max-height: 340px;
     overflow-y: auto;
     padding: 4px;
