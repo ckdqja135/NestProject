@@ -53,7 +53,7 @@ export type CollabMessage =
 
 const roomName = (docId: number) => `collab-${docId}`;
 // 처음 열 때 한 사람만 처음 내용을 넣어야 하는 문서 종류 (예전 마크다운, 데이터베이스 기본 칸·템플릿)
-const SEEDED_TYPES = ['doc', 'wiki', 'database'];
+const SEEDED_TYPES = ['doc', 'wiki', 'database', 'design'];
 const toBytes = (data: unknown) =>
   data instanceof Uint8Array
     ? data

@@ -345,7 +345,7 @@ const DocsHome: FC<Props> = ({ mode, me }) => {
             <Card
               icon={<Plus size={24} color="#1264a3" />}
               title="새로 만들기"
-              hint="문서 · 슬라이드 · 시트 · 위키"
+              hint="문서 · 데이터베이스 · 디자인 · 화이트보드 · 슬라이드 …"
               onClick={dropdown.toggle('new')}
               menu={
                 dropdown.open === 'new' && (

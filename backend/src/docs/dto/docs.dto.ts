@@ -19,6 +19,7 @@ export const DOC_TYPES = [
   'sheet',
   'board',
   'database',
+  'design',
 ] as const;
 export const VISIBILITIES = ['private', 'workspace'] as const;
 // 슬라이드에 줄인 그림(data:)을 넣을 수 있게 본문 한도(1MB)보다 조금 작게
@@ -50,7 +51,14 @@ export class DocListQuery {
 export class CreateDocDto {
   @IsIn(DOC_TYPES)
   @ApiProperty({ enum: DOC_TYPES })
-  public type: 'doc' | 'wiki' | 'slides' | 'sheet' | 'board' | 'database';
+  public type:
+    | 'doc'
+    | 'wiki'
+    | 'slides'
+    | 'sheet'
+    | 'board'
+    | 'database'
+    | 'design';
 
   @IsOptional()
   @IsString()

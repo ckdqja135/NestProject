@@ -31,6 +31,48 @@ export const EditorWrap = styled.div`
     &.with-outline {
       grid-template-columns: minmax(0, 1fr) 200px;
     }
+
+    /* 글 옆 댓글 칸을 열었을 때 */
+    &.with-aside {
+      grid-template-columns: minmax(0, 1fr) 320px;
+    }
+  }
+
+  & .editor-main {
+    position: relative;
+  }
+
+  & .aside-col {
+    display: flex;
+    min-width: 0;
+
+    & > * {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  /* 문단에 마우스를 올리면 끝에 뜨는 댓글 단추 */
+  & .block-comment-btn {
+    position: absolute;
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--bg);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    color: var(--text-muted);
+    cursor: pointer;
+
+    &:hover {
+      border-color: #e8a01d;
+      color: #e8a01d;
+    }
   }
 
   /* 문서 아래: 하위 페이지와 이 페이지를 링크한 문서 */

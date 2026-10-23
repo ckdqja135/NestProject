@@ -23,24 +23,39 @@ export interface DocComment {
   User: Pick<IUser, 'id' | 'nickname' | 'email' | 'avatarStyle'> | null;
 }
 
-interface Thread {
+export interface Thread {
   id: string;
   quote: string | null;
   resolved: boolean;
   comments: DocComment[];
 }
 
-const newThreadId = () => `th-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`;
+export const newThreadId = () => `th-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`;
 
-const when = (iso: string) => {
+export const when = (iso: string) => {
   const d = dayjs(iso);
   return d.isSame(dayjs(), 'day') ? d.format('HH:mm') : d.format('M월 D일 HH:mm');
 };
 
-const showError = (error: unknown) => toast.error(getErrorMessage(error), { position: 'bottom-center' });
+export const showError = (error: unknown) => toast.error(getErrorMessage(error), { position: 'bottom-center' });
+
+// 댓글을 스레드별로 묶는다 (먼저 달린 순서)
+export const groupThreads = (data: DocComment[] | undefined): Thread[] => {
+  const map = new Map<string, Thread>();
+  (data || []).forEach((c) => {
+    const t = map.get(c.threadId) || { id: c.threadId, quote: null, resolved: false, comments: [] };
+    if (!t.comments.length) {
+      t.quote = c.quote;
+      t.resolved = c.resolved;
+    }
+    t.comments.push(c);
+    map.set(c.threadId, t);
+  });
+  return Array.from(map.values());
+};
 
 // 댓글 쓰는 칸 (Enter 로 보내고 Shift+Enter 로 줄바꿈)
-const Composer: FC<{
+export const Composer: FC<{
   placeholder: string;
   autoFocus?: boolean;
   onSubmit: (text: string) => Promise<unknown>;
@@ -135,19 +150,7 @@ const CommentsPanel: FC<Props> = ({
     };
   }, [socket, docId, mutate]);
 
-  const threads = useMemo(() => {
-    const map = new Map<string, Thread>();
-    (data || []).forEach((c) => {
-      const t = map.get(c.threadId) || { id: c.threadId, quote: null, resolved: false, comments: [] };
-      if (!t.comments.length) {
-        t.quote = c.quote;
-        t.resolved = c.resolved;
-      }
-      t.comments.push(c);
-      map.set(c.threadId, t);
-    });
-    return Array.from(map.values());
-  }, [data]);
+  const threads = useMemo(() => groupThreads(data), [data]);
   const shown = threads.filter((t) => (tab === 'open' ? !t.resolved : t.resolved));
   const openCount = threads.filter((t) => !t.resolved).length;
 

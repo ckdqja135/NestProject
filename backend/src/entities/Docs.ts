@@ -20,6 +20,7 @@ import { Workspaces } from './Workspaces';
 //       slides(슬라이드, 내용은 쪽·글상자·도형 JSON) sheet(스프레드시트, 내용은 셀 JSON)
 //       board(화이트보드, 여러 명이 실시간으로 함께 그린다)
 //       database(표·보드·캘린더·갤러리로 보는 항목 목록, Notion 데이터베이스처럼)
+//       design(프레임·도형·글을 놓는 디자인 캔버스, Figma 처럼)
 // 실시간 동시 편집하는 문서는 공동 편집 상태(ydoc)가 원본이고, content 는 검색·미리보기용 글이다
 @Index('WorkspaceId', ['WorkspaceId'], {})
 @Entity({ name: 'docs' })
@@ -31,7 +32,7 @@ export class Docs {
   WorkspaceId: number;
 
   @Column('varchar', { name: 'type', length: 10, default: 'doc' })
-  type: 'doc' | 'wiki' | 'slides' | 'sheet' | 'board' | 'database';
+  type: 'doc' | 'wiki' | 'slides' | 'sheet' | 'board' | 'database' | 'design';
 
   @Column('varchar', { name: 'title', length: 200 })
   title: string;

@@ -249,3 +249,274 @@ export const Panel = styled.aside`
     width: 100%;
   }
 `;
+
+// 문서 옆 댓글 칸: 카드가 댓글 단 글과 같은 높이에 붙는다 (문서와 함께 스크롤)
+export const MarginColumn = styled.aside`
+  position: relative;
+  align-self: stretch;
+  min-height: 100%;
+  padding: 0 4px 0 16px;
+  border-left: 1px solid var(--border);
+  color: var(--text);
+
+  & > header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    margin-bottom: 4px;
+    font-size: 14px;
+
+    & strong {
+      flex: 1;
+    }
+
+    & .toggle {
+      padding: 3px 8px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--bg);
+      color: var(--text-muted);
+      font-size: 11px;
+      cursor: pointer;
+
+      &.on {
+        border-color: #e8a01d;
+        color: #b7791f;
+      }
+    }
+
+    & .close {
+      display: inline-flex;
+      padding: 4px;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+
+      &:hover {
+        background: var(--bg-hover);
+      }
+    }
+  }
+
+  & .list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  & .add-page {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    align-self: flex-start;
+    padding: 4px 8px;
+    border: 1px dashed var(--border-strong);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 12px;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--text);
+    }
+  }
+
+  & .cards {
+    position: relative;
+  }
+
+  & .card {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    cursor: pointer;
+
+    &.positioned {
+      position: absolute;
+      left: 0;
+      right: 0;
+      transition: top 0.18s ease;
+    }
+
+    &.active {
+      z-index: 2;
+      border-top: 4px solid #f5c518;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+      cursor: default;
+    }
+
+    & .head {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+
+      & .quote {
+        flex: 1;
+        min-width: 0;
+        padding-left: 8px;
+        border-left: 2px solid var(--border-strong);
+        color: var(--text-muted);
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        cursor: pointer;
+
+        &.page {
+          cursor: default;
+        }
+      }
+
+      & .head-btn {
+        display: inline-flex;
+        padding: 3px;
+        border: none;
+        border-radius: 5px;
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+
+        &:hover {
+          background: var(--bg-hover);
+          color: #12a06b;
+        }
+      }
+    }
+  }
+
+  & .comment {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+
+    & img,
+    & .avatar-blank {
+      flex: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--bg-hover);
+    }
+
+    & .body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    & .meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 20px;
+      font-size: 13px;
+
+      & span {
+        color: var(--text-faint);
+        font-size: 11px;
+      }
+
+      & .actions {
+        display: none;
+        margin-left: auto;
+
+        & button {
+          display: inline-flex;
+          padding: 3px;
+          border: none;
+          border-radius: 4px;
+          background: transparent;
+          color: var(--text-muted);
+          cursor: pointer;
+
+          &:hover {
+            background: var(--bg-hover);
+          }
+        }
+      }
+    }
+
+    &:hover .meta .actions {
+      display: inline-flex;
+    }
+
+    & p {
+      margin: 2px 0 0;
+      font-size: 14px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+  }
+
+  & .composer,
+  & .edit {
+    margin-top: 4px;
+
+    & textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 10px;
+      border: 1px solid var(--border-strong);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font: inherit;
+      font-size: 14px;
+      resize: vertical;
+      outline: none;
+
+      &:focus {
+        border-color: #1264a3;
+        box-shadow: 0 0 0 3px rgba(29, 155, 209, 0.2);
+      }
+    }
+  }
+
+  & .composer-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 4px;
+
+    & button {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 12px;
+      cursor: pointer;
+
+      &.primary {
+        border-color: #1264a3;
+        background: #1264a3;
+        color: white;
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+    }
+  }
+
+  & .empty {
+    margin: 24px 0;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+`;

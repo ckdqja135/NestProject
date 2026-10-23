@@ -3,6 +3,7 @@ import { Workbook } from '@pages/Docs/sheet/model';
 import dayjs from 'dayjs';
 import { BOARD_TEMPLATES } from '@pages/Docs/board/templates';
 import { DATABASE_TEMPLATES } from '@pages/Docs/database/templates';
+import { DESIGN_TEMPLATES } from '@pages/Docs/design/templates';
 import { BUSINESS_WIKI_TEMPLATES, WikiCategory } from './wikiTemplates';
 import {
   Bug,
@@ -36,9 +37,13 @@ import {
   Presentation,
   Wallet,
   Wrench,
+  PenTool,
+  Smartphone,
+  Monitor,
+  LayoutDashboard,
 } from 'lucide-react';
 
-export type DocType = 'doc' | 'wiki' | 'slides' | 'sheet' | 'board' | 'database';
+export type DocType = 'doc' | 'wiki' | 'slides' | 'sheet' | 'board' | 'database' | 'design';
 
 // Docs 새로 만들기·템플릿 (아이콘은 SVG, 색은 종류별)
 export const DOC_TYPE_INFO: Record<DocType, { Icon: LucideIcon; color: string; label: string; description: string }> = {
@@ -46,6 +51,12 @@ export const DOC_TYPE_INFO: Record<DocType, { Icon: LucideIcon; color: string; l
   slides: { Icon: Presentation, color: '#e8891d', label: '슬라이드', description: '글상자·도형·그림을 놓는 발표 자료' },
   sheet: { Icon: FileSpreadsheet, color: '#12a06b', label: '스프레드시트', description: '칸과 수식으로 계산하는 표' },
   wiki: { Icon: BookOpen, color: '#7c5cd6', label: '위키 페이지', description: '워크스페이스 모두가 함께 쓰는 위키' },
+  design: {
+    Icon: PenTool,
+    color: '#a259ff',
+    label: '디자인',
+    description: 'Figma 처럼 프레임에 화면을 그리는 디자인 캔버스',
+  },
   board: {
     Icon: Shapes,
     color: '#d64a9b',
@@ -597,6 +608,33 @@ export const DOC_TEMPLATES: DocTemplate[] = [
     type: 'board',
     title: () => '칸반 보드',
     content: BOARD_TEMPLATES.kanban,
+  },
+  {
+    key: 'design-mobile',
+    Icon: Smartphone,
+    name: '모바일 앱 화면',
+    description: '홈·상세 두 화면 (iPhone 크기 프레임)',
+    type: 'design',
+    title: () => '모바일 앱 디자인',
+    content: DESIGN_TEMPLATES.mobile,
+  },
+  {
+    key: 'design-landing',
+    Icon: Monitor,
+    name: '웹 랜딩 페이지',
+    description: '메뉴·헤드라인·버튼·기능 소개 (데스크톱)',
+    type: 'design',
+    title: () => '랜딩 페이지 디자인',
+    content: DESIGN_TEMPLATES.landing,
+  },
+  {
+    key: 'design-dashboard',
+    Icon: LayoutDashboard,
+    name: '대시보드 와이어프레임',
+    description: '사이드바·지표 카드·차트·표 뼈대',
+    type: 'design',
+    title: () => '대시보드 와이어프레임',
+    content: DESIGN_TEMPLATES.dashboard,
   },
   {
     key: 'db-tasks',

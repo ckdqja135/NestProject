@@ -12,6 +12,7 @@ import useSWR, { mutate as mutateKey } from 'swr';
 import { createDoc, docPath, docsBase, toastError } from './api';
 import ShareDocModal from './ShareDocModal';
 import CommentsPanel, { DocComment } from './CommentsPanel';
+import MarginComments from './MarginComments';
 import { useHuddle, useHuddleWatch } from '@components/Huddle/HuddleProvider';
 import { removeCommentMark, scrollToThread } from './editor/commentMarks';
 import {
@@ -38,6 +39,7 @@ import SlidesEditor from './slides/SlidesEditor';
 import loadable from '@loadable/component';
 import useDarkTheme from '@hooks/useDarkTheme';
 import { Banner, DropMenu, EditorHeader, Empty, TitleInput } from './styles';
+import type { DesignApi } from './design/DesignEditor';
 
 // 화이트보드는 큰 그리기 도구라 보드를 열 때만 불러온다
 const BoardEditor = loadable(() => import('./board/BoardEditor'));
@@ -45,9 +47,11 @@ const BoardEditor = loadable(() => import('./board/BoardEditor'));
 const BlockEditor = loadable(() => import('./editor/BlockEditor'));
 // 데이터베이스 (표·보드·캘린더·갤러리)
 const DatabaseEditor = loadable(() => import('./database/DatabaseEditor'));
+// 디자인(Figma 처럼)도 디자인을 열 때만 불러온다
+const DesignEditor = loadable(() => import('./design/DesignEditor'));
 
 // 실시간 동시 편집하는 종류: 내용은 편집기가 저장하고, 이 화면은 제목만 저장한다
-const COLLAB_TYPES = ['doc', 'wiki', 'board', 'database'];
+const COLLAB_TYPES = ['doc', 'wiki', 'board', 'database', 'design'];
 
 type Status = 'saved' | 'unsaved' | 'saving' | 'error' | 'conflict';
 
@@ -95,6 +99,15 @@ const DocPage: FC<Props> = ({ me }) => {
   const [commentDraft, setCommentDraft] = useState<{ threadId: string; quote: string } | null>(null);
   const [activeThread, setActiveThread] = useState<string | null>(null);
   const editorRef = useRef<Editor | null>(null);
+  const designRef = useRef<DesignApi | null>(null);
+  // 넓은 화면에서는 댓글을 글 옆에 붙여 보인다 (좁으면 오른쪽 창)
+  const [wide, setWide] = useState(() => window.matchMedia('(min-width: 1100px)').matches);
+  useEffect(() => {
+    const query = window.matchMedia('(min-width: 1100px)');
+    const onChange = () => setWide(query.matches);
+    query.addEventListener('change', onChange);
+    return () => query.removeEventListener('change', onChange);
+  }, []);
   const [showMenu, setShowMenu] = useState(false);
   const [presenting, setPresenting] = useState<number | null>(null);
   const [slideIndex, setSlideIndex] = useState(0);
@@ -338,7 +351,27 @@ const DocPage: FC<Props> = ({ me }) => {
   const isSlides = doc.type === 'slides';
   const isSheet = doc.type === 'sheet';
   const isBoard = doc.type === 'board';
+  const isDesign = doc.type === 'design';
   const isBlocks = doc.type === 'doc' || doc.type === 'wiki';
+  const marginComments = isBlocks && showComments && wide;
+  const closeComments = () => {
+    if (commentDraft && editorRef.current) removeCommentMark(editorRef.current, commentDraft.threadId);
+    if (commentDraft) designRef.current?.removePin(commentDraft.threadId);
+    setCommentDraft(null);
+    setShowComments(false);
+  };
+  const onDraftDone = (threadId: string, posted: boolean) => {
+    if (!posted && editorRef.current) removeCommentMark(editorRef.current, threadId);
+    if (!posted) designRef.current?.removePin(threadId);
+    setCommentDraft(null);
+  };
+  const onThreadResolved = (threadId: string, resolved: boolean) => {
+    if (resolved && editorRef.current) removeCommentMark(editorRef.current, threadId);
+  };
+  const jumpToThread = (threadId: string) => {
+    if (editorRef.current) scrollToThread(editorRef.current, threadId);
+    designRef.current?.jumpTo(threadId);
+  };
   const isOwner = doc.OwnerId === me.id;
   return (
     <>
@@ -516,14 +549,40 @@ const DocPage: FC<Props> = ({ me }) => {
         </Banner>
       )}
 
-      <TitleInput
-        value={title}
-        readOnly={!canEdit}
-        maxLength={200}
-        onChange={(e) => onEdit({ title: e.target.value })}
-        aria-label="문서 제목"
-        placeholder="제목"
-      />
+      {!isDesign && (
+        <TitleInput
+          value={title}
+          readOnly={!canEdit}
+          maxLength={200}
+          onChange={(e) => onEdit({ title: e.target.value })}
+          aria-label="문서 제목"
+          placeholder="제목"
+        />
+      )}
+      {isDesign && (
+        <DesignEditor
+          workspace={workspace}
+          docId={doc.id}
+          me={me}
+          readOnly={!canEdit}
+          initialContent={doc.content}
+          dark={dark}
+          title={title}
+          onTitle={canEdit ? (next) => onEdit({ title: next }) : undefined}
+          activeThread={activeThread}
+          draftThread={commentDraft?.threadId ?? null}
+          onComment={(threadId, quote) => {
+            setCommentDraft({ threadId, quote });
+            setActiveThread(threadId);
+            setShowComments(true);
+          }}
+          onOpenThread={(threadId) => {
+            setActiveThread(threadId);
+            setShowComments(true);
+          }}
+          apiRef={designRef}
+        />
+      )}
       {isSlides && (
         <SlidesEditor
           value={content}
@@ -573,6 +632,26 @@ const DocPage: FC<Props> = ({ me }) => {
             setActiveThread(threadId);
             setShowComments(true);
           }}
+          renderAside={
+            marginComments
+              ? (editor) => (
+                  <MarginComments
+                    editor={editor}
+                    workspace={workspace}
+                    docId={doc.id}
+                    me={me}
+                    canManage={!!doc.canManage}
+                    draft={commentDraft}
+                    active={activeThread}
+                    onActive={setActiveThread}
+                    onDraftDone={onDraftDone}
+                    onResolved={onThreadResolved}
+                    onJump={jumpToThread}
+                    onClose={closeComments}
+                  />
+                )
+              : undefined
+          }
           footer={
             (children.length > 0 || !!backlinks?.length) && (
               <div className="subpages">
@@ -606,7 +685,7 @@ const DocPage: FC<Props> = ({ me }) => {
           }
         />
       )}
-      {showComments && (
+      {showComments && !marginComments && (
         <CommentsPanel
           workspace={workspace}
           docId={doc.id}
@@ -615,19 +694,10 @@ const DocPage: FC<Props> = ({ me }) => {
           draft={commentDraft}
           active={activeThread}
           onActive={setActiveThread}
-          onDraftDone={(threadId, posted) => {
-            if (!posted && editorRef.current) removeCommentMark(editorRef.current, threadId);
-            setCommentDraft(null);
-          }}
-          onResolved={(threadId, resolved) => {
-            if (resolved && editorRef.current) removeCommentMark(editorRef.current, threadId);
-          }}
-          onJump={(threadId) => editorRef.current && scrollToThread(editorRef.current, threadId)}
-          onClose={() => {
-            if (commentDraft && editorRef.current) removeCommentMark(editorRef.current, commentDraft.threadId);
-            setCommentDraft(null);
-            setShowComments(false);
-          }}
+          onDraftDone={onDraftDone}
+          onResolved={onThreadResolved}
+          onJump={jumpToThread}
+          onClose={closeComments}
         />
       )}
       {activeThread && /^[\w-]+$/.test(activeThread) && (

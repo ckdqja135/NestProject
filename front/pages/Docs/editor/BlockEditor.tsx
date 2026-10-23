@@ -75,6 +75,8 @@ export interface EditorHooks {
   onComment?: (threadId: string, quote: string) => void;
   // 댓글이 달린 글을 눌렀다
   onOpenThread?: (threadId: string) => void;
+  // 문서 오른쪽에 붙이는 칸 (글 옆 댓글)
+  renderAside?: (editor: Editor) => React.ReactNode;
 }
 
 interface InnerProps extends EditorHooks {
@@ -106,6 +108,7 @@ const Inner: FC<InnerProps> = ({
   onEditor,
   onComment,
   onOpenThread,
+  renderAside,
 }) => {
   const snapshotTimer = useRef<number | null>(null);
   const [headings, setHeadings] = useState<Heading[]>([]);
@@ -116,6 +119,9 @@ const Inner: FC<InnerProps> = ({
   editableRef.current = editable;
   const hooksRef = useRef({ onComment, onOpenThread });
   hooksRef.current = { onComment, onOpenThread };
+  const mainRef = useRef<HTMLDivElement>(null);
+  // 마우스를 올린 문단 (끝에 댓글 단추를 띄운다)
+  const [hoverBlock, setHoverBlock] = useState<{ pos: number; top: number; left: number } | null>(null);
 
   // 새 페이지: 위키면 이 페이지의 하위 페이지로, 문서면 이 문서와 같은 공개 범위로 만든다
   const createPage = async (title: string): Promise<PageItem | null> => {
@@ -272,6 +278,54 @@ const Inner: FC<InnerProps> = ({
     setLinkMode(false);
   };
 
+  // 문단에 마우스를 올리면 그 문단 끝(오른쪽)에 댓글 단추를 보인다
+  const onMainMove = (e: React.MouseEvent) => {
+    if (!editor || !editor.isEditable || !onComment || !mainRef.current) return;
+    if ((e.target as HTMLElement).closest('.block-comment-btn')) return;
+    const { view } = editor;
+    const hit = view.posAtCoords({ left: e.clientX, top: e.clientY });
+    let next: { pos: number; top: number; left: number } | null = null;
+    if (hit) {
+      const $pos = view.state.doc.resolve(hit.pos);
+      let depth = $pos.depth;
+      while (depth > 0 && !$pos.node(depth).isTextblock) depth -= 1;
+      const node = depth > 0 ? $pos.node(depth) : null;
+      if (node && node.textContent.trim()) {
+        const pos = $pos.before(depth);
+        const dom = view.nodeDOM(pos) as HTMLElement | null;
+        if (dom?.getBoundingClientRect) {
+          const main = mainRef.current.getBoundingClientRect();
+          const rect = dom.getBoundingClientRect();
+          const content = view.dom.getBoundingClientRect();
+          const line = parseFloat(getComputedStyle(dom).lineHeight) || 24;
+          next = {
+            pos,
+            top: rect.top - main.top + Math.max(0, (line - 26) / 2),
+            left: Math.min(content.right - main.left + 6, main.width - 30),
+          };
+        }
+      }
+    }
+    setHoverBlock((prev) =>
+      prev?.pos === next?.pos && prev?.top === next?.top && prev?.left === next?.left ? prev : next,
+    );
+  };
+
+  const commentOnBlock = () => {
+    if (!editor || !hoverBlock || !onComment) return;
+    const node = editor.state.doc.nodeAt(hoverBlock.pos);
+    if (!node) return;
+    const from = hoverBlock.pos + 1;
+    const to = hoverBlock.pos + node.nodeSize - 1;
+    const quote = editor.state.doc
+      .textBetween(from, to, ' ', (leaf) => (leaf.type.name === 'pageLink' ? leaf.attrs.title : ''))
+      .slice(0, 300);
+    const threadId = newThreadId();
+    editor.chain().setTextSelection({ from, to }).setMark('comment', { threadId }).setTextSelection(to).run();
+    setHoverBlock(null);
+    onComment(threadId, quote);
+  };
+
   const mark = (name: string, run: () => void, Icon: typeof Bold, label: string) => (
     <button
       type="button"
@@ -286,8 +340,8 @@ const Inner: FC<InnerProps> = ({
   );
 
   return (
-    <div className={`editor-layout${headings.length > 1 ? ' with-outline' : ''}`}>
-      <div className="editor-main">
+    <div className={`editor-layout${renderAside ? ' with-aside' : headings.length > 1 ? ' with-outline' : ''}`}>
+      <div className="editor-main" ref={mainRef} onMouseMove={onMainMove} onMouseLeave={() => setHoverBlock(null)}>
         {editor && (
           <BubbleMenu
             editor={editor}
@@ -348,8 +402,23 @@ const Inner: FC<InnerProps> = ({
         )}
         <EditorContent editor={editor} />
         {footer}
+        {/* 맨 뒤에 둔다: 서식 막대(BubbleMenu)는 제 DOM 을 다른 곳으로 옮겨서, 그 앞에 끼워 넣으면 React 가 깨진다 */}
+        {hoverBlock && (
+          <button
+            type="button"
+            className="block-comment-btn"
+            style={{ top: hoverBlock.top, left: hoverBlock.left }}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={commentOnBlock}
+            aria-label="이 문단에 댓글"
+            title="이 문단에 댓글"
+          >
+            <MessageSquarePlus size={15} />
+          </button>
+        )}
       </div>
-      {headings.length > 1 && (
+      {renderAside && editor && <div className="aside-col">{renderAside(editor)}</div>}
+      {!renderAside && headings.length > 1 && (
         <nav className="outline" aria-label="목차">
           <strong>목차</strong>
           {headings.map((h, i) => (
@@ -399,6 +468,7 @@ const BlockEditor: FC<Props> = ({
   onEditor,
   onComment,
   onOpenThread,
+  renderAside,
 }) => {
   const { provider, synced, canEdit, shouldSeed, status } = useCollab(workspace, docId, me);
   return (
@@ -421,6 +491,7 @@ const BlockEditor: FC<Props> = ({
           onEditor={onEditor}
           onComment={onComment}
           onOpenThread={onOpenThread}
+          renderAside={renderAside}
           provider={provider}
           synced={synced}
           shouldSeed={shouldSeed}
