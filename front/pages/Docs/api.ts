@@ -8,7 +8,7 @@ export const docsBase = (workspace: string) => `/api/workspaces/${workspace}`;
 export const docPath = (workspace: string, id: number) => `/workspace/${workspace}/docs/d/${id}`;
 
 export interface NewDocBody {
-  type: 'doc' | 'wiki' | 'slides' | 'sheet';
+  type: 'doc' | 'wiki' | 'slides' | 'sheet' | 'board';
   title?: string;
   content?: string;
   folderId?: number;

@@ -45,7 +45,12 @@ import SheetEditor from './sheet/SheetEditor';
 import SlidePresenter from './SlidePresenter';
 import { parseDeck } from './slides/model';
 import SlidesEditor from './slides/SlidesEditor';
+import loadable from '@loadable/component';
+import useDarkTheme from '@hooks/useDarkTheme';
 import { Banner, DocBody, DropMenu, EditorBody, EditorHeader, Empty, Outline, TitleInput, Toolbar } from './styles';
+
+// 화이트보드는 큰 그리기 도구라 보드를 열 때만 불러온다
+const BoardEditor = loadable(() => import('./board/BoardEditor'));
 
 type Mode = 'edit' | 'split' | 'view';
 type Status = 'saved' | 'unsaved' | 'saving' | 'error' | 'conflict';
@@ -128,6 +133,9 @@ const DocPage: FC<Props> = ({ me }) => {
   const dirty = () => editSeq.current !== savedSeq.current;
 
   const canEdit = !!doc?.canEdit && !doc.deletedAt;
+  const typeRef = useRef(doc?.type);
+  typeRef.current = doc?.type;
+  const dark = useDarkTheme();
 
   // 서버 내용으로 맞춘다 (처음 열 때, 고친 게 없을 때 다른 사람이 저장하면)
   useEffect(() => {
@@ -156,7 +164,11 @@ const DocPage: FC<Props> = ({ me }) => {
         return;
       }
       const seq = editSeq.current;
-      const body = { ...latest.current, version: versionRef.current };
+      // 화이트보드 내용은 실시간 동시 편집으로 저장되므로 제목만 보낸다
+      const body =
+        typeRef.current === 'board'
+          ? { title: latest.current.title, version: versionRef.current }
+          : { ...latest.current, version: versionRef.current };
       const docIdNow = loadedId.current;
       savingRef.current = true;
       setStatus('saving');
@@ -354,7 +366,8 @@ const DocPage: FC<Props> = ({ me }) => {
   const home = `/workspace/${workspace}/docs`;
   const isSlides = doc.type === 'slides';
   const isSheet = doc.type === 'sheet';
-  const isMarkdown = !isSlides && !isSheet;
+  const isBoard = doc.type === 'board';
+  const isMarkdown = !isSlides && !isSheet && !isBoard;
   const isOwner = doc.OwnerId === me.id;
   const editor = (
     <div className="pane">
@@ -597,6 +610,16 @@ const DocPage: FC<Props> = ({ me }) => {
           current={slideIndex}
           onCurrentChange={setSlideIndex}
           onChange={(next) => onEdit({ content: next })}
+        />
+      )}
+      {isBoard && (
+        <BoardEditor
+          workspace={workspace}
+          docId={doc.id}
+          me={me}
+          readOnly={!canEdit}
+          initialContent={doc.content}
+          dark={dark}
         />
       )}
       {isSheet && (

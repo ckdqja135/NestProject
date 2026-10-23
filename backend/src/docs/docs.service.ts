@@ -20,6 +20,7 @@ const TITLES = {
   wiki: '제목 없는 페이지',
   slides: '제목 없는 슬라이드',
   sheet: '제목 없는 시트',
+  board: '제목 없는 보드',
 };
 
 // 볼 수 있는 문서: 내가 만들었거나, 워크스페이스 공개거나, 나와 공유됨
@@ -74,6 +75,38 @@ export class DocsService {
       isOwner || doc.visibility === 'workspace' || share?.role === 'edit';
     const canManage = isOwner || workspace.OwnerId === myId;
     return { workspace, doc, canEdit, canManage };
+  }
+
+  // 실시간 동시 편집: 볼 수 있는지·고칠 수 있는지 (소켓 연결에서 쓴다)
+  async collabAccess(url: string, id: number, myId: number) {
+    const { doc, canEdit } = await this.access(url, id, myId);
+    return { doc, canEdit };
+  }
+
+  async loadYdoc(id: number) {
+    const row = await this.docsRepository.findOne({
+      where: { id },
+      select: ['id', 'ydoc'],
+    });
+    return row?.ydoc || null;
+  }
+
+  // 공동 편집 상태 저장. 검색·미리보기용 글(content)이 오면 함께 바꾼다
+  async saveYdoc(
+    url: string,
+    id: number,
+    state: Uint8Array,
+    editorId: number | null,
+    content?: string,
+  ) {
+    const update: Partial<Docs> = { ydoc: Buffer.from(state) };
+    if (editorId) {
+      update.LastEditorId = editorId;
+    }
+    if (content !== undefined) {
+      update.content = content;
+    }
+    await this.docsRepository.update({ id }, update);
   }
 
   private notify(url: string, data: Record<string, unknown>) {
@@ -218,7 +251,7 @@ export class DocsService {
   async createDoc(
     url: string,
     dto: {
-      type: 'doc' | 'wiki' | 'slides' | 'sheet';
+      type: 'doc' | 'wiki' | 'slides' | 'sheet' | 'board';
       title?: string;
       content?: string;
       visibility?: 'private' | 'workspace';

@@ -15,5 +15,6 @@ import { DocsService } from './docs.service';
   ],
   providers: [DocsService],
   controllers: [DocsController],
+  exports: [DocsService],
 })
 export class DocsModule {}

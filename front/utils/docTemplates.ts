@@ -1,8 +1,14 @@
 import { Deck, makeSlide, stringifyDeck, THEMES } from '@pages/Docs/slides/model';
 import { Workbook } from '@pages/Docs/sheet/model';
 import dayjs from 'dayjs';
+import { BOARD_TEMPLATES } from '@pages/Docs/board/templates';
 import { BUSINESS_WIKI_TEMPLATES, WikiCategory } from './wikiTemplates';
 import {
+  BrainCircuit,
+  Network,
+  Shapes,
+  SquareKanban,
+  Workflow,
   AlertTriangle,
   BookA,
   BookOpen,
@@ -26,7 +32,7 @@ import {
   Wrench,
 } from 'lucide-react';
 
-export type DocType = 'doc' | 'wiki' | 'slides' | 'sheet';
+export type DocType = 'doc' | 'wiki' | 'slides' | 'sheet' | 'board';
 
 // Docs 새로 만들기·템플릿 (아이콘은 SVG, 색은 종류별)
 export const DOC_TYPE_INFO: Record<DocType, { Icon: LucideIcon; color: string; label: string; description: string }> = {
@@ -34,6 +40,12 @@ export const DOC_TYPE_INFO: Record<DocType, { Icon: LucideIcon; color: string; l
   slides: { Icon: Presentation, color: '#e8891d', label: '슬라이드', description: '글상자·도형·그림을 놓는 발표 자료' },
   sheet: { Icon: FileSpreadsheet, color: '#12a06b', label: '스프레드시트', description: '칸과 수식으로 계산하는 표' },
   wiki: { Icon: BookOpen, color: '#7c5cd6', label: '위키 페이지', description: '워크스페이스 모두가 함께 쓰는 위키' },
+  board: {
+    Icon: Shapes,
+    color: '#d64a9b',
+    label: '화이트보드',
+    description: '포스트잇·도형·화살표로 함께 그리는 보드',
+  },
 };
 
 export interface DocTemplate {
@@ -529,6 +541,51 @@ export const DOC_TEMPLATES: DocTemplate[] = [
       ].join('\n'),
   },
   ...BUSINESS_WIKI_TEMPLATES,
+  {
+    key: 'board-retro',
+    Icon: RotateCcw,
+    name: '회고 보드',
+    description: 'Keep · Problem · Try 세 칸에 포스트잇',
+    type: 'board',
+    title: () => `회고 보드 (${today()})`,
+    content: BOARD_TEMPLATES.retro,
+  },
+  {
+    key: 'board-brainstorm',
+    Icon: BrainCircuit,
+    name: '브레인스토밍',
+    description: '주제를 가운데 두고 아이디어 포스트잇',
+    type: 'board',
+    title: () => '브레인스토밍',
+    content: BOARD_TEMPLATES.brainstorm,
+  },
+  {
+    key: 'board-mindmap',
+    Icon: Network,
+    name: '마인드맵',
+    description: '중심 주제에서 가지 뻗기',
+    type: 'board',
+    title: () => '마인드맵',
+    content: BOARD_TEMPLATES.mindmap,
+  },
+  {
+    key: 'board-flowchart',
+    Icon: Workflow,
+    name: '플로우차트',
+    description: '시작 → 할 일 → 조건 → 끝',
+    type: 'board',
+    title: () => '플로우차트',
+    content: BOARD_TEMPLATES.flowchart,
+  },
+  {
+    key: 'board-kanban',
+    Icon: SquareKanban,
+    name: '칸반 보드',
+    description: '할 일 · 진행 중 · 완료',
+    type: 'board',
+    title: () => '칸반 보드',
+    content: BOARD_TEMPLATES.kanban,
+  },
   {
     key: 'budget',
     Icon: Wallet,

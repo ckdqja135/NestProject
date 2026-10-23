@@ -2,6 +2,7 @@ import path from 'path';
 import ReactRefreshWebpackPlugin from '@pmmmwh/react-refresh-webpack-plugin';
 import webpack, { Configuration as WebpackConfiguration } from 'webpack';
 import ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin';
+import CopyPlugin from 'copy-webpack-plugin';
 import { BundleAnalyzerPlugin } from 'webpack-bundle-analyzer';
 import { Configuration as WebpackDevServerConfiguration } from 'webpack-dev-server';
 
@@ -31,6 +32,18 @@ const config: Configuration = {
   target: ['web', 'es5'],
   module: {
     rules: [
+      {
+        // React 17 의 react/jsx-runtime 은 exports 가 없어, 엄격한 ES 모듈(그림 도구 등)에서 확장자 없이 찾지 못한다
+        test: /\.m?js$/,
+        resolve: { fullySpecified: false },
+      },
+      {
+        // 화이트보드(Excalidraw)는 React 18 의 hook 하나를 쓴다. 그 코드에만 빈 곳을 채운 react 를 준다
+        test: /\.m?js$/,
+        include: /node_modules[\\/]@excalidraw/,
+        resolve: { alias: { react$: path.resolve(__dirname, 'shims/react.js') } },
+        use: [path.resolve(__dirname, 'loaders/excalidraw-local-assets.js')],
+      },
       {
         test: /\.tsx?$/,
         loader: 'babel-loader',
@@ -70,11 +83,22 @@ const config: Configuration = {
       // },
     }),
     new webpack.EnvironmentPlugin({ NODE_ENV: isDevelopment ? 'development' : 'production' }),
+    // 화이트보드(Excalidraw) 글꼴을 우리 서버에서 내려준다 (바깥 CDN 은 보안 정책상 막혀 있다)
+    new CopyPlugin({
+      patterns: [
+        {
+          from: path.join(__dirname, 'node_modules/@excalidraw/excalidraw/dist/prod/fonts'),
+          to: 'excalidraw-assets/fonts',
+        },
+      ],
+    }),
   ],
   output: {
     path: path.join(__dirname, 'dist'),
     filename: '[name].js',
     publicPath: '/dist/',
+    // 빌드할 때마다 예전 조각 파일을 지운다
+    clean: true,
   },
   devServer: {
     historyApiFallback: true,

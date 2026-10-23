@@ -58,7 +58,9 @@
     "typeorm": "^0.3.31",
     "typeorm-extension": "^3.9.0",
     "webpack-bundle-analyzer": "^4.10.1",
-    "webpack-dev-server": "^4.15.1"
+    "webpack-dev-server": "^4.15.1",
+    "y-protocols": "^1.0.7",
+    "yjs": "^13.6.33"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",

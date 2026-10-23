@@ -43,6 +43,15 @@ export class EventsGateway
   // 동적 네임스페이스를 사용하므로 server는 개별 Namespace 이다.
   @WebSocketServer() public server: Namespace;
   private logger = new Logger('EventsGateway');
+  // 실시간 동시 편집 처리 (CollabService 가 시작할 때 등록한다. 모듈끼리 서로 의존하지 않게)
+  private collabHandler?: {
+    handle(socket: Socket, user: { id: number }, message: any): Promise<void>;
+    disconnect(socket: Socket): void;
+  };
+
+  setCollabHandler(handler: EventsGateway['collabHandler']) {
+    this.collabHandler = handler;
+  }
 
   constructor(
     @InjectRepository(WorkspaceMembers)
@@ -84,6 +93,7 @@ export class EventsGateway
     if (left) {
       this.broadcastHuddle(socket.nsp, left);
     }
+    this.collabHandler?.disconnect(socket);
     if (onlineMap[namespace]?.[socket.id]) {
       delete onlineMap[namespace][socket.id];
       socket.nsp.emit('onlineList', this.getOnlineList(namespace));
@@ -215,6 +225,19 @@ export class EventsGateway
         data: data.data,
       }),
     );
+  }
+
+  // 실시간 동시 편집: 문서 들어가기·변경·커서. 권한 확인과 저장은 CollabService 가 한다
+  @SubscribeMessage('collab')
+  async handleCollab(
+    @MessageBody() data: any,
+    @ConnectedSocket() socket: Socket,
+  ) {
+    const user = getSessionUser(socket);
+    if (!user || !onlineMap[socket.nsp.name]?.[socket.id] || !data) {
+      return;
+    }
+    await this.collabHandler?.handle(socket, user, data);
   }
 
   // 채널 허들(여러 명 통화): 참여·나가기·연결 신호 중계·마이크/카메라 상태.

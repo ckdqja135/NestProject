@@ -18,6 +18,8 @@ import { Workspaces } from './Workspaces';
 // 문서. 내용은 마크다운 글로만 저장한다 (파일을 서버에 두지 않음)
 // type: doc(마크다운 문서) wiki(위키 페이지, 워크스페이스 전체 공개, 페이지 트리)
 //       slides(슬라이드, 내용은 쪽·글상자·도형 JSON) sheet(스프레드시트, 내용은 셀 JSON)
+//       board(화이트보드, 여러 명이 실시간으로 함께 그린다)
+// 실시간 동시 편집하는 문서는 공동 편집 상태(ydoc)가 원본이고, content 는 검색·미리보기용 글이다
 @Index('WorkspaceId', ['WorkspaceId'], {})
 @Entity({ name: 'docs' })
 export class Docs {
@@ -28,13 +30,17 @@ export class Docs {
   WorkspaceId: number;
 
   @Column('varchar', { name: 'type', length: 10, default: 'doc' })
-  type: 'doc' | 'wiki' | 'slides' | 'sheet';
+  type: 'doc' | 'wiki' | 'slides' | 'sheet' | 'board';
 
   @Column('varchar', { name: 'title', length: 200 })
   title: string;
 
   @Column('mediumtext', { name: 'content' })
   content: string;
+
+  // 실시간 동시 편집 상태 (Yjs). 목록을 불러올 때는 읽지 않는다
+  @Column('longblob', { name: 'ydoc', nullable: true, select: false })
+  ydoc: Buffer | null;
 
   // 공개 범위: private(나와 공유한 사람만) workspace(워크스페이스 누구나 보기·편집)
   @Column('varchar', { name: 'visibility', length: 10, default: 'private' })

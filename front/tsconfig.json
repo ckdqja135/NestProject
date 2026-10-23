@@ -9,6 +9,9 @@
     "target": "es5",
     "strict": true,
     "resolveJsonModule": true,
+    "skipLibCheck": true,
+    // 전역 타입은 이것만 (그림 도구가 끌고 온 d3 타입 등은 TypeScript 4 로 읽을 수 없다)
+    "types": ["node"],
     "baseUrl": ".",
     "paths": {
       "@hooks/*": ["hooks/*"],

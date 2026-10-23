@@ -41,6 +41,7 @@ import { PinsModule } from './pins/pins.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { LinksModule } from './links/links.module';
 import { ForwardModule } from './forward/forward.module';
+import { CollabModule } from './collab/collab.module';
 import { ScheduledMessages } from './entities/ScheduledMessages';
 import { Reminders } from './entities/Reminders';
 import { MessageEdits } from './entities/MessageEdits';
@@ -132,6 +133,7 @@ import { Workspaces } from './entities/Workspaces';
     ContactsModule,
     LinksModule,
     ForwardModule,
+    CollabModule,
     ScheduledModule,
     GroupsModule,
     MailModule,

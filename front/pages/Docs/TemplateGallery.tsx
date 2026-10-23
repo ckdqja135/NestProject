@@ -18,7 +18,7 @@ interface Section {
   match: (t: DocTemplate) => boolean;
 }
 
-const TYPE_ORDER: DocType[] = ['doc', 'slides', 'sheet'];
+const TYPE_ORDER: DocType[] = ['doc', 'slides', 'sheet', 'board'];
 
 // 템플릿 고르기: 왼쪽 분류, 위 검색, 오른쪽 카드
 const TemplateGallery: FC<Props> = ({ show, wikiOnly, onClose, onPick }) => {
