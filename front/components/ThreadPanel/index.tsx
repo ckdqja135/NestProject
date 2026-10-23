@@ -8,7 +8,9 @@ import { markThreadRead } from '@utils/threadReads';
 import fetcher from '@utils/fetcher';
 import { toGifContent } from '@utils/gif';
 import getErrorMessage from '@utils/getErrorMessage';
+import useSidebarPins from '@hooks/useSidebarPins';
 import axios from 'axios';
+import { ArrowUpToLine } from 'lucide-react';
 import React, { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Socket } from 'socket.io-client';
 import { toast } from 'react-toastify';
@@ -30,6 +32,8 @@ const ThreadPanel: FC<Props> = ({ workspace, channel, parent, me, members, socke
   const repliesKey = `/api/workspaces/${workspace}/channels/${channel}/chats/${parent.id}/replies`;
   const { data: replies, mutate } = useSWR<IChat[]>(repliesKey, fetcher);
   const [reply, setReply] = useState('');
+  const { isPinned, setPinned } = useSidebarPins(workspace);
+  const pinned = isPinned('thread', parent.id);
   const bodyRef = useRef<HTMLDivElement>(null);
   // 이미 스레드 안이므로 '답글' 버튼/링크는 숨긴다
   const threadActions = useMemo(() => ({ ...actions, onReply: undefined }), [actions]);
@@ -142,6 +146,15 @@ const ThreadPanel: FC<Props> = ({ workspace, channel, parent, me, members, socke
       <PanelHeader>
         <span>스레드</span>
         <small>#{channel}</small>
+        <button
+          type="button"
+          className={pinned ? 'pin-top on' : 'pin-top'}
+          onClick={() => setPinned('thread', parent.id, !pinned)}
+          aria-pressed={pinned}
+          title={pinned ? '사이드바 고정 풀기' : '이 스레드를 사이드바 맨 위에 고정'}
+        >
+          <ArrowUpToLine size={13} /> {pinned ? '고정됨' : '맨 위 고정'}
+        </button>
         <button type="button" onClick={onClose} aria-label="스레드 닫기">
           &times;
         </button>

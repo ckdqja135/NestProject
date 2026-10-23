@@ -2,6 +2,7 @@ import { CollapseButton } from '@components/DMList/styles';
 import BrowseChannelsModal from '@components/BrowseChannelsModal';
 import EachChannel from '@components/EachChannel';
 import useMentions from '@hooks/useMentions';
+import useSidebarPins from '@hooks/useSidebarPins';
 import { IChannel, IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
 import React, { FC, useCallback, useState } from 'react';
@@ -18,6 +19,8 @@ const ChannelList: FC<Props> = () => {
   const [channelCollapse, setChannelCollapse] = useState(false);
   const [showBrowse, setShowBrowse] = useState(false);
   const { data: mentions } = useMentions(workspace);
+  // 맨 위에 고정한 채널은 '고정됨' 에만 보인다
+  const { isPinned } = useSidebarPins(workspace);
   const { data: userData } = useSWR<IUser>('/api/users', fetcher, {
     dedupingInterval: 2000, // 2초
   });
@@ -41,11 +44,13 @@ const ChannelList: FC<Props> = () => {
       </h2>
       <div>
         {!channelCollapse &&
-          channelData?.map((channel) => {
-            return (
-              <EachChannel key={channel.id} channel={channel} mentionCount={mentions?.unreadByChannel[channel.id]} />
-            );
-          })}
+          channelData
+            ?.filter((channel) => !isPinned('channel', channel.id))
+            .map((channel) => {
+              return (
+                <EachChannel key={channel.id} channel={channel} mentionCount={mentions?.unreadByChannel[channel.id]} />
+              );
+            })}
         {!channelCollapse && (
           <button
             type="button"

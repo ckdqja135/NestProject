@@ -2,6 +2,7 @@ import ChannelList from '@components/ChannelList';
 import CreateChannelModal from '@components/CreateChannelModal';
 import CreateWorkspaceModal from '@components/CreateWorkspaceModal';
 import DMList from '@components/DMList';
+import PinnedList from '@components/PinnedList';
 import InviteWorkspaceModal from '@components/InviteWorkspaceModal';
 import MembersModal from '@components/MembersModal';
 import MentionsButton from '@components/MentionsButton';
@@ -18,6 +19,7 @@ import SearchModal from '@components/SearchModal';
 import useSocket from '@hooks/useSocket';
 import Channel from '@pages/Channel';
 import DirectMessage from '@pages/DirectMessage';
+import Contacts from '@pages/Contacts';
 import Docs from '@pages/Docs';
 import Calendar from '@pages/Calendar';
 import { IChannel, IChat, IDM, IUser, IWorkspace } from '@typings/db';
@@ -43,7 +45,16 @@ import CallProvider from '@components/Call/CallProvider';
 import { moveChannelKeys, moveWorkspaceKeys } from '@utils/storageKeys';
 import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
-import { Bell, BellOff, CalendarDays, FileText, Menu as MenuIcon, MessageSquare, SunMoon } from 'lucide-react';
+import {
+  Bell,
+  BellOff,
+  BookUser,
+  CalendarDays,
+  FileText,
+  Menu as MenuIcon,
+  MessageSquare,
+  SunMoon,
+} from 'lucide-react';
 import { avatarUrl } from '@utils/avatar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router';
@@ -137,7 +148,7 @@ const Workspace = () => {
   const locationRef = useRef(location.pathname);
   locationRef.current = decodeURIComponent(location.pathname);
   // 지금 보고 있는 화면 (왼쪽 메뉴). 메신저로 돌아가면 마지막으로 보던 채널·DM 을 연다
-  const sectionMatch = location.pathname.match(/^\/workspace\/[^/]+\/(docs|calendar)(\/|$)/);
+  const sectionMatch = location.pathname.match(/^\/workspace\/[^/]+\/(docs|calendar|contacts)(\/|$)/);
   const section = sectionMatch ? sectionMatch[1] : 'messenger';
   const lastMessengerPath = useRef<{ workspace?: string; path: string }>({ path: '' });
   if (section === 'messenger' && /\/(channel|dm)\//.test(location.pathname)) {
@@ -722,6 +733,14 @@ const Workspace = () => {
               <CalendarDays className="icon" size={20} />
               캘린더
             </Link>
+            <Link
+              to={`/workspace/${workspace}/contacts`}
+              className={section === 'contacts' ? 'active' : undefined}
+              aria-current={section === 'contacts' ? 'page' : undefined}
+            >
+              <BookUser className="icon" size={20} />
+              연락처
+            </Link>
           </AppNav>
           {userData?.Workspaces.map((ws) => {
             const isActive = ws.url === workspace;
@@ -834,6 +853,7 @@ const Workspace = () => {
                   </ul>
                 </WorkspaceModal>
               </Menu>
+              <PinnedList />
               <ChannelList />
               <DMList />
             </MenuScroll>
@@ -845,6 +865,7 @@ const Workspace = () => {
             <Route path="/workspace/:workspace/dm/:id" component={DirectMessage} />
             <Route path="/workspace/:workspace/docs" component={Docs} />
             <Route path="/workspace/:workspace/calendar" component={Calendar} />
+            <Route path="/workspace/:workspace/contacts/:view?" component={Contacts} />
           </Switch>
         </Chats>
       </WorkspaceWrapper>

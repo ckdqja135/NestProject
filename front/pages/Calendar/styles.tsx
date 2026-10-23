@@ -41,18 +41,143 @@ export const Side = styled.aside`
     }
   }
 
+  & h4 .fold {
+    margin-left: 0;
+    gap: 4px;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+
+    & svg {
+      transition: transform 120ms;
+    }
+
+    & svg.closed {
+      transform: rotate(-90deg);
+    }
+  }
+
+  & .cal-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-top: 16px;
+
+    & > svg {
+      position: absolute;
+      left: 10px;
+      color: var(--text-faint);
+      pointer-events: none;
+    }
+
+    & input {
+      width: 100%;
+      height: 34px;
+      padding: 0 10px 0 32px;
+      border: 1px solid var(--border-strong);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+
+      &:focus {
+        border-color: #1264a3;
+        box-shadow: 0 0 0 3px rgba(29, 155, 209, 0.2);
+      }
+    }
+
+    & .results {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      z-index: 30;
+      max-height: 260px;
+      margin: 0;
+      padding: 4px 0;
+      overflow-y: auto;
+      list-style: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+
+      & .empty {
+        padding: 8px 12px;
+        font-size: 13px;
+        color: var(--text-muted);
+      }
+
+      & button {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 6px 10px;
+        border: none;
+        background: transparent;
+        color: var(--text);
+        font-size: 13px;
+        text-align: left;
+        cursor: pointer;
+
+        &:hover {
+          background: var(--bg-hover);
+        }
+
+        & img {
+          width: 22px;
+          height: 22px;
+          border-radius: 5px;
+        }
+
+        & .who {
+          flex: 1;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+
+          & small {
+            margin-left: 6px;
+            color: var(--text-muted);
+          }
+        }
+
+        & .tag {
+          font-size: 11px;
+          color: var(--text-muted);
+        }
+      }
+    }
+  }
+
+  & .cal-empty {
+    margin: 2px 4px 0 22px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
   & label.cal {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 4px 2px;
+    padding: 5px 4px 5px 20px;
+    border-radius: 6px;
     font-size: 14px;
     cursor: pointer;
 
-    & .dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 3px;
+    &:hover {
+      background: var(--bg-hover);
+    }
+
+    & input[type='checkbox'] {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      accent-color: var(--cal);
+      cursor: pointer;
     }
 
     & .name {
@@ -61,6 +186,14 @@ export const Side = styled.aside`
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    & .remove {
+      visibility: hidden;
+    }
+
+    &:hover .remove {
+      visibility: visible;
     }
 
     & .remove {
@@ -287,6 +420,24 @@ export const Chip = styled.button`
     border: 1px dashed var(--chip, #2f80ed);
     color: var(--text);
   }
+
+  /* 구독한 동료 일정: 연한 바탕에 왼쪽 색 띠 */
+  &.follow {
+    border: none;
+    border-left: 3px solid var(--chip, #2f80ed);
+    background: color-mix(in srgb, var(--chip, #2f80ed) 14%, var(--bg));
+    color: color-mix(in srgb, var(--chip, #2f80ed) 70%, var(--text));
+  }
+
+  &.follow.masked {
+    background: repeating-linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--chip, #6b7280) 14%, var(--bg)),
+      color-mix(in srgb, var(--chip, #6b7280) 14%, var(--bg)) 4px,
+      color-mix(in srgb, var(--chip, #6b7280) 6%, var(--bg)) 4px,
+      color-mix(in srgb, var(--chip, #6b7280) 6%, var(--bg)) 8px
+    );
+  }
 `;
 
 export const MonthGrid = styled.div`
@@ -480,6 +631,24 @@ export const TimeGridWrap = styled.div`
       background: var(--bg);
       border: 1px dashed var(--chip, #2f80ed);
       color: var(--text);
+    }
+
+    /* 구독한 동료 일정: 연한 바탕에 왼쪽 색 띠 */
+    &.follow {
+      border: none;
+      border-left: 3px solid var(--chip, #2f80ed);
+      background: color-mix(in srgb, var(--chip, #2f80ed) 14%, var(--bg));
+      color: color-mix(in srgb, var(--chip, #2f80ed) 70%, var(--text));
+    }
+
+    &.follow.masked {
+      background: repeating-linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--chip, #6b7280) 14%, var(--bg)),
+        color-mix(in srgb, var(--chip, #6b7280) 14%, var(--bg)) 4px,
+        color-mix(in srgb, var(--chip, #6b7280) 6%, var(--bg)) 4px,
+        color-mix(in srgb, var(--chip, #6b7280) 6%, var(--bg)) 8px
+      );
     }
   }
 

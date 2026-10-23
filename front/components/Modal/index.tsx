@@ -6,9 +6,10 @@ interface Props {
   onCloseModal: () => void;
   title?: string;
   description?: React.ReactNode;
+  width?: number; // 기본 480px 보다 넓은 창
 }
 
-const Modal: FC<PropsWithChildren<Props>> = ({ show, children, onCloseModal, title, description }) => {
+const Modal: FC<PropsWithChildren<Props>> = ({ show, children, onCloseModal, title, description, width }) => {
   const panelRef = useRef<HTMLDivElement>(null);
 
   const stopPropagation = useCallback((e) => {
@@ -53,6 +54,7 @@ const Modal: FC<PropsWithChildren<Props>> = ({ show, children, onCloseModal, tit
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        style={width ? { width } : undefined}
       >
         <CloseModalButton type="button" onClick={onCloseModal} aria-label="닫기">
           &times;

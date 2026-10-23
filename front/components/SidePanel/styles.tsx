@@ -47,6 +47,29 @@ export const PanelHeader = styled.header`
     cursor: pointer;
     line-height: 1;
   }
+
+  /* 스레드를 사이드바 맨 위에 고정 */
+  & > button.pin-top {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-right: 6px;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: normal;
+
+    &:hover {
+      background: var(--bg-hover);
+    }
+
+    &.on {
+      border-color: #1264a3;
+      color: #1264a3;
+    }
+  }
 `;
 
 export const PanelBody = styled.div`

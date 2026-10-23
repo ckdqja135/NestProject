@@ -29,7 +29,7 @@ interface Options<T extends { id: number }> {
   onOpenThread?: (parentId: number) => void;
 }
 
-// 주소의 ?message=<id>(&reply=<답글 id>) 를 읽어 그 메시지가 나올 때까지 이전 메시지를 불러온 뒤 그 위치로 이동한다
+// 주소의 ?message=<id>(&reply=<답글 id> 또는 &thread=1) 를 읽어 그 메시지가 나올 때까지 이전 메시지를 불러온 뒤 그 위치로 이동한다
 export default function useJumpToMessage<T extends { id: number }>({
   pages,
   isReachingEnd,
@@ -42,6 +42,8 @@ export default function useJumpToMessage<T extends { id: number }>({
   const params = new URLSearchParams(location.search);
   const messageId = Number(params.get('message')) || null;
   const replyId = Number(params.get('reply')) || null;
+  // &thread=1 이면 그 메시지의 스레드를 연다 (사이드바에 고정한 스레드)
+  const openThread = params.get('thread') === '1';
   const requested = useRef(0);
 
   useEffect(() => {
@@ -57,9 +59,11 @@ export default function useJumpToMessage<T extends { id: number }>({
       finish();
       // 첫 페이지 로딩 후의 맨 아래 스크롤보다 늦게 이동해야 한다
       setTimeout(() => highlightMessage(messageId), 300);
-      if (replyId && onOpenThread) {
+      if ((replyId || openThread) && onOpenThread) {
         onOpenThread(messageId);
-        setTimeout(() => highlightMessage(replyId), 300);
+        if (replyId) {
+          setTimeout(() => highlightMessage(replyId), 300);
+        }
       }
       return;
     }
@@ -73,5 +77,16 @@ export default function useJumpToMessage<T extends { id: number }>({
       requested.current = pages.length + 1;
       setSize(() => pages.length + 1);
     }
-  }, [messageId, pages, isReachingEnd, setSize, scrollbarRef, replyId, onOpenThread, history, location.pathname]);
+  }, [
+    messageId,
+    pages,
+    isReachingEnd,
+    setSize,
+    scrollbarRef,
+    replyId,
+    openThread,
+    onOpenThread,
+    history,
+    location.pathname,
+  ]);
 }

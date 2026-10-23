@@ -53,6 +53,33 @@ export const eventColor = (event: ICalendarEvent, me: number, follows: IUser[]) 
   return COLORS[calendarColorName(calendar, me, follows)];
 };
 
+// 구독한 동료 일정은 앞에 그 사람 이름을 붙인다 ('김지현, 바쁨')
+export const eventLabel = (event: ICalendarEvent, me: number, follows: IUser[]) => {
+  if (event.calendars.includes(me)) {
+    return event.title;
+  }
+  const owner = follows.find((f) => f.id === event.calendars[0]);
+  return owner ? `${owner.nickname}, ${event.title}` : event.title;
+};
+
+// 꺼 둔 캘린더 (사용자 id) 는 이 기기에 기억한다
+export const HIDDEN_KEY = 'shlack-calendar-hidden';
+export const readHidden = () => {
+  try {
+    const list = JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]');
+    return new Set<number>(Array.isArray(list) ? list.filter((n) => typeof n === 'number') : []);
+  } catch {
+    return new Set<number>();
+  }
+};
+export const saveHidden = (hidden: Set<number>) => {
+  try {
+    localStorage.setItem(HIDDEN_KEY, JSON.stringify(Array.from(hidden)));
+  } catch {
+    // 저장하지 못해도 이번 화면에서는 적용된다
+  }
+};
+
 export const startOfWeek = (d: Dayjs) => d.startOf('day').subtract(d.day(), 'day');
 
 // 화면에 보이는 기간 [시작, 끝) — 월은 6주 격자 전체

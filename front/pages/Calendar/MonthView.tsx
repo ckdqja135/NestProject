@@ -2,7 +2,7 @@ import { ICalendarEvent, IUser } from '@typings/db';
 import dayjs, { Dayjs } from 'dayjs';
 import React, { FC } from 'react';
 import { Chip, MonthGrid } from './styles';
-import { eventColor, isAllDayRow, monthGrid, overlapsDay, WEEKDAYS } from './utils';
+import { eventColor, eventLabel, isAllDayRow, monthGrid, overlapsDay, WEEKDAYS } from './utils';
 
 interface Props {
   cursor: Dayjs;
@@ -47,23 +47,28 @@ const MonthView: FC<Props> = ({ cursor, events, me, follows, onOpen, onCreate, o
                 key={event.id}
                 type="button"
                 className={
-                  event.masked
-                    ? 'masked'
-                    : event.myStatus === 'declined'
-                    ? 'declined'
-                    : event.myStatus === 'pending'
-                    ? 'pending'
-                    : undefined
+                  [
+                    event.masked
+                      ? 'masked'
+                      : event.myStatus === 'declined'
+                      ? 'declined'
+                      : event.myStatus === 'pending'
+                      ? 'pending'
+                      : '',
+                    event.calendars.includes(me) ? '' : 'follow',
+                  ]
+                    .filter(Boolean)
+                    .join(' ') || undefined
                 }
                 style={{ ['--chip' as string]: eventColor(event, me, follows) }}
-                title={event.title}
+                title={eventLabel(event, me, follows)}
                 onClick={(e) => {
                   e.stopPropagation();
                   onOpen(event);
                 }}
               >
                 {!isAllDayRow(event) && <span>{dayjs(event.startAt).format('HH:mm')} </span>}
-                {event.title}
+                {eventLabel(event, me, follows)}
               </Chip>
             ))}
             {list.length > MAX_CHIPS && (

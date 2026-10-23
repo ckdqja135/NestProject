@@ -82,9 +82,17 @@ export class UsersService {
       statusEmoji?: string | null;
       statusText?: string | null;
       away?: boolean;
+      department?: string | null;
+      jobTitle?: string | null;
+      phone?: string | null;
     },
   ) {
     const update: Partial<Users> = {};
+    (['department', 'jobTitle', 'phone'] as const).forEach((key) => {
+      if (changes[key] !== undefined) {
+        update[key] = changes[key]?.trim() || null;
+      }
+    });
     if (changes.nickname !== undefined) {
       update.nickname = changes.nickname.trim();
       if (!update.nickname) {
@@ -115,6 +123,9 @@ export class UsersService {
         'avatarStyle',
         'statusEmoji',
         'statusText',
+        'department',
+        'jobTitle',
+        'phone',
         'away',
         'theme',
         'notificationsPaused',

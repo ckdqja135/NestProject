@@ -8,6 +8,9 @@ import { Channels } from './src/entities/Channels';
 import { DMs } from './src/entities/DMs';
 import { DMReactions } from './src/entities/DMReactions';
 import { SavedItems } from './src/entities/SavedItems';
+import { SidebarPins } from './src/entities/SidebarPins';
+import { Contacts } from './src/entities/Contacts';
+import { ContactStars } from './src/entities/ContactStars';
 import { ScheduledMessages } from './src/entities/ScheduledMessages';
 import { Reminders } from './src/entities/Reminders';
 import { MessageEdits } from './src/entities/MessageEdits';
@@ -51,6 +54,9 @@ const options: DataSourceOptions & SeederOptions = {
     Mentions,
     Reactions,
     SavedItems,
+    SidebarPins,
+    Contacts,
+    ContactStars,
     ScheduledMessages,
     Reminders,
     MessageEdits,

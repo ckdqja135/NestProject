@@ -48,3 +48,10 @@ export const AvatarGrid = styled.div`
     }
   }
 `;
+
+// 부서·직책 두 칸을 한 줄에
+export const ContactFields = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 12px;
+`;

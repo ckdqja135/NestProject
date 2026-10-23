@@ -1,5 +1,6 @@
 import EachDM from '@components/EachDM';
 import useOnlineList from '@hooks/useOnlineList';
+import useSidebarPins from '@hooks/useSidebarPins';
 import { CollapseButton } from '@components/DMList/styles';
 import { IUser, IUserWithOnline } from '@typings/db';
 import fetcher from '@utils/fetcher';
@@ -18,6 +19,8 @@ const DMList = () => {
   );
   const [channelCollapse, setChannelCollapse] = useState(false);
   const onlineList = useOnlineList(workspace);
+  // 맨 위에 고정한 DM 은 '고정됨' 에만 보인다
+  const { isPinned } = useSidebarPins(workspace);
 
   const toggleChannelCollapse = useCallback(() => {
     setChannelCollapse((prev) => !prev);
@@ -37,10 +40,12 @@ const DMList = () => {
       </h2>
       <div>
         {!channelCollapse &&
-          memberData?.map((member) => {
-            const isOnline = onlineList.includes(member.id);
-            return <EachDM key={member.id} member={member} isOnline={isOnline} />;
-          })}
+          memberData
+            ?.filter((member) => !isPinned('dm', member.id))
+            .map((member) => {
+              const isOnline = onlineList.includes(member.id);
+              return <EachDM key={member.id} member={member} isOnline={isOnline} />;
+            })}
       </div>
     </>
   );

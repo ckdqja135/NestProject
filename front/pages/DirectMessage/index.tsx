@@ -1,4 +1,5 @@
-import { ChartBar, Phone, Pin } from 'lucide-react';
+import { ArrowUpToLine, ChartBar, Phone, Pin } from 'lucide-react';
+import useSidebarPins from '@hooks/useSidebarPins';
 import { ChatActions } from '@components/Chat';
 import ChatBox from '@components/ChatBox';
 import ChatList from '@components/ChatList';
@@ -47,6 +48,7 @@ import useSWRInfinite from 'swr/infinite';
 const PAGE_SIZE = 20;
 const DirectMessage = () => {
   const { workspace, id } = useParams<{ workspace: string; id: string }>();
+  const { isPinned, setPinned } = useSidebarPins(workspace);
   const [socket] = useSocket(workspace);
   const onlineList = useOnlineList(workspace);
   const { data: myData } = useSWR('/api/users', fetcher);
@@ -443,6 +445,17 @@ const DirectMessage = () => {
                 <Phone size={14} /> 통화
               </HeaderButton>
             )}
+            {
+              <HeaderButton
+                type="button"
+                className={isPinned('dm', userData.id) ? 'active' : undefined}
+                onClick={() => setPinned('dm', userData.id, !isPinned('dm', userData.id))}
+                aria-pressed={isPinned('dm', userData.id)}
+                title={isPinned('dm', userData.id) ? '사이드바 고정 풀기' : '사이드바 맨 위에 고정'}
+              >
+                <ArrowUpToLine size={14} /> {isPinned('dm', userData.id) ? '고정됨' : '맨 위 고정'}
+              </HeaderButton>
+            }
             <HeaderButton
               type="button"
               className={showPinned ? 'active' : undefined}

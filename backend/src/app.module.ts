@@ -33,6 +33,11 @@ import { Channels } from './entities/Channels';
 import { DMs } from './entities/DMs';
 import { DMReactions } from './entities/DMReactions';
 import { SavedItems } from './entities/SavedItems';
+import { SidebarPins } from './entities/SidebarPins';
+import { Contacts } from './entities/Contacts';
+import { ContactStars } from './entities/ContactStars';
+import { PinsModule } from './pins/pins.module';
+import { ContactsModule } from './contacts/contacts.module';
 import { ScheduledMessages } from './entities/ScheduledMessages';
 import { Reminders } from './entities/Reminders';
 import { MessageEdits } from './entities/MessageEdits';
@@ -81,6 +86,9 @@ import { Workspaces } from './entities/Workspaces';
         Mentions,
         Reactions,
         SavedItems,
+        SidebarPins,
+        Contacts,
+        ContactStars,
         ScheduledMessages,
         Reminders,
         MessageEdits,
@@ -116,6 +124,8 @@ import { Workspaces } from './entities/Workspaces';
     SearchModule,
     GifsModule,
     SavedModule,
+    PinsModule,
+    ContactsModule,
     ScheduledModule,
     GroupsModule,
     MailModule,

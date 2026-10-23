@@ -5,6 +5,9 @@ export interface IUser {
   avatarStyle?: string | null; // Gravatar 기본 이미지 종류
   statusEmoji?: string | null; // 상태 메시지 (예: 🗓️ 회의 중)
   statusText?: string | null;
+  department?: string | null; // 연락처: 부서
+  jobTitle?: string | null; // 연락처: 직책
+  phone?: string | null; // 연락처: 전화번호
   away?: boolean; // 자리 비움으로 표시
   theme?: 'system' | 'light' | 'dark' | null; // 계정에 저장한 화면 테마 (모든 기기 공통)
   notificationsPaused?: boolean; // 데스크톱 알림 일시 중지 (모든 기기 공통)
@@ -238,4 +241,19 @@ export interface ICalendarEvent {
   masked: boolean; // 비공개 일정을 참석자 아닌 사람이 볼 때 ('바쁨')
   calendars: number[]; // 이 일정이 속한 캘린더(사용자 id)
   myStatus: 'owner' | RsvpStatus | null;
+}
+
+// 외부 연락처 (워크스페이스 밖 사람, 내가 저장한 것만 보인다)
+export interface IContact {
+  id: number;
+  name: string;
+  company: string | null;
+  department: string | null;
+  jobTitle: string | null;
+  email: string | null;
+  phone: string | null;
+  memo: string | null;
+  starred: boolean;
+  createdAt: string;
+  updatedAt: string;
 }

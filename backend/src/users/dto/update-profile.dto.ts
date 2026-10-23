@@ -5,6 +5,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -58,6 +59,32 @@ export class UpdateProfileDto {
   @IsBoolean()
   @ApiProperty({ required: false, description: '자리 비움으로 표시' })
   public away?: boolean;
+
+  // 연락처 정보: 빈 문자열이나 null 이면 지운다
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  @ApiProperty({ example: '디자인팀', required: false, description: '부서' })
+  public department?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  @ApiProperty({ example: '매니저', required: false, description: '직책' })
+  public jobTitle?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  @Matches(/^[0-9+\-() ]*$/, {
+    message: '전화번호는 숫자와 + - ( ) 만 쓸 수 있습니다.',
+  })
+  @ApiProperty({
+    example: '010-1234-5678',
+    required: false,
+    description: '전화번호',
+  })
+  public phone?: string | null;
 }
 
 export class ChangePasswordDto {

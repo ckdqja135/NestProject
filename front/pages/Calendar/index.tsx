@@ -2,12 +2,13 @@ import { ICalendarEvent, IUser } from '@typings/db';
 import fetcher from '@utils/fetcher';
 import axios from 'axios';
 import dayjs, { Dayjs } from 'dayjs';
-import { Bot, ChevronLeft, ChevronRight, Plus, UserPlus, X } from 'lucide-react';
+import { Bot, ChevronDown, ChevronLeft, ChevronRight, Plus, Search, UserPlus, X } from 'lucide-react';
+import { avatarUrl } from '@utils/avatar';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import useSWR, { useSWRConfig } from 'swr';
-import { calBase, useCalendarChanged } from './api';
+import { calBase, toastError, useCalendarChanged } from './api';
 import EventDetailModal from './EventDetailModal';
 import EventModal, { EventDraft } from './EventModal';
 import FollowModal from './FollowModal';
@@ -15,7 +16,18 @@ import MiniCalendar from './MiniCalendar';
 import MonthView from './MonthView';
 import { CalLayout, Main, Side, Toolbar } from './styles';
 import TimeGrid from './TimeGrid';
-import { calendarColorName, CalView, COLORS, fmtDay, rangeFor, readView, saveView, startOfWeek } from './utils';
+import {
+  calendarColorName,
+  CalView,
+  COLORS,
+  fmtDay,
+  rangeFor,
+  readHidden,
+  readView,
+  saveHidden,
+  saveView,
+  startOfWeek,
+} from './utils';
 
 const VIEW_LABEL: Record<CalView, string> = { day: '일', week: '주', month: '월' };
 
@@ -33,7 +45,10 @@ const Calendar = () => {
   const [view, setView] = useState<CalView>(readView);
   const [cursor, setCursor] = useState(() => dayjs());
   // 끈 캘린더 (사용자 id)
-  const [hidden, setHidden] = useState<Set<number>>(new Set());
+  const [hidden, setHidden] = useState<Set<number>>(readHidden);
+  const [closedGroups, setClosedGroups] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   const [detail, setDetail] = useState<ICalendarEvent | null>(null);
   const [draft, setDraft] = useState<EventDraft | null>(null);
   const [showFollow, setShowFollow] = useState(false);
@@ -135,7 +150,46 @@ const Calendar = () => {
       setDetail(saved);
     }
   };
-  const calendars = [me, ...followList];
+  const followIds = new Set(followList.map((f) => f.id));
+  const keyword = query.trim().toLowerCase();
+  const searchResults = (members || [])
+    .filter(
+      (m) =>
+        m.id !== me.id &&
+        !m.bot &&
+        keyword &&
+        (m.nickname.toLowerCase().includes(keyword) || m.email.toLowerCase().includes(keyword)),
+    )
+    .slice(0, 8);
+  const toggleHidden = (id: number) =>
+    setHidden((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      saveHidden(next);
+      return next;
+    });
+  const toggleGroup = (key: string) =>
+    setClosedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  // 검색에서 고르면 구독하고, 이미 구독 중이면 꺼 둔 캘린더를 다시 켠다
+  const follow = (user: IUser) => {
+    setQuery('');
+    setSearchOpen(false);
+    if (hidden.has(user.id)) toggleHidden(user.id);
+    if (followIds.has(user.id)) return;
+    axios
+      .put(`${base}/follows/${user.id}`)
+      .then(() => {
+        refreshFollows();
+        toast.success(`${user.nickname} 님의 캘린더를 구독했습니다.`, { position: 'bottom-center' });
+      })
+      .catch(toastError);
+  };
 
   return (
     <CalLayout>
@@ -162,43 +216,95 @@ const Calendar = () => {
           <Plus size={16} /> 일정 만들기
         </button>
         <MiniCalendar cursor={cursor} marked={marked} onPick={(day) => setCursor(day)} />
-        <h4>
-          내 캘린더
-          <button type="button" onClick={() => setShowFollow(true)}>
-            <UserPlus size={13} /> 동료 캘린더
-          </button>
-        </h4>
-        {calendars.map((user) => (
-          <label className="cal" key={user.id}>
-            <input
-              type="checkbox"
-              checked={!hidden.has(user.id)}
-              onChange={(e) =>
-                setHidden((prev) => {
-                  const next = new Set(prev);
-                  if (e.target.checked) next.delete(user.id);
-                  else next.add(user.id);
-                  return next;
-                })
+        <div className="cal-search">
+          <Search size={15} />
+          <input
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setSearchOpen(true);
+            }}
+            onFocus={() => setSearchOpen(true)}
+            onBlur={() => window.setTimeout(() => setSearchOpen(false), 150)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setQuery('');
+                (e.target as HTMLInputElement).blur();
+              } else if (e.key === 'Enter' && searchResults[0]) {
+                follow(searchResults[0]);
               }
-            />
-            <span className="dot" style={{ background: COLORS[calendarColorName(user.id, me.id, followList)] }} />
-            <span className="name">{user.id === me.id ? `${user.nickname} (나)` : user.nickname}</span>
-            {user.id !== me.id && (
+            }}
+            placeholder="동료 캘린더 검색"
+            aria-label="동료 캘린더 검색"
+          />
+          {searchOpen && query.trim() && (
+            <ul className="results" role="listbox">
+              {searchResults.length === 0 && <li className="empty">찾는 동료가 없습니다.</li>}
+              {searchResults.map((m) => (
+                <li key={m.id}>
+                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => follow(m)}>
+                    <img src={avatarUrl(m, 24)} alt="" />
+                    <span className="who">
+                      {m.nickname}
+                      <small>{m.email}</small>
+                    </span>
+                    {followIds.has(m.id) ? <span className="tag">구독 중</span> : <Plus size={14} />}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        {[
+          { key: 'mine', label: '내 캘린더', users: [me] },
+          { key: 'follow', label: '팔로잉', users: followList },
+        ].map((group) => (
+          <div key={group.key} className="cal-group">
+            <h4>
               <button
                 type="button"
-                className="remove"
-                title="구독 끊기"
-                aria-label={`${user.nickname} 구독 끊기`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  axios.delete(`${base}/follows/${user.id}`).then(() => refreshFollows());
-                }}
+                className="fold"
+                aria-expanded={!closedGroups.has(group.key)}
+                onClick={() => toggleGroup(group.key)}
               >
-                <X size={14} />
+                <ChevronDown size={14} className={closedGroups.has(group.key) ? 'closed' : undefined} />
+                {group.label}
               </button>
+              {group.key === 'follow' && (
+                <button type="button" onClick={() => setShowFollow(true)} title="동료 캘린더 구독">
+                  <UserPlus size={13} /> 추가
+                </button>
+              )}
+            </h4>
+            {!closedGroups.has(group.key) &&
+              group.users.map((user) => (
+                <label
+                  className="cal"
+                  key={user.id}
+                  style={{ ['--cal' as string]: COLORS[calendarColorName(user.id, me.id, followList)] }}
+                >
+                  <input type="checkbox" checked={!hidden.has(user.id)} onChange={() => toggleHidden(user.id)} />
+                  <span className="name">{user.nickname}</span>
+                  {user.id !== me.id && (
+                    <button
+                      type="button"
+                      className="remove"
+                      title="구독 끊기"
+                      aria-label={`${user.nickname} 구독 끊기`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        axios.delete(`${base}/follows/${user.id}`).then(() => refreshFollows());
+                      }}
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </label>
+              ))}
+            {!closedGroups.has(group.key) && group.key === 'follow' && followList.length === 0 && (
+              <p className="cal-empty">위에서 동료를 찾아 구독하면 일정이 함께 보여요.</p>
             )}
-          </label>
+          </div>
         ))}
         {bot && (
           <Link className="bot" to={`/workspace/${workspace}/dm/${bot.id}`} title="일정 알림이 오는 대화">

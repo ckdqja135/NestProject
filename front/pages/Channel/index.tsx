@@ -1,4 +1,5 @@
-import { Archive, Bell, BellOff, ChartBar, Hash, Lock, Pin, Settings } from 'lucide-react';
+import { Archive, ArrowUpToLine, Bell, BellOff, ChartBar, Hash, Lock, Pin, Settings } from 'lucide-react';
+import useSidebarPins from '@hooks/useSidebarPins';
 import { ChatActions } from '@components/Chat';
 import ChatBox from '@components/ChatBox';
 import ChatList from '@components/ChatList';
@@ -86,6 +87,7 @@ const Channel = () => {
   const onChangeChat = useCallback((e: { target: { value: string } }) => setChat(e.target.value), [setChat]);
   const [showInviteChannelModal, setShowInviteChannelModal] = useState(false);
   const [threadParentId, setThreadParentId] = useState<number | null>(null);
+  const { isPinned, setPinned } = useSidebarPins(workspace);
   const [showPinned, setShowPinned] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const scrollbarRef = useRef<Scrollbars>(null);
@@ -501,6 +503,17 @@ const Channel = () => {
             </button>
           )}
           <div style={{ display: 'flex', flex: 1, justifyContent: 'flex-end', alignItems: 'center', gap: 4 }}>
+            {channelData && (
+              <HeaderButton
+                type="button"
+                className={isPinned('channel', channelData.id) ? 'active' : undefined}
+                onClick={() => setPinned('channel', channelData.id, !isPinned('channel', channelData.id))}
+                aria-pressed={isPinned('channel', channelData.id)}
+                title={isPinned('channel', channelData.id) ? '사이드바 고정 풀기' : '사이드바 맨 위에 고정'}
+              >
+                <ArrowUpToLine size={14} /> {isPinned('channel', channelData.id) ? '고정됨' : '맨 위 고정'}
+              </HeaderButton>
+            )}
             <HeaderButton type="button" onClick={() => setShowSettings(true)} title="채널 설정">
               <Settings size={14} /> 설정
             </HeaderButton>

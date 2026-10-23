@@ -6,7 +6,7 @@ import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
 import React, { FC, useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
-import { AvatarGrid, Section } from './styles';
+import { AvatarGrid, ContactFields, Section } from './styles';
 
 interface Props {
   show: boolean;
@@ -15,10 +15,13 @@ interface Props {
   onUpdated: () => void;
 }
 
-// 내 프로필 설정: 닉네임, 프로필 그림 모양, 비밀번호 변경
+// 내 프로필 설정: 닉네임, 연락처 정보(부서·직책·전화), 프로필 그림 모양, 비밀번호 변경
 const ProfileModal: FC<Props> = ({ show, me, onCloseModal, onUpdated }) => {
   const [nickname, setNickname] = useState(me.nickname);
   const [avatarStyle, setAvatarStyle] = useState(me.avatarStyle || 'retro');
+  const [department, setDepartment] = useState(me.department || '');
+  const [jobTitle, setJobTitle] = useState(me.jobTitle || '');
+  const [phone, setPhone] = useState(me.phone || '');
   const [profileError, setProfileError] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
 
@@ -33,16 +36,24 @@ const ProfileModal: FC<Props> = ({ show, me, onCloseModal, onUpdated }) => {
     if (show) {
       setNickname(me.nickname);
       setAvatarStyle(me.avatarStyle || 'retro');
+      setDepartment(me.department || '');
+      setJobTitle(me.jobTitle || '');
+      setPhone(me.phone || '');
       setProfileError('');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       setPasswordError('');
     }
-  }, [show, me.nickname, me.avatarStyle]);
+  }, [show, me.nickname, me.avatarStyle, me.department, me.jobTitle, me.phone]);
 
   const trimmed = nickname.trim();
-  const profileChanged = trimmed !== me.nickname || avatarStyle !== (me.avatarStyle || 'retro');
+  const profileChanged =
+    trimmed !== me.nickname ||
+    avatarStyle !== (me.avatarStyle || 'retro') ||
+    department.trim() !== (me.department || '') ||
+    jobTitle.trim() !== (me.jobTitle || '') ||
+    phone.trim() !== (me.phone || '');
 
   const onSaveProfile = useCallback(
     (e: React.FormEvent) => {
@@ -54,7 +65,13 @@ const ProfileModal: FC<Props> = ({ show, me, onCloseModal, onUpdated }) => {
       setSavingProfile(true);
       setProfileError('');
       axios
-        .patch('/api/users/me', { nickname: trimmed, avatarStyle })
+        .patch('/api/users/me', {
+          nickname: trimmed,
+          avatarStyle,
+          department: department.trim(),
+          jobTitle: jobTitle.trim(),
+          phone: phone.trim(),
+        })
         .then(() => {
           toast.success('프로필을 저장했습니다.', { position: 'bottom-center' });
           onUpdated();
@@ -62,7 +79,7 @@ const ProfileModal: FC<Props> = ({ show, me, onCloseModal, onUpdated }) => {
         .catch((error) => setProfileError(getErrorMessage(error)))
         .finally(() => setSavingProfile(false));
     },
-    [trimmed, avatarStyle, onUpdated],
+    [trimmed, avatarStyle, department, jobTitle, phone, onUpdated],
   );
 
   const passwordMismatch = !!confirmPassword && newPassword !== confirmPassword;
@@ -107,6 +124,40 @@ const ProfileModal: FC<Props> = ({ show, me, onCloseModal, onUpdated }) => {
               onChange={(e) => setNickname(e.target.value)}
               aria-invalid={!!profileError && !trimmed}
             />
+          </Field>
+          <ContactFields>
+            <Field>
+              <label htmlFor="profile-department">부서</label>
+              <TextInput
+                id="profile-department"
+                value={department}
+                maxLength={40}
+                placeholder="예: 디자인팀"
+                onChange={(e) => setDepartment(e.target.value)}
+              />
+            </Field>
+            <Field>
+              <label htmlFor="profile-job-title">직책</label>
+              <TextInput
+                id="profile-job-title"
+                value={jobTitle}
+                maxLength={40}
+                placeholder="예: 매니저"
+                onChange={(e) => setJobTitle(e.target.value)}
+              />
+            </Field>
+          </ContactFields>
+          <Field>
+            <label htmlFor="profile-phone">전화번호</label>
+            <TextInput
+              id="profile-phone"
+              type="tel"
+              value={phone}
+              maxLength={30}
+              placeholder="예: 010-1234-5678"
+              onChange={(e) => setPhone(e.target.value)}
+            />
+            <p className="hint">부서·직책·전화번호는 같은 워크스페이스 사람들이 연락처에서 볼 수 있어요.</p>
           </Field>
           <Field>
             <label id="profile-avatar-label">프로필 그림</label>

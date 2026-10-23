@@ -132,6 +132,50 @@ const ChatBox: FC<Props> = ({
     [chat, onEditLast],
   );
 
+  // 한글(IME) 입력은 키 이벤트 없이 글자가 들어와서 멘션 후보가 '@' 까지만 걸러진 채 남는다.
+  // 입력이 바뀔 때마다 후보를 다시 걸러 주고, 조합 중에 누른 Enter/Tab 은 조합이 끝난 뒤에 후보를 고르게 한다
+  // (그대로 두면 '@동' 에서 고를 때 '동료 동' 처럼 조합 중이던 글자가 뒤에 남는다)
+  const pendingPick = useRef(false);
+  const refreshMentionQuery = useCallback(() => {
+    if (document.activeElement === textareaRef.current) {
+      document.dispatchEvent(new Event('selectionchange'));
+    }
+  }, []);
+  const onInputCapture = useCallback(() => {
+    window.setTimeout(refreshMentionQuery, 0);
+  }, [refreshMentionQuery]);
+  const onKeyDownCapture = useCallback((e: React.KeyboardEvent) => {
+    const composing = e.nativeEvent.isComposing || e.keyCode === 229;
+    const open = textareaRef.current?.getAttribute('aria-expanded') === 'true';
+    if (!open || (e.key !== 'Enter' && e.key !== 'Tab')) {
+      return;
+    }
+    if (composing) {
+      e.stopPropagation();
+      e.preventDefault();
+      pendingPick.current = true;
+    } else {
+      // 조합이 끝난 뒤 브라우저가 Enter 를 한 번 더 보내 주면 그걸로 고른다
+      pendingPick.current = false;
+    }
+  }, []);
+  const onCompositionEndCapture = useCallback(() => {
+    refreshMentionQuery();
+    window.setTimeout(() => {
+      refreshMentionQuery();
+      window.setTimeout(() => {
+        const el = textareaRef.current;
+        if (!pendingPick.current || !el) {
+          return;
+        }
+        pendingPick.current = false;
+        const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+        Object.defineProperty(enter, 'keyCode', { get: () => 13 });
+        el.dispatchEvent(enter);
+      }, 30);
+    }, 0);
+  }, [refreshMentionQuery]);
+
   const renderUserSuggestion: (
     suggestion: SuggestionDataItem,
     search: string,
@@ -195,7 +239,13 @@ const ChatBox: FC<Props> = ({
 
   return (
     <ChatArea>
-      <Form onSubmit={onSubmitForm} onPaste={onPaste}>
+      <Form
+        onSubmit={onSubmitForm}
+        onPaste={onPaste}
+        onInputCapture={onInputCapture}
+        onKeyDownCapture={onKeyDownCapture}
+        onCompositionEndCapture={onCompositionEndCapture}
+      >
         {commandHints.length > 0 && (
           <CommandHints role="listbox" aria-label="명령어">
             {commandHints.map((command) => (

@@ -2,7 +2,7 @@ import { ICalendarEvent, IUser } from '@typings/db';
 import dayjs, { Dayjs } from 'dayjs';
 import React, { FC, useEffect, useRef, useState } from 'react';
 import { Chip, TimeGridWrap } from './styles';
-import { eventColor, HOUR_PX, isAllDayRow, layoutColumns, overlapsDay, WEEKDAYS } from './utils';
+import { eventColor, eventLabel, HOUR_PX, isAllDayRow, layoutColumns, overlapsDay, WEEKDAYS } from './utils';
 
 interface Props {
   days: Dayjs[]; // 주: 7일, 일: 1일
@@ -13,8 +13,19 @@ interface Props {
   onCreate: (start: Dayjs, allDay: boolean) => void;
 }
 
-const statusClass = (event: ICalendarEvent) =>
-  event.masked ? 'masked' : event.myStatus === 'declined' ? 'declined' : event.myStatus === 'pending' ? 'pending' : '';
+const statusClass = (event: ICalendarEvent, me: number) =>
+  [
+    event.masked
+      ? 'masked'
+      : event.myStatus === 'declined'
+      ? 'declined'
+      : event.myStatus === 'pending'
+      ? 'pending'
+      : '',
+    event.calendars.includes(me) ? '' : 'follow',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
 // 주·일 보기: 위에 종일 줄, 아래 24시간 시간표
 const TimeGrid: FC<Props> = ({ days, events, me, follows, onOpen, onCreate }) => {
@@ -60,15 +71,15 @@ const TimeGrid: FC<Props> = ({ days, events, me, follows, onOpen, onCreate }) =>
                 <Chip
                   key={event.id}
                   type="button"
-                  className={statusClass(event) || undefined}
+                  className={statusClass(event, me) || undefined}
                   style={{ ['--chip' as string]: eventColor(event, me, follows) }}
-                  title={event.title}
+                  title={eventLabel(event, me, follows)}
                   onClick={(e) => {
                     e.stopPropagation();
                     onOpen(event);
                   }}
                 >
-                  {event.title}
+                  {eventLabel(event, me, follows)}
                 </Chip>
               ))}
           </div>
@@ -105,7 +116,7 @@ const TimeGrid: FC<Props> = ({ days, events, me, follows, onOpen, onCreate }) =>
                     <button
                       key={event.id}
                       type="button"
-                      className={`event ${statusClass(event)}`}
+                      className={`event ${statusClass(event, me)}`}
                       style={{
                         top,
                         height,
@@ -113,13 +124,13 @@ const TimeGrid: FC<Props> = ({ days, events, me, follows, onOpen, onCreate }) =>
                         width: `${width}%`,
                         ['--chip' as string]: eventColor(event, me, follows),
                       }}
-                      title={event.title}
+                      title={eventLabel(event, me, follows)}
                       onClick={(e) => {
                         e.stopPropagation();
                         onOpen(event);
                       }}
                     >
-                      <b>{event.title}</b>
+                      <b>{eventLabel(event, me, follows)}</b>
                       {height > 30 && (
                         <small>
                           {start.format('HH:mm')} – {end.format('HH:mm')}

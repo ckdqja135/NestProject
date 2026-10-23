@@ -1,6 +1,6 @@
 import { IDocFolder, IDocListItem, IUser } from '@typings/db';
 import { avatarUrl } from '@utils/avatar';
-import { DOC_TEMPLATES, DOC_TYPE_INFO, DocType } from '@utils/docTemplates';
+import { DOC_TYPE_INFO, DocType } from '@utils/docTemplates';
 import fetcher from '@utils/fetcher';
 import axios from 'axios';
 import dayjs from 'dayjs';
@@ -28,6 +28,7 @@ import useSWR, { mutate as mutateKey } from 'swr';
 import { createDoc, docPath, docsBase, toastError, useDocsChanged } from './api';
 import DocIcon from './DocIcon';
 import FolderModal from './FolderModal';
+import TemplateGallery from './TemplateGallery';
 import { Cards, DocGrid, DocTable, DropMenu, Empty, HomeWrap, RowMenuButton, Tabs } from './styles';
 
 export type HomeMode = 'home' | 'mine' | 'folder' | 'trash' | 'wiki';
@@ -113,6 +114,7 @@ const DocsHome: FC<Props> = ({ mode, me }) => {
   const [view, setView] = useState<'list' | 'grid'>(readView);
   const dropdown = useDropdown();
   const [folderModal, setFolderModal] = useState<'new' | 'rename' | null>(null);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   let query: string;
   if (mode === 'home') {
@@ -365,28 +367,8 @@ const DocsHome: FC<Props> = ({ mode, me }) => {
           <Card
             icon={<LayoutTemplate size={24} color="#e8891d" />}
             title="템플릿"
-            hint="회의록, 주간 보고, 발표 자료…"
-            onClick={dropdown.toggle('template')}
-            menu={
-              dropdown.open === 'template' && (
-                <DropMenu role="menu">
-                  {DOC_TEMPLATES.filter((t) => (mode === 'wiki' ? t.type === 'wiki' : true)).map((t) => (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      key={t.key}
-                      onClick={() => newDoc(t.type, t.title(), t.content())}
-                    >
-                      <t.Icon size={18} color={DOC_TYPE_INFO[t.type].color} style={{ flex: 'none' }} />
-                      <span>
-                        {t.name}
-                        <small>{t.description}</small>
-                      </span>
-                    </button>
-                  ))}
-                </DropMenu>
-              )
-            }
+            hint={mode === 'wiki' ? '공지, 인수인계, 회고, 채용…' : '회의록, 위키, 발표 자료…'}
+            onClick={() => setShowTemplates(true)}
           />
           {mode !== 'wiki' && (
             <Card
@@ -559,6 +541,15 @@ const DocsHome: FC<Props> = ({ mode, me }) => {
           </tbody>
         </DocTable>
       )}
+      <TemplateGallery
+        show={showTemplates}
+        wikiOnly={mode === 'wiki'}
+        onClose={() => setShowTemplates(false)}
+        onPick={(t) => {
+          setShowTemplates(false);
+          newDoc(t.type, t.title(), t.content());
+        }}
+      />
       <FolderModal
         show={!!folderModal}
         workspace={workspace}

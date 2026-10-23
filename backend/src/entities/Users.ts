@@ -51,6 +51,16 @@ export class Users {
   @Column('varchar', { name: 'statusText', length: 100, nullable: true })
   statusText: string | null;
 
+  // 연락처 정보 (워크스페이스 멤버끼리 연락처 화면에서 본다)
+  @Column('varchar', { name: 'department', length: 40, nullable: true })
+  department: string | null;
+
+  @Column('varchar', { name: 'jobTitle', length: 40, nullable: true })
+  jobTitle: string | null;
+
+  @Column('varchar', { name: 'phone', length: 30, nullable: true })
+  phone: string | null;
+
   // 자리 비움으로 표시 (접속 중이어도 온라인 표시를 흐리게)
   @Column('boolean', { name: 'away', default: false })
   away: boolean;
