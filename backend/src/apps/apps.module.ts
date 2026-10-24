@@ -3,6 +3,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ChannelsModule } from '../channels/channels.module';
 import { DmsModule } from '../dms/dms.module';
 import { AppCommands } from '../entities/AppCommands';
+import { AppTickets } from '../entities/AppTickets';
+import { ChannelChats } from '../entities/ChannelChats';
+import { DMs } from '../entities/DMs';
 import { Apps } from '../entities/Apps';
 import { ChannelMembers } from '../entities/ChannelMembers';
 import { Channels } from '../entities/Channels';
@@ -25,6 +28,9 @@ import { AppsService } from './apps.service';
       Channels,
       ChannelMembers,
       Reactions,
+      AppTickets,
+      ChannelChats,
+      DMs,
     ]),
     WorkspacesModule,
     ChannelsModule,

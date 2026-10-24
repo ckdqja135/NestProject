@@ -19,6 +19,7 @@ import { DocAccessRequests } from '../entities/DocAccessRequests';
 import { Users } from '../entities/Users';
 import { BotsService } from '../bots/bots.service';
 import { DmsService } from '../dms/dms.service';
+import { DocActivityService } from '../doc-activity/doc-activity.service';
 import { EventsGateway } from '../events/events.gateway';
 import {
   isAdminRole,
@@ -44,10 +45,14 @@ const REQUEST_RENOTIFY_MS = 10 * 60_000;
 // 볼 수 있는 문서: 내가 만들었거나, 워크스페이스 공개거나, 나와 공유됨.
 // (고칠 수 있는지는 공유 권한과 공개 문서의 linkRole 로 따로 정한다)
 // 게스트는 워크스페이스 공개 문서(위키 포함)는 못 보고, 자기 문서와 공유받은 문서만 본다
+// 채널 탭으로 채널 멤버에게 준 권한 (그 채널 멤버일 때만)
+const TAB_GRANT = `EXISTS (
+  SELECT 1 FROM channeltabs ct JOIN channelmembers cm ON cm.ChannelId = ct.ChannelId
+   WHERE ct.DocId = d.id AND ct.access <> 'none' AND cm.UserId = :me)`;
 const VISIBLE = `(d.OwnerId = :me OR d.visibility = 'workspace' OR EXISTS (
-  SELECT 1 FROM docshares ds WHERE ds.DocId = d.id AND ds.UserId = :me))`;
+  SELECT 1 FROM docshares ds WHERE ds.DocId = d.id AND ds.UserId = :me) OR ${TAB_GRANT})`;
 const VISIBLE_FOR_GUEST = `(d.OwnerId = :me OR EXISTS (
-  SELECT 1 FROM docshares ds WHERE ds.DocId = d.id AND ds.UserId = :me))`;
+  SELECT 1 FROM docshares ds WHERE ds.DocId = d.id AND ds.UserId = :me) OR ${TAB_GRANT})`;
 export const visibleFor = (role: WorkspaceRole) =>
   role === 'guest' ? VISIBLE_FOR_GUEST : VISIBLE;
 
@@ -74,6 +79,8 @@ export class DocsService {
     // 접근 요청을 봇 DM 으로 알린다 (테스트처럼 없으면 화면 알림만)
     @Optional() private botsService?: BotsService,
     @Optional() private dmsService?: DmsService,
+    // 채널 탭에서 알림을 켠 채널에 댓글·수정을 알린다
+    @Optional() private activity?: DocActivityService,
   ) {}
 
   // 이 사람이 이 문서를 볼 수 있는지·고칠 수 있는지
@@ -83,13 +90,29 @@ export class DocsService {
     });
     const isOwner = doc.OwnerId === userId;
     const openToAll = doc.visibility === 'workspace' && role !== 'guest';
+    const tab = await this.tabGrant(doc.id, userId);
     return {
-      canView: isOwner || openToAll || !!share,
+      canView: isOwner || openToAll || !!share || tab !== 'none',
       canEdit:
         isOwner ||
         share?.role === 'edit' ||
+        tab === 'edit' ||
         (openToAll && doc.linkRole === 'edit'),
     };
+  }
+
+  // 이 사람이 들어가 있는 채널의 탭으로 받은 가장 큰 권한
+  private async tabGrant(docId: number, userId: number) {
+    const rows: { level: number | string | null }[] =
+      await this.docsRepository.manager.query(
+        `SELECT MAX(CASE ct.access WHEN 'edit' THEN 2 WHEN 'view' THEN 1 ELSE 0 END) AS level
+           FROM channeltabs ct
+           JOIN channelmembers cm ON cm.ChannelId = ct.ChannelId AND cm.UserId = ?
+          WHERE ct.DocId = ?`,
+        [userId, docId],
+      );
+    const level = Number(rows[0]?.level || 0);
+    return level >= 2 ? 'edit' : level === 1 ? 'view' : 'none';
   }
 
   // 워크스페이스 멤버가 아니면 볼 수 없다
@@ -137,6 +160,17 @@ export class DocsService {
     return { workspace, doc, canEdit, canManage };
   }
 
+  // 다른 기능(채널 탭)에서 내 권한을 확인할 때. 볼 수 없으면 null
+  async accessOf(url: string, id: number, myId: number) {
+    try {
+      const { doc, canEdit, canManage } = await this.access(url, id, myId);
+      return { doc, canEdit, canManage };
+    } catch (error) {
+      if (error instanceof NotFoundException) return null;
+      throw error;
+    }
+  }
+
   // 실시간 동시 편집: 볼 수 있는지·고칠 수 있는지 (소켓 연결에서 쓴다)
   async collabAccess(url: string, id: number, myId: number) {
     const { doc, canEdit } = await this.access(url, id, myId);
@@ -169,6 +203,9 @@ export class DocsService {
     await this.docsRepository.update({ id }, update);
     if (content !== undefined) {
       await this.updateLinks(url, id, content);
+    }
+    if (editorId) {
+      void this.activity?.edited(id, editorId);
     }
   }
 
@@ -264,6 +301,7 @@ export class DocsService {
       quote: first ? null : dto.quote?.trim().slice(0, 300) || null,
     });
     this.commentNotify(url, doc.id);
+    void this.activity?.comment(doc.id, myId, content);
     // 문서 주인과 이 스레드에 댓글을 단 사람들에게 알린다 (나 빼고)
     const participants = first
       ? await this.commentsRepository
@@ -474,15 +512,24 @@ export class DocsService {
       favorite: state?.favorite || false,
       viewedAt: new Date(),
     });
-    // 관리할 수 있으면 기다리는 접근 요청 수도 알려 준다
+    // 관리할 수 있으면 기다리는 접근 요청 수와 채널 탭으로 준 권한도 알려 준다
     const accessRequests = canManage
       ? await this.requestsRepository.count({ where: { DocId: doc.id } })
       : 0;
+    const channelTabs: { channel: string; access: string }[] = canManage
+      ? await this.docsRepository.manager.query(
+          `SELECT c.name AS channel, ct.access AS access
+             FROM channeltabs ct JOIN channels c ON c.id = ct.ChannelId
+            WHERE ct.DocId = ? ORDER BY c.name`,
+          [doc.id],
+        )
+      : [];
     return {
       ...full,
       canEdit,
       canManage,
       accessRequests,
+      channelTabs,
       favorite: !!state?.favorite,
     };
   }
@@ -609,6 +656,7 @@ export class DocsService {
     if (update.title && update.title !== doc.title) {
       this.notify(url, { id: doc.id });
     }
+    void this.activity?.edited(doc.id, myId);
     return {
       id: doc.id,
       version: update.version,

@@ -4,6 +4,7 @@ import { parsePollContent } from '@utils/poll';
 import { plainMentions } from '@utils/mention';
 import { myQuietNow } from '@utils/dnd';
 import { parseApprovalContent } from '@utils/approval';
+import { parseAppMessage } from '@utils/appMessage';
 
 // 브라우저 알림. 탭을 보고 있지 않을 때만 띄운다.
 export const canNotify = () => typeof window !== 'undefined' && 'Notification' in window;
@@ -68,6 +69,10 @@ export const previewText = (content: string): string => {
   const poll = parsePollContent(content);
   if (poll) {
     return `[투표] ${poll.q}`;
+  }
+  const app = parseAppMessage(content);
+  if (app) {
+    return previewText(app.text);
   }
   const approval = parseApprovalContent(content);
   if (approval) {

@@ -8,10 +8,13 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import bcrypt from 'bcrypt';
 import { createHash, randomBytes } from 'crypto';
-import { In, Repository } from 'typeorm';
+import { In, LessThan, Repository } from 'typeorm';
 import { ChannelsService } from '../channels/channels.service';
 import { DmsService } from '../dms/dms.service';
 import { AppCommands } from '../entities/AppCommands';
+import { AppTickets } from '../entities/AppTickets';
+import { ChannelChats } from '../entities/ChannelChats';
+import { DMs } from '../entities/DMs';
 import { Apps } from '../entities/Apps';
 import { ChannelMembers } from '../entities/ChannelMembers';
 import { Channels } from '../entities/Channels';
@@ -22,6 +25,7 @@ import { EventsGateway } from '../events/events.gateway';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { AppEventsService, AppEventType } from './app-events.service';
 import { assertAppUrl, postToApp } from './app-http';
+import { AppButton, parseAppMessage, toAppMessage } from './app-message';
 
 // 슐랙에 원래 있는 명령 (앱이 같은 이름을 쓸 수 없다)
 const BUILTIN_COMMANDS = [
@@ -53,6 +57,7 @@ export interface AppContext {
 }
 
 interface ResponseTicket {
+  id?: number;
   appId: number;
   appName: string;
   botUserId: number;
@@ -72,8 +77,6 @@ export interface CommandResult {
 @Injectable()
 export class AppsService {
   private logger = new Logger('Apps');
-  // 서버가 한 대라 늦은 응답 주소는 메모리에 둔다 (재시작하면 사라진다)
-  private tickets = new Map<string, ResponseTicket>();
 
   constructor(
     @InjectRepository(Apps) private appsRepository: Repository<Apps>,
@@ -88,6 +91,12 @@ export class AppsService {
     private channelMembersRepository: Repository<ChannelMembers>,
     @InjectRepository(Reactions)
     private reactionsRepository: Repository<Reactions>,
+    @InjectRepository(AppTickets)
+    private ticketsRepository: Repository<AppTickets>,
+    @InjectRepository(ChannelChats)
+    private chatsRepository: Repository<ChannelChats>,
+    @InjectRepository(DMs)
+    private dmsRepository: Repository<DMs>,
     private workspacesService: WorkspacesService,
     private channelsService: ChannelsService,
     private dmsService: DmsService,
@@ -146,6 +155,7 @@ export class AppsService {
       description: app.description,
       tokenHint: app.tokenHint,
       eventUrl: app.eventUrl,
+      interactionUrl: app.interactionUrl,
       events: app.events ? app.events.split(',') : [],
       lastEventAt: app.lastEventAt,
       lastEventError: app.lastEventError,
@@ -216,6 +226,7 @@ export class AppsService {
       name?: string;
       description?: string;
       eventUrl?: string | null;
+      interactionUrl?: string | null;
       events?: AppEventType[];
     },
     myId: number,
@@ -223,6 +234,17 @@ export class AppsService {
     const workspace = await this.adminWorkspace(url, myId);
     const app = await this.findApp(workspace.id, appId);
     const update: Partial<Apps> = {};
+    if (dto.interactionUrl !== undefined) {
+      const next = dto.interactionUrl?.trim() || null;
+      if (next) {
+        try {
+          assertAppUrl(next);
+        } catch (error) {
+          throw new BadRequestException((error as Error).message);
+        }
+      }
+      update.interactionUrl = next;
+    }
     if (dto.name !== undefined && dto.name.trim() !== app.name) {
       update.name = dto.name.trim();
       await this.usersRepository.update(app.BotUserId, {
@@ -495,20 +517,13 @@ export class AppsService {
       select: ['id', 'nickname'],
     });
     const app = command.App;
-    const ticketId = randomBytes(18).toString('hex');
-    const ticket: ResponseTicket = {
-      appId: app.id,
-      appName: app.name,
-      botUserId: app.BotUserId,
+    const { token: ticketId, ticket } = await this.createTicket(
+      app,
       url,
-      userId: myId,
-      channel: dto.channel || null,
-      dmUserId: dto.dmUserId || null,
-      expires: Date.now() + RESPONSE_TTL_MS,
-      uses: 0,
-    };
-    this.tickets.set(ticketId, ticket);
-    this.sweepTickets();
+      myId,
+      dto.channel || null,
+      dto.dmUserId || null,
+    );
     const payload = {
       type: 'slash_command',
       app_id: app.id,
@@ -596,31 +611,247 @@ export class AppsService {
     ticketId: string,
     reply: { text?: string; response_type?: string },
   ) {
-    const ticket = this.tickets.get(ticketId);
+    const row = await this.ticketsRepository.findOne({
+      where: { tokenHash: hashToken(ticketId) },
+      relations: ['App'],
+    });
     if (
-      !ticket ||
-      ticket.expires < Date.now() ||
-      ticket.uses >= RESPONSE_MAX_USES
+      !row?.App ||
+      row.expiresAt.getTime() < Date.now() ||
+      row.uses >= RESPONSE_MAX_USES
     ) {
       throw new NotFoundException('만료되었거나 없는 응답 주소입니다.');
     }
-    ticket.uses += 1;
+    await this.ticketsRepository.update(row.id, { uses: row.uses + 1 });
+    const ticket = this.ticketOf(row);
     const result = await this.deliverReply(ticket, reply);
-    if (result.ephemeral) {
-      this.eventsGateway.emitToUser(ticket.url, ticket.userId, 'appEphemeral', {
-        ...result.ephemeral,
-        channel: ticket.channel,
-        dmUserId: ticket.dmUserId,
-      });
-    }
+    if (result.ephemeral) this.ephemeralTo(ticket, result.ephemeral);
     return { ok: true };
   }
 
-  private sweepTickets() {
-    const now = Date.now();
-    for (const [id, ticket] of this.tickets) {
-      if (ticket.expires < now) this.tickets.delete(id);
+  // 늦은 답 주소 만들기 (토큰은 주소에만, DB 에는 해시). 만료된 것은 이때 지운다
+  private async createTicket(
+    app: Apps,
+    url: string,
+    userId: number,
+    channel: string | null,
+    dmUserId: number | null,
+  ) {
+    await this.ticketsRepository.delete({ expiresAt: LessThan(new Date()) });
+    const token = randomBytes(18).toString('hex');
+    const row = await this.ticketsRepository.save({
+      tokenHash: hashToken(token),
+      AppId: app.id,
+      url,
+      UserId: userId,
+      channel,
+      dmUserId,
+      expiresAt: new Date(Date.now() + RESPONSE_TTL_MS),
+      uses: 0,
+    });
+    return { token, ticket: this.ticketOf({ ...row, App: app } as AppTickets) };
+  }
+
+  private ticketOf(row: AppTickets): ResponseTicket {
+    return {
+      id: row.id,
+      appId: row.AppId,
+      appName: row.App.name,
+      botUserId: row.App.BotUserId,
+      url: row.url,
+      userId: row.UserId,
+      channel: row.channel,
+      dmUserId: row.dmUserId,
+      expires: row.expiresAt.getTime(),
+      uses: row.uses,
+    };
+  }
+
+  private ephemeralTo(
+    ticket: ResponseTicket,
+    ephemeral: CommandResult['ephemeral'],
+  ) {
+    this.eventsGateway.emitToUser(ticket.url, ticket.userId, 'appEphemeral', {
+      ...ephemeral,
+      channel: ticket.channel,
+      dmUserId: ticket.dmUserId,
+    });
+  }
+
+  // ── 메시지 버튼
+
+  // 앱 메시지의 버튼을 눌렀다: 앱의 버튼 주소(없으면 이벤트 주소)로 보내고, 앱의 답에 따라
+  // 원래 메시지를 바꾸거나(replace_original) 채널에 올리거나 누른 사람에게만 보여 준다
+  async runAction(
+    url: string,
+    dto: { chatId?: number; dmId?: number; actionId: string },
+    myId: number,
+  ) {
+    const workspace = await this.workspacesService.findWorkspaceByUrl(url);
+    await this.workspacesService.assertMember(workspace.id, myId);
+    if (!dto.chatId === !dto.dmId) {
+      throw new BadRequestException('메시지를 하나 지정하세요.');
     }
+    let content: string;
+    let authorId: number | null;
+    let channelName: string | null = null;
+    let dm: DMs | null = null;
+    if (dto.chatId) {
+      const chat = await this.chatsRepository.findOne({
+        where: { id: dto.chatId },
+        relations: ['Channel'],
+      });
+      const member =
+        chat?.Channel?.WorkspaceId === workspace.id &&
+        (await this.channelMembersRepository.findOne({
+          where: { ChannelId: chat.ChannelId, UserId: myId },
+        }));
+      if (!member) throw new NotFoundException('존재하지 않는 메시지입니다.');
+      if (chat.Channel.archived) {
+        throw new ForbiddenException('보관된 채널입니다.');
+      }
+      content = chat.content;
+      authorId = chat.UserId;
+      channelName = chat.Channel.name;
+    } else {
+      dm = await this.dmsRepository.findOne({
+        where: { id: dto.dmId, WorkspaceId: workspace.id },
+      });
+      if (!dm || (dm.SenderId !== myId && dm.ReceiverId !== myId)) {
+        throw new NotFoundException('존재하지 않는 메시지입니다.');
+      }
+      content = dm.content;
+      authorId = dm.SenderId;
+    }
+    const app = authorId
+      ? await this.appsRepository.findOne({
+          where: { WorkspaceId: workspace.id, BotUserId: authorId },
+        })
+      : null;
+    const message = parseAppMessage(content);
+    const button = message?.buttons.find((b) => b.id === dto.actionId);
+    if (!app || !message || !button) {
+      throw new BadRequestException('누를 수 없는 버튼입니다.');
+    }
+    const target = app.interactionUrl || app.eventUrl;
+    if (!target) {
+      throw new BadRequestException(
+        '앱이 버튼을 받을 주소를 정하지 않았습니다.',
+      );
+    }
+    const { token, ticket } = await this.createTicket(
+      app,
+      url,
+      myId,
+      channelName,
+      dm ? app.BotUserId : null,
+    );
+    const user = await this.usersRepository.findOne({
+      where: { id: myId },
+      select: ['id', 'nickname'],
+    });
+    const payload = {
+      type: 'block_action',
+      app_id: app.id,
+      workspace: url,
+      user: { id: myId, nickname: user?.nickname },
+      channel: channelName,
+      channel_type: channelName ? 'channel' : 'im',
+      message_id: dto.chatId || dto.dmId,
+      message_text: message.text,
+      action: {
+        id: button.id,
+        label: button.label,
+        value: button.value ?? null,
+      },
+      response_url: `${appUrl()}/api/apps/respond/${token}`,
+    };
+    let response;
+    try {
+      response = await postToApp(target, payload, await this.secretOf(app.id));
+    } catch (error) {
+      this.ephemeralTo(ticket, {
+        appName: app.name,
+        text: `앱이 응답하지 않았어요. (${(error as Error).message})`,
+        error: true,
+      });
+      return { ok: false };
+    }
+    if (response.status < 200 || response.status >= 300) {
+      this.ephemeralTo(ticket, {
+        appName: app.name,
+        text: `앱이 오류를 돌려줬어요. (HTTP ${response.status})`,
+        error: true,
+      });
+      return { ok: false };
+    }
+    let reply: {
+      text?: unknown;
+      response_type?: unknown;
+      replace_original?: unknown;
+      buttons?: unknown;
+    } = {};
+    try {
+      const parsed = response.body.trim() ? JSON.parse(response.body) : {};
+      reply = typeof parsed === 'object' && parsed ? parsed : {};
+    } catch {
+      reply = { text: response.body.trim() };
+    }
+    // 원래 메시지 바꾸기 (예: 버튼을 떼고 "✅ 승인됨")
+    if (
+      reply.replace_original === true &&
+      typeof reply.text === 'string' &&
+      reply.text.trim()
+    ) {
+      const buttons = this.safeButtons(reply.buttons);
+      const next = toAppMessage(reply.text.trim().slice(0, 8000), buttons);
+      if (channelName) {
+        await this.channelsService.editChat(
+          url,
+          channelName,
+          dto.chatId!,
+          next,
+          app.BotUserId,
+        );
+      } else {
+        await this.dmsService.editDM(
+          url,
+          dm!.SenderId === app.BotUserId ? dm!.ReceiverId : dm!.SenderId,
+          dm!.id,
+          next,
+          app.BotUserId,
+        );
+      }
+      return { ok: true, replaced: true };
+    }
+    const result = await this.deliverReply(ticket, reply);
+    if (result.ephemeral) this.ephemeralTo(ticket, result.ephemeral);
+    return { ok: true, posted: !!result.posted };
+  }
+
+  // 앱이 답으로 보낸 버튼 (형식이 맞는 것만)
+  private safeButtons(value: unknown): AppButton[] {
+    if (!Array.isArray(value)) return [];
+    return value
+      .filter(
+        (b) =>
+          b &&
+          typeof b.id === 'string' &&
+          /^[\w-]{1,40}$/.test(b.id) &&
+          typeof b.label === 'string' &&
+          b.label.trim(),
+      )
+      .slice(0, 5)
+      .map((b) => ({
+        id: b.id,
+        label: String(b.label).slice(0, 30),
+        ...(b.style === 'primary' || b.style === 'danger'
+          ? { style: b.style }
+          : {}),
+        ...(typeof b.value === 'string'
+          ? { value: b.value.slice(0, 200) }
+          : {}),
+      }));
   }
 
   // ── 앱 API (봇 토큰)
@@ -705,23 +936,30 @@ export class AppsService {
 
   async postMessage(
     ctx: AppContext,
-    dto: { channel?: string; userId?: number; text: string; threadId?: number },
+    dto: {
+      channel?: string;
+      userId?: number;
+      text: string;
+      threadId?: number;
+      buttons?: AppButton[];
+    },
   ) {
     this.target(dto);
     const bot = ctx.app.BotUserId;
+    const content = toAppMessage(dto.text, dto.buttons);
     if (dto.channel) {
       const chat = dto.threadId
         ? await this.channelsService.postReply(
             ctx.url,
             dto.channel,
             dto.threadId,
-            dto.text,
+            content,
             bot,
           )
         : await this.channelsService.postChat(
             ctx.url,
             dto.channel,
-            dto.text,
+            content,
             bot,
           );
       return { ok: true, messageId: chat.id, channel: dto.channel };
@@ -731,7 +969,7 @@ export class AppsService {
     }
     const dm = await this.dmsService.createWorkspaceDMChats(
       ctx.url,
-      dto.text,
+      content,
       dto.userId!,
       bot,
     );
@@ -740,16 +978,23 @@ export class AppsService {
 
   async updateMessage(
     ctx: AppContext,
-    dto: { channel?: string; userId?: number; messageId: number; text: string },
+    dto: {
+      channel?: string;
+      userId?: number;
+      messageId: number;
+      text: string;
+      buttons?: AppButton[];
+    },
   ) {
     this.target(dto);
     const bot = ctx.app.BotUserId;
+    const content = toAppMessage(dto.text, dto.buttons);
     if (dto.channel) {
       await this.channelsService.editChat(
         ctx.url,
         dto.channel,
         dto.messageId,
-        dto.text,
+        content,
         bot,
       );
     } else {
@@ -757,7 +1002,7 @@ export class AppsService {
         ctx.url,
         dto.userId!,
         dto.messageId,
-        dto.text,
+        content,
         bot,
       );
     }

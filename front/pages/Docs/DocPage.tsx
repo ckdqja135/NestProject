@@ -70,13 +70,15 @@ const STATUS_TEXT: Record<Status, string> = {
 
 interface Props {
   me: IUser;
-  // 어느 메뉴에서 열었는지 (디자인 메뉴에서 열면 위 경로와 돌아갈 곳이 디자인)
-  area?: 'docs' | 'design';
+  // 어느 메뉴에서 열었는지 (디자인 메뉴에서 열면 위 경로와 돌아갈 곳이 디자인, 채널 탭이면 채널 안에서)
+  area?: 'docs' | 'design' | 'channel';
+  // 주소 대신 열 문서 (채널 탭)
+  docId?: number;
 }
 
-const DocPage: FC<Props> = ({ me, area = 'docs' }) => {
+const DocPage: FC<Props> = ({ me, area = 'docs', docId: docIdProp }) => {
   const { workspace, docId } = useParams<{ workspace: string; docId: string }>();
-  const id = Number(docId);
+  const id = docIdProp ?? Number(docId);
   const history = useHistory();
   const base = docsBase(workspace);
   const {
@@ -373,7 +375,14 @@ const DocPage: FC<Props> = ({ me, area = 'docs' }) => {
       .delete(`${base}/docs/${doc.id}`)
       .then(() => {
         toast.info('휴지통으로 옮겼습니다.', { position: 'bottom-center' });
-        history.push(area === 'design' ? `/workspace/${workspace}/design` : `/workspace/${workspace}/docs`);
+        // 채널 탭이면 채널 메시지로 돌아간다
+        history.push(
+          area === 'channel'
+            ? location.pathname
+            : area === 'design'
+            ? `/workspace/${workspace}/design`
+            : `/workspace/${workspace}/docs`,
+        );
       })
       .catch(toastError);
   const restore = () =>

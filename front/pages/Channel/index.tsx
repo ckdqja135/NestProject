@@ -59,7 +59,10 @@ import axios from 'axios';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Scrollbars } from 'react-custom-scrollbars-2';
 import { useParams } from 'react-router';
-import { Redirect, useHistory } from 'react-router-dom';
+import { Redirect, useHistory, useLocation } from 'react-router-dom';
+import ChannelTabs from '@components/ChannelTabs';
+import { TabDoc } from '@components/ChannelTabs/styles';
+import DocPage from '@pages/Docs/DocPage';
 import { toast } from 'react-toastify';
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
@@ -74,6 +77,13 @@ const Channel = () => {
   const { workspace, channel } = useParams<{ workspace: string; channel: string }>();
   const myRole = useMyRole(workspace);
   const history = useHistory();
+  // 채널 탭: ?tab=문서번호 이면 채팅 대신 그 문서를 채널 안에서 연다
+  const location = useLocation();
+  const activeTab = Number(new URLSearchParams(location.search).get('tab')) || null;
+  const selectTab = useCallback(
+    (docId: number | null) => history.push(docId ? `${location.pathname}?tab=${docId}` : location.pathname),
+    [history, location.pathname],
+  );
   const [socket] = useSocket(workspace);
   const { data: userData } = useSWR<IUser>('/api/users', fetcher);
   const { data: channelsData, mutate: mutateChannels } = useSWR<IChannel[]>(
@@ -673,29 +683,46 @@ const Channel = () => {
             </button>
           </HuddleBanner>
         )}
-        <ChatList
-          scrollbarRef={scrollbarRef}
-          isReachingEnd={isReachingEnd}
-          isEmpty={isEmpty}
-          chatSections={chatSections}
-          setSize={setSize}
-          myId={userData?.id}
-          actions={actions}
-          firstUnreadId={firstUnreadId}
-          intro={
-            <ConversationIntro
-              icon={channelData?.private ? <Lock size={28} /> : <Hash size={28} />}
-              title={`${channelData?.private ? '' : '#'}${channel} 채널의 시작`}
-              description={
-                channelData?.private
-                  ? '초대받은 멤버만 볼 수 있는 비공개 채널입니다.'
-                  : '워크스페이스의 누구나 참여할 수 있는 공개 채널입니다.'
+        {workspace && channelData && (
+          <ChannelTabs
+            workspace={workspace}
+            channel={channel}
+            active={activeTab}
+            onSelect={selectTab}
+            canAdd={myRole !== 'guest' && !channelData.archived}
+          />
+        )}
+        {activeTab && userData ? (
+          <TabDoc>
+            <DocPage key={activeTab} me={userData} docId={activeTab} area="channel" />
+          </TabDoc>
+        ) : (
+          <>
+            <ChatList
+              scrollbarRef={scrollbarRef}
+              isReachingEnd={isReachingEnd}
+              isEmpty={isEmpty}
+              chatSections={chatSections}
+              setSize={setSize}
+              myId={userData?.id}
+              actions={actions}
+              firstUnreadId={firstUnreadId}
+              intro={
+                <ConversationIntro
+                  icon={channelData?.private ? <Lock size={28} /> : <Hash size={28} />}
+                  title={`${channelData?.private ? '' : '#'}${channel} 채널의 시작`}
+                  description={
+                    channelData?.private
+                      ? '초대받은 멤버만 볼 수 있는 비공개 채널입니다.'
+                      : '워크스페이스의 누구나 참여할 수 있는 공개 채널입니다.'
+                  }
+                />
               }
             />
-          }
-        />
-        <TypingIndicator names={typingUsers} />
-        <ScheduledBar workspace={workspace} channel={channel} />
+            <TypingIndicator names={typingUsers} />
+            <ScheduledBar workspace={workspace} channel={channel} />
+          </>
+        )}
         <PollModal show={showPollModal} onCloseModal={() => setShowPollModal(false)} onCreate={onCreatePoll} />
         {showApproval && userData && workspace && (
           <ApprovalModal
@@ -707,7 +734,7 @@ const Channel = () => {
             onClose={() => setShowApproval(false)}
           />
         )}
-        {channelData?.archived ? (
+        {activeTab ? null : channelData?.archived ? (
           <ArchivedNotice role="status">
             <Archive size={14} /> 보관된 채널입니다. 메시지를 읽을 수만 있어요.
             {canManage && (

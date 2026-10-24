@@ -18,6 +18,7 @@ import {
   AppChannelDto,
   AppCommandDto,
   CreateAppDto,
+  RunActionDto,
   RunCommandDto,
   UpdateAppDto,
 } from './dto/apps.dto';
@@ -74,6 +75,18 @@ export class AppsController {
     @User() user: Users,
   ) {
     return this.appsService.update(url, id, body, user.id);
+  }
+
+  @ApiOperation({
+    summary: '앱 메시지의 버튼 누르기 (메시지를 볼 수 있는 사람)',
+  })
+  @Post('actions')
+  action(
+    @Param('url') url: string,
+    @Body() body: RunActionDto,
+    @User() user: Users,
+  ) {
+    return this.appsService.runAction(url, body, user.id);
   }
 
   @ApiOperation({ summary: '앱 지우기 (관리자)' })

@@ -69,3 +69,33 @@ export const readTasks = (ydoc: Y.Doc): TaskRow[] => {
   });
   return rows;
 };
+
+// 데이터베이스의 모든 항목 (담당자가 없어도): 채널 알림에서 새 항목·상태 변경을 찾을 때
+export interface RowSummary {
+  title: string;
+  statusName: string | null;
+}
+
+export const readRows = (ydoc: Y.Doc): Map<string, RowSummary> => {
+  const props = ydoc
+    .getArray<Y.Map<unknown>>('properties')
+    .toArray()
+    .map((p) => p.toJSON() as Prop);
+  const titleProp = props.find((p) => p.type === 'title');
+  const status = props.find((p) => p.type === 'status');
+  const rows = new Map<string, RowSummary>();
+  ydoc.getMap<Y.Map<unknown>>('rows').forEach((row, rowId) => {
+    const values = row.toJSON() as Record<string, unknown>;
+    const statusId = status ? values[status.id] : null;
+    rows.set(rowId, {
+      title: String((titleProp && values[titleProp.id]) || '제목 없음').slice(
+        0,
+        200,
+      ),
+      statusName:
+        (status && status.options?.find((o) => o.id === statusId)?.name) ||
+        null,
+    });
+  });
+  return rows;
+};

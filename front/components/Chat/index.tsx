@@ -74,6 +74,8 @@ import { formatWhen, timePresets } from '@utils/timePresets';
 import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
 import ApprovalCard from '@components/ApprovalCard';
+import AppMessage from '@components/AppMessage';
+import { parseAppMessage } from '@utils/appMessage';
 import { parseApprovalContent } from '@utils/approval';
 
 export const EMOJIS = ['👍', '❤️', '😂', '🎉', '😮', '👀'];
@@ -149,6 +151,8 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
   const gifUrl = useMemo(() => parseGifContent(data.content), [data.content]);
   const poll = useMemo(() => parsePollContent(data.content), [data.content]);
   const approval = useMemo(() => parseApprovalContent(data.content), [data.content]);
+  // 외부 앱이 보낸 버튼 달린 메시지
+  const appMessage = useMemo(() => parseAppMessage(data.content), [data.content]);
   const fileMeta = useMemo(() => parseFileContent(data.content), [data.content]);
   const forwarded = useMemo(() => parseForwardContent(data.content), [data.content]);
   const link = useMemo(
@@ -282,10 +286,17 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
     !forwarded &&
     !isLegacyUpload(data.content);
   // 파일(보낸 사람 기기에만 있음)·투표는 전달하지 않는다
-  const canForward = canAct && !!workspace && !fileMeta && !poll && !isLegacyUpload(data.content);
+  const canForward = canAct && !!workspace && !fileMeta && !poll && !appMessage && !isLegacyUpload(data.content);
   // 메시지를 문서로 (글이 있는 메시지만, 내 아이디를 알 때)
   const canToDoc =
-    canAct && !!workspace && myId !== undefined && !gifUrl && !fileMeta && !poll && !isLegacyUpload(data.content);
+    canAct &&
+    !!workspace &&
+    myId !== undefined &&
+    !gifUrl &&
+    !fileMeta &&
+    !poll &&
+    !appMessage &&
+    !isLegacyUpload(data.content);
   const canRemind = canAct && !!workspace;
 
   // 리액션 이모지: 커스텀(:이름:)이면 그림
@@ -457,6 +468,14 @@ const Chat: FC<Props> = memo(({ data, myId, actions }) => {
         ) : // 코드 블록/인용/파일 카드는 블록 요소라 <p> 대신 <div> 로 감싼다
         approval && workspace ? (
           <ApprovalCard workspace={workspace} id={approval.id} note={approval.n} />
+        ) : appMessage && workspace ? (
+          <AppMessage
+            workspace={workspace}
+            message={isDM ? { dmId: data.id } : { chatId: data.id }}
+            text={appMessage.text}
+            buttons={appMessage.buttons}
+            emojis={emojiMap}
+          />
         ) : poll ? (
           <PollView
             poll={poll}

@@ -25,6 +25,8 @@ describe('DocsService', () => {
     save: jest.fn((v) => ({ id: 10, ...v })),
     update: jest.fn().mockResolvedValue({ affected: 1 }),
     softDelete: jest.fn(),
+    // 채널 탭으로 받은 권한 (기본은 없음)
+    manager: { query: jest.fn().mockResolvedValue([{ level: 0 }]) },
   };
   const foldersRepository = { findOne: jest.fn() };
   const sharesRepository = {
@@ -270,5 +272,22 @@ describe('DocsService', () => {
     sharesRepository.save.mockClear();
     await service.decideAccessRequest('shlack', 5, 8, { decision: 'deny' }, 1);
     expect(sharesRepository.save).not.toHaveBeenCalled();
+  });
+
+  it('채널 탭으로 채널 멤버에게 준 권한으로 보거나 고칠 수 있다', async () => {
+    docsRepository.findOne.mockResolvedValue(doc());
+    docsRepository.manager.query.mockResolvedValueOnce([{ level: 1 }]);
+    // 보기 권한만 있으면 고칠 수 없다
+    await expect(
+      service.updateDoc('shlack', 5, { content: 'x', version: 3 }, 2),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    docsRepository.manager.query.mockResolvedValueOnce([{ level: 2 }]);
+    await expect(
+      service.updateDoc('shlack', 5, { content: 'x', version: 3 }, 2),
+    ).resolves.toEqual(expect.objectContaining({ version: 4 }));
+    // 탭이 있는 채널의 멤버가 아니면 (level 0) 없는 문서
+    await expect(
+      service.updateDoc('shlack', 5, { content: 'x', version: 3 }, 2),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

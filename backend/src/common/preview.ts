@@ -5,7 +5,13 @@ export const previewText = (content: string, max = 120) => {
   else if (text.startsWith('file:')) text = '[파일]';
   else if (text.startsWith('poll:')) text = '[투표]';
   else if (text.startsWith('fwd:')) text = '[전달한 메시지]';
-  else if (text.startsWith('approval:')) {
+  else if (text.startsWith('appmsg:')) {
+    try {
+      text = JSON.parse(text.slice('appmsg:'.length)).t || '[앱 메시지]';
+    } catch {
+      text = '[앱 메시지]';
+    }
+  } else if (text.startsWith('approval:')) {
     try {
       const value = JSON.parse(text.slice('approval:'.length));
       text = `[결재] ${value.n ? `${value.n} — ` : ''}${value.t}`;

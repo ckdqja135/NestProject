@@ -276,6 +276,25 @@ const ShareDocModal: FC<Props> = ({ show, workspace, doc, me, onCloseModal, onCh
         </ShareList>
       </Field>
 
+      {!!doc.channelTabs?.some((t) => t.access !== 'none') && (
+        <Field>
+          <label>채널 탭으로 준 권한</label>
+          <ShareList aria-label="채널 탭 권한">
+            {doc.channelTabs
+              .filter((t) => t.access !== 'none')
+              .map((t) => (
+                <li key={t.channel}>
+                  <span className="who">
+                    #{t.channel} 멤버
+                    <small>채널에 들어오면 받고, 나가면 빠져요. 바꾸려면 채널의 탭 메뉴에서.</small>
+                  </span>
+                  <span className="role">{ROLE_LABEL[t.access as 'view' | 'edit']}</span>
+                </li>
+              ))}
+          </ShareList>
+        </Field>
+      )}
+
       <Field>
         <label htmlFor="doc-send-channel">채널에 보내기</label>
         <div style={{ display: 'flex', gap: 6 }}>

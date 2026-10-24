@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
@@ -11,6 +12,7 @@ import {
   MaxLength,
   Min,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator';
 import { APP_EVENTS } from '../app-events.service';
 
@@ -53,6 +55,17 @@ export class UpdateAppDto {
     description: '이벤트를 받을 주소 (저장할 때 url_verification 으로 확인)',
   })
   public eventUrl?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsString()
+  @MaxLength(500)
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    description: '메시지 버튼을 누르면 보낼 주소 (비우면 이벤트 주소로)',
+  })
+  public interactionUrl?: string | null;
 
   @IsOptional()
   @IsArray()
@@ -119,6 +132,49 @@ export class RunCommandDto {
   public dmUserId?: number;
 }
 
+// ── 메시지 버튼
+
+export class AppButtonDto {
+  @Matches(/^[\w-]{1,40}$/, {
+    message: '버튼 id 는 영문·숫자·_·- 로 40자까지입니다.',
+  })
+  @ApiProperty({ example: 'approve' })
+  public id: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(30)
+  @ApiProperty({ example: '승인' })
+  public label: string;
+
+  @IsOptional()
+  @IsIn(['primary', 'danger'])
+  @ApiProperty({ required: false, enum: ['primary', 'danger'] })
+  public style?: 'primary' | 'danger';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  @ApiProperty({ required: false, description: '누르면 앱에 그대로 돌려줄 값' })
+  public value?: string;
+}
+
+export class RunActionDto {
+  @IsOptional()
+  @IsInt()
+  @ApiProperty({ required: false, description: '채널 메시지 id' })
+  public chatId?: number;
+
+  @IsOptional()
+  @IsInt()
+  @ApiProperty({ required: false, description: 'DM 메시지 id' })
+  public dmId?: number;
+
+  @Matches(/^[\w-]{1,40}$/)
+  @ApiProperty({ description: '누른 버튼 id' })
+  public actionId: string;
+}
+
 // ── 앱 API (봇 토큰)
 
 export class AppPostMessageDto {
@@ -149,6 +205,18 @@ export class AppPostMessageDto {
     description: '이 메시지의 스레드에 답글로 (채널만)',
   })
   public threadId?: number;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(5)
+  @ValidateNested({ each: true })
+  @Type(() => AppButtonDto)
+  @ApiProperty({
+    required: false,
+    type: [AppButtonDto],
+    description: '메시지 아래 버튼 (5개까지)',
+  })
+  public buttons?: AppButtonDto[];
 }
 
 export class AppMessageRefDto {
@@ -174,6 +242,15 @@ export class AppUpdateMessageDto extends AppMessageRefDto {
   @MaxLength(8000)
   @ApiProperty()
   public text: string;
+
+  // 주지 않으면 버튼을 뗀다
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(5)
+  @ValidateNested({ each: true })
+  @Type(() => AppButtonDto)
+  @ApiProperty({ required: false, type: [AppButtonDto] })
+  public buttons?: AppButtonDto[];
 }
 
 export class AppReactionDto {

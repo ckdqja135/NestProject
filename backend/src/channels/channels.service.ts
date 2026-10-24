@@ -599,6 +599,8 @@ export class ChannelsService {
       ChannelId: channel.id,
       UserId: myId,
     });
+    // 채널 탭으로 받은 문서 권한이 빠진다: 열어 둔 문서를 다시 확인
+    this.eventsGateway.memberAccessChanged(url, myId);
   }
 
   // 채널 알림 끄기/켜기 (나에게만 적용). 내 다른 탭의 채널 목록도 갱신한다.
@@ -706,7 +708,13 @@ export class ChannelsService {
       id: channel.id,
       name: channel.name,
     });
+    // 채널 탭이 함께 지워지면 그 탭으로 받은 문서 권한도 빠진다
+    const tabs: { DocId: number }[] = await this.channelsRepository.query(
+      'SELECT DocId FROM channeltabs WHERE ChannelId = ?',
+      [channel.id],
+    );
     await this.channelsRepository.delete(channel.id);
+    tabs.forEach((tab) => this.eventsGateway.docAccessChanged(url, tab.DocId));
   }
 
   // 내가 참여한 스레드 (원본을 썼거나 답글을 단 것) 중 답글이 있는 것, 최근 답글 순

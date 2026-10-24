@@ -46,6 +46,8 @@ describe('ChannelsService', () => {
     save: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
+    // 채널 탭 (채널을 지울 때 탭 문서 권한을 다시 확인)
+    query: jest.fn().mockResolvedValue([{ DocId: 30 }]),
   };
   const channelMembersRepository = {
     delete: jest.fn(),
@@ -85,6 +87,8 @@ describe('ChannelsService', () => {
     server: { to: jest.fn(() => ({ emit })) },
     refreshUserChannels: jest.fn(),
     emitToUser: jest.fn(),
+    memberAccessChanged: jest.fn(),
+    docAccessChanged: jest.fn(),
   };
   const channel = { id: 3, name: '일반', WorkspaceId: 1 };
 
@@ -317,6 +321,11 @@ describe('ChannelsService', () => {
         ChannelId: 4,
         UserId: 1,
       });
+      // 채널 탭으로 받은 문서 권한이 빠지므로 열어 둔 문서를 다시 확인한다
+      expect(eventsGateway.memberAccessChanged).toHaveBeenCalledWith(
+        'shlack',
+        1,
+      );
     });
   });
 
@@ -490,6 +499,8 @@ describe('ChannelsService', () => {
         { id: 4, name: '자유' },
       );
       expect(channelsRepository.delete).toHaveBeenCalledWith(4);
+      // 채널 탭으로 준 문서 권한도 빠지므로 다시 확인한다
+      expect(eventsGateway.docAccessChanged).toHaveBeenCalledWith('shlack', 30);
     });
   });
 

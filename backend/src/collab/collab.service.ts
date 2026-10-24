@@ -16,6 +16,7 @@ import * as Y from 'yjs';
 import { DocsService } from '../docs/docs.service';
 import { TasksService } from '../tasks/tasks.service';
 import { EventsGateway } from '../events/events.gateway';
+import { DocActivityService } from '../doc-activity/doc-activity.service';
 
 // 실시간 동시 편집 (Yjs). 문서마다 서버 메모리에 공동 편집 상태를 하나 두고,
 // 들어온 사람들의 변경을 서로에게 전달하며, 잠시 조용해지면 DB 에 저장한다.
@@ -77,6 +78,8 @@ export class CollabService implements OnModuleInit, OnModuleDestroy {
     private eventsGateway: EventsGateway,
     // 데이터베이스를 저장하면 "내 할 일" 목록도 다시 적는다 (테스트처럼 없으면 건너뛴다)
     @Optional() private tasksService?: TasksService,
+    // 채널 탭에서 알림을 켠 데이터베이스는 새 항목·상태 변경을 채널에 알린다
+    @Optional() private activity?: DocActivityService,
   ) {}
 
   onModuleInit() {
@@ -189,6 +192,11 @@ export class CollabService implements OnModuleInit, OnModuleDestroy {
         snapshot,
       );
       if (room.type === 'database') {
+        void this.activity?.databaseSaved(
+          room.docId,
+          room.ydoc,
+          room.lastEditorId,
+        );
         await this.tasksService
           ?.indexDatabase(room.url, room.docId, room.ydoc, room.lastEditorId)
           .catch((error: Error) =>

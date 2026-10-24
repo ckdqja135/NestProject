@@ -46,6 +46,8 @@ import { DocComments } from './entities/DocComments';
 import { DocAccessRequests } from './entities/DocAccessRequests';
 import { Apps } from './entities/Apps';
 import { AppCommands } from './entities/AppCommands';
+import { ChannelTabs } from './entities/ChannelTabs';
+import { AppTickets } from './entities/AppTickets';
 import { PinsModule } from './pins/pins.module';
 import { SectionsModule } from './sections/sections.module';
 import { PushModule } from './push/push.module';
@@ -53,6 +55,8 @@ import { TasksModule } from './tasks/tasks.module';
 import { ApprovalsModule } from './approvals/approvals.module';
 import { AppsModule } from './apps/apps.module';
 import { AppEventsModule } from './apps/app-events.module';
+import { ChannelTabsModule } from './channel-tabs/channel-tabs.module';
+import { DocActivityModule } from './doc-activity/doc-activity.module';
 import { Approvals } from './entities/Approvals';
 import { ApprovalSteps } from './entities/ApprovalSteps';
 import { DocTasks } from './entities/DocTasks';
@@ -124,6 +128,8 @@ import { Workspaces } from './entities/Workspaces';
         DocAccessRequests,
         Apps,
         AppCommands,
+        ChannelTabs,
+        AppTickets,
         ScheduledMessages,
         Reminders,
         MessageEdits,
@@ -166,6 +172,8 @@ import { Workspaces } from './entities/Workspaces';
     ApprovalsModule,
     AppEventsModule,
     AppsModule,
+    ChannelTabsModule,
+    DocActivityModule,
     ContactsModule,
     LinksModule,
     ForwardModule,

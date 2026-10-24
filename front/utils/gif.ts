@@ -1,6 +1,7 @@
 import { parsePollContent } from '@utils/poll';
 import { parseFileContent } from '@utils/fileStore';
 import { parseApprovalContent } from './approval';
+import { parseAppMessage } from './appMessage';
 
 // GIF 메시지는 본문을 `gif:<GIPHY 주소>` 형태로 저장한다.
 const GIF_PREFIX = 'gif:';
@@ -25,6 +26,10 @@ export const describeContent = (content: string) => {
   const poll = parsePollContent(content);
   if (poll) {
     return `[투표] ${poll.q}`;
+  }
+  const app = parseAppMessage(content);
+  if (app) {
+    return app.text;
   }
   const approval = parseApprovalContent(content);
   if (approval) {

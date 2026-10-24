@@ -52,6 +52,10 @@ export class Apps {
   @Column('varchar', { name: 'events', length: 100, default: '' })
   events: string;
 
+  // 메시지 버튼을 누르면 보낼 주소 (없으면 이벤트 주소로)
+  @Column('varchar', { name: 'interactionUrl', length: 500, nullable: true })
+  interactionUrl: string | null;
+
   // 마지막 이벤트 전달 결과 (관리 화면에서 확인)
   @Column('datetime', { name: 'lastEventAt', nullable: true })
   lastEventAt: Date | null;

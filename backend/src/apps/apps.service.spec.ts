@@ -61,13 +61,34 @@ describe('AppsService', () => {
     assertRole: jest.fn().mockResolvedValue('admin'),
     assertMember: jest.fn().mockResolvedValue('member'),
   };
-  const channelsService = { postChat: jest.fn() };
+  const channelsService = { postChat: jest.fn(), editChat: jest.fn() };
+  // 늦은 답 주소 (DB)
+  let ticketRows: Record<string, any>[];
+  const ticketsRepository = {
+    delete: jest.fn(),
+    save: jest.fn(async (v) => {
+      const row = { id: ticketRows.length + 1, ...v };
+      ticketRows.push(row);
+      return row;
+    }),
+    findOne: jest.fn(async ({ where }) => {
+      const row = ticketRows.find((r) => r.tokenHash === where.tokenHash);
+      return row ? { ...row, App: command.App } : null;
+    }),
+    update: jest.fn(async (id, v) => {
+      Object.assign(ticketRows.find((r) => r.id === id) as object, v);
+    }),
+  };
+  let chat: Record<string, any> | null;
+  const chatsRepository = { findOne: jest.fn(async () => chat) };
   const eventsGateway = { emitToWorkspace: jest.fn(), emitToUser: jest.fn() };
   const appEvents = { invalidate: jest.fn() };
   let service: AppsService;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    ticketRows = [];
+    chat = null;
     service = new AppsService(
       appsRepository as never,
       commandsRepository as never,
@@ -75,6 +96,9 @@ describe('AppsService', () => {
       membersRepository as never,
       channelsRepository as never,
       channelMembersRepository as never,
+      {} as never,
+      ticketsRepository as never,
+      chatsRepository as never,
       {} as never,
       workspacesService as never,
       channelsService as never,
@@ -188,5 +212,93 @@ describe('AppsService', () => {
       service.runCommand('ws', { command: 'deploy', channel: '배포' }, 6),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(postToApp).not.toHaveBeenCalled();
+  });
+
+  it('버튼을 누르면 앱에 보내고, replace_original 이면 원래 메시지를 바꾼다', async () => {
+    saved = {
+      id: 4,
+      name: '배포봇',
+      BotUserId: 50,
+      WorkspaceId: 1,
+      interactionUrl: 'https://app.example/act',
+      eventUrl: null,
+    };
+    chat = {
+      id: 9,
+      UserId: 50,
+      ChannelId: 2,
+      content:
+        'appmsg:{"t":"배포할까요?","b":[{"id":"ok","label":"승인","style":"primary","value":"v1"}]}',
+      Channel: { WorkspaceId: 1, name: '배포', archived: false },
+    };
+    (postToApp as jest.Mock).mockResolvedValueOnce({
+      status: 200,
+      body: JSON.stringify({ replace_original: true, text: '✅ 승인됨' }),
+    });
+    await expect(
+      service.runAction('ws', { chatId: 9, actionId: 'ok' }, 5),
+    ).resolves.toEqual({ ok: true, replaced: true });
+    const [target, payload] = (postToApp as jest.Mock).mock.calls[0];
+    expect(target).toBe('https://app.example/act');
+    expect(payload).toMatchObject({
+      type: 'block_action',
+      user: { id: 5 },
+      channel: '배포',
+      message_id: 9,
+      message_text: '배포할까요?',
+      action: { id: 'ok', value: 'v1' },
+    });
+    // 버튼 없이 바꾸면 그냥 글
+    expect(channelsService.editChat).toHaveBeenCalledWith(
+      'ws',
+      '배포',
+      9,
+      '✅ 승인됨',
+      50,
+    );
+  });
+
+  it('나에게만 보이는 답은 소켓으로 보내고, 앱 메시지가 아니거나 없는 버튼이면 막는다', async () => {
+    saved = {
+      id: 4,
+      name: '배포봇',
+      BotUserId: 50,
+      WorkspaceId: 1,
+      interactionUrl: null,
+      eventUrl: 'https://app.example/ev',
+    };
+    chat = {
+      id: 9,
+      UserId: 50,
+      ChannelId: 2,
+      content: 'appmsg:{"t":"x","b":[{"id":"ok","label":"승인"}]}',
+      Channel: { WorkspaceId: 1, name: '배포', archived: false },
+    };
+    (postToApp as jest.Mock).mockResolvedValueOnce({
+      status: 200,
+      body: '{"text":"처리 중이에요"}',
+    });
+    await service.runAction('ws', { chatId: 9, actionId: 'ok' }, 5);
+    // 버튼 주소가 없으면 이벤트 주소로
+    expect((postToApp as jest.Mock).mock.calls[0][0]).toBe(
+      'https://app.example/ev',
+    );
+    expect(eventsGateway.emitToUser).toHaveBeenCalledWith(
+      'ws',
+      5,
+      'appEphemeral',
+      expect.objectContaining({ text: '처리 중이에요', channel: '배포' }),
+    );
+    await expect(
+      service.runAction('ws', { chatId: 9, actionId: 'nope' }, 5),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    chat.content = '그냥 글';
+    await expect(
+      service.runAction('ws', { chatId: 9, actionId: 'ok' }, 5),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    channelMembersRepository.findOne.mockResolvedValueOnce(null);
+    await expect(
+      service.runAction('ws', { chatId: 9, actionId: 'ok' }, 6),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

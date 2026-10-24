@@ -18,6 +18,7 @@ interface IApp {
   description: string | null;
   tokenHint: string;
   eventUrl: string | null;
+  interactionUrl: string | null;
   events: string[];
   lastEventAt: string | null;
   lastEventError: string | null;
@@ -67,6 +68,7 @@ const AppDetail: FC<{ workspace: string; app: IApp; channels: IChannel[]; onChan
   const [token, setToken] = useState('');
   const [secret, setSecret] = useState('');
   const [eventUrl, setEventUrl] = useState(app.eventUrl || '');
+  const [interactionUrl, setInteractionUrl] = useState(app.interactionUrl || '');
   const [events, setEvents] = useState<string[]>(app.events);
   const [savingEvents, setSavingEvents] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -210,6 +212,14 @@ const AppDetail: FC<{ workspace: string; app: IApp; channels: IChannel[]; onChan
             aria-label="이벤트 주소"
           />
         </p>
+        <p className="row">
+          <TextInput
+            value={interactionUrl}
+            onChange={(e) => setInteractionUrl(e.target.value)}
+            placeholder="버튼 누름을 받을 주소 (비우면 이벤트 주소로)"
+            aria-label="버튼 주소"
+          />
+        </p>
         <div className="checks">
           {Object.entries(EVENT_LABELS).map(([key, label]) => (
             <label key={key}>
@@ -229,9 +239,13 @@ const AppDetail: FC<{ workspace: string; app: IApp; channels: IChannel[]; onChan
             disabled={savingEvents}
             onClick={() => {
               setSavingEvents(true);
-              run(axios.patch(base, { eventUrl: eventUrl.trim() || null, events })).finally(() =>
-                setSavingEvents(false),
-              );
+              run(
+                axios.patch(base, {
+                  eventUrl: eventUrl.trim() || null,
+                  interactionUrl: interactionUrl.trim() || null,
+                  events,
+                }),
+              ).finally(() => setSavingEvents(false));
             }}
           >
             {savingEvents ? '주소 확인 중…' : '이벤트 설정 저장'}

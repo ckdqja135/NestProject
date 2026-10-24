@@ -218,6 +218,8 @@ export interface IDoc {
   canManage: boolean;
   // 기다리는 접근 요청 수 (관리할 수 있을 때만)
   accessRequests?: number;
+  // 채널 탭으로 채널 멤버에게 준 권한 (관리할 수 있을 때만)
+  channelTabs?: { channel: string; access: 'none' | 'view' | 'edit' }[];
   favorite: boolean;
 }
 
