@@ -6,7 +6,7 @@ import { avatarUrl } from '@utils/avatar';
 import fetcher from '@utils/fetcher';
 import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
-import { ArrowDown, ArrowUp, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, FileCheck2, X } from 'lucide-react';
 import React, { FC, useState } from 'react';
 import { toast } from 'react-toastify';
 import useSWR from 'swr';
@@ -76,6 +76,7 @@ const ApprovalModal: FC<Props> = ({ show, workspace, myId, target, onCreated, on
       show={show}
       onCloseModal={onClose}
       title="결재 요청"
+      icon={<FileCheck2 size={21} />}
       description="결재자가 순서대로 승인하거나 반려해요. 차례가 되면 알림이 가요."
     >
       <form onSubmit={submit}>

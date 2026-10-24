@@ -17,16 +17,21 @@ const AppEphemeral: FC<{ workspace: string; items: AppReply[]; onDismiss: (id: n
     <List aria-label="나에게만 보이는 앱 답">
       {items.map((item) => (
         <li key={item.id} className={item.error ? 'error' : undefined}>
-          <header>
-            <Bot size={14} /> <b>{item.appName}</b>
-            <span>
-              <Lock size={11} /> 나에게만 보임
-            </span>
-            <button type="button" onClick={() => onDismiss(item.id)} aria-label="닫기">
-              <X size={13} />
-            </button>
-          </header>
-          <div className="text">{renderMarkdown(item.text, workspace, emojis)}</div>
+          <span className="avatar" aria-hidden="true">
+            <Bot size={16} />
+          </span>
+          <div className="body">
+            <header>
+              <b>{item.appName}</b>
+              <span className="pill">
+                <Lock size={10} /> 나에게만 보임
+              </span>
+              <button type="button" onClick={() => onDismiss(item.id)} aria-label="닫기">
+                <X size={14} />
+              </button>
+            </header>
+            <div className="text">{renderMarkdown(item.text, workspace, emojis)}</div>
+          </div>
         </li>
       ))}
     </List>

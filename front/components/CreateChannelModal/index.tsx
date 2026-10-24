@@ -78,6 +78,7 @@ const CreateChannelModal: FC<Props> = ({ show, onCloseModal, setShowCreateChanne
       show={show}
       onCloseModal={onCloseModal}
       title="채널 만들기"
+      icon={<Hash size={21} />}
       description="주제별로 대화를 나눌 채널을 만듭니다."
     >
       <form onSubmit={onCreateChannel} noValidate>

@@ -7,7 +7,7 @@ import fetcher from '@utils/fetcher';
 import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
 import React, { FC, useEffect, useState } from 'react';
-import { Building2, Lock, Send, UserPlus } from 'lucide-react';
+import { Building2, Lock, Send, Share2, UserPlus } from 'lucide-react';
 import { toast } from 'react-toastify';
 import useSWR from 'swr';
 import { docsBase } from './api';
@@ -115,7 +115,7 @@ const ShareDocModal: FC<Props> = ({ show, workspace, doc, me, onCloseModal, onCh
   };
 
   return (
-    <Modal show={show} onCloseModal={onCloseModal} title={`'${doc.title}' 공유`}>
+    <Modal show={show} onCloseModal={onCloseModal} title={`'${doc.title}' 공유`} icon={<Share2 size={20} />}>
       {error && <FormError role="alert">{error}</FormError>}
       {manage && !!requests?.length && (
         <Field>

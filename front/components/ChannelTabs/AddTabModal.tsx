@@ -7,6 +7,7 @@ import { DOC_TYPE_INFO, DocType } from '@utils/docTemplates';
 import fetcher from '@utils/fetcher';
 import getErrorMessage from '@utils/getErrorMessage';
 import axios from 'axios';
+import { PanelsTopLeft } from 'lucide-react';
 import React, { FC, useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { AddTab } from './styles';
@@ -67,6 +68,7 @@ const AddTabModal: FC<Props> = ({ workspace, channel, onClose, onAdded }) => {
       show
       onCloseModal={onClose}
       title={`#${channel} 에 탭 추가`}
+      icon={<PanelsTopLeft size={21} />}
       description="채팅 옆에 문서를 고정해 두고 함께 써요."
     >
       <AddTab onSubmit={submit}>

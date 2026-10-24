@@ -1,4 +1,5 @@
 import Modal from '@components/Modal';
+import { ChartBar } from 'lucide-react';
 import { Actions, Field, FormError, TextInput } from '@components/ModalForm/styles';
 import { MAX_POLL_OPTIONS, Poll } from '@utils/poll';
 import React, { FC, useEffect, useState } from 'react';
@@ -50,6 +51,7 @@ const PollModal: FC<Props> = ({ show, onCloseModal, onCreate }) => {
       show={show}
       onCloseModal={onCloseModal}
       title="투표 만들기"
+      icon={<ChartBar size={21} />}
       description="선택지 번호 이모지로 투표합니다. 올린 사람은 나중에 투표를 마감할 수 있어요."
     >
       <form onSubmit={onSubmit}>

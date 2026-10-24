@@ -1,4 +1,5 @@
 import { CreateModal, CloseModalButton, ModalHeader } from '@components/Modal/styles';
+import { X } from 'lucide-react';
 import React, { FC, PropsWithChildren, useCallback, useEffect, useRef } from 'react';
 
 interface Props {
@@ -7,9 +8,11 @@ interface Props {
   title?: string;
   description?: React.ReactNode;
   width?: number; // 기본 480px 보다 넓은 창
+  // 제목 왼쪽 아이콘 (봇·앱 창 등)
+  icon?: React.ReactNode;
 }
 
-const Modal: FC<PropsWithChildren<Props>> = ({ show, children, onCloseModal, title, description, width }) => {
+const Modal: FC<PropsWithChildren<Props>> = ({ show, children, onCloseModal, title, description, width, icon }) => {
   const panelRef = useRef<HTMLDivElement>(null);
 
   const stopPropagation = useCallback((e) => {
@@ -57,12 +60,15 @@ const Modal: FC<PropsWithChildren<Props>> = ({ show, children, onCloseModal, tit
         style={width ? { width } : undefined}
       >
         <CloseModalButton type="button" onClick={onCloseModal} aria-label="닫기">
-          &times;
+          <X size={18} />
         </CloseModalButton>
         {title && (
           <ModalHeader>
-            <h2>{title}</h2>
-            {description && <p>{description}</p>}
+            {icon && <span className="icon">{icon}</span>}
+            <div>
+              <h2>{title}</h2>
+              {description && <p>{description}</p>}
+            </div>
           </ModalHeader>
         )}
         {children}

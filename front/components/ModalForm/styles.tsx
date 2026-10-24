@@ -6,9 +6,9 @@ export const Field = styled.div`
 
   & > label {
     display: block;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 700;
-    margin-bottom: 6px;
+    margin-bottom: 7px;
   }
 
   & > .hint {
@@ -28,7 +28,7 @@ export const Field = styled.div`
     height: 40px;
     padding: 0 8px;
     border: 1px solid var(--border-strong);
-    border-radius: 6px;
+    border-radius: 8px;
     background: var(--bg);
     color: var(--text);
     font-size: 14px;
@@ -98,11 +98,15 @@ export const TextInput = styled.input`
   padding: 0 12px;
   font-size: 15px;
   border: 1px solid var(--border-strong);
-  border-radius: 6px;
+  border-radius: 8px;
   outline: none;
   background: var(--bg);
   color: var(--text);
   transition: border 80ms ease-out, box-shadow 80ms ease-out;
+
+  &:hover:not(:focus) {
+    border-color: var(--text-faint);
+  }
 
   &:focus {
     border-color: #1264a3;
@@ -171,8 +175,9 @@ export const ChoiceList = styled.div`
     align-items: flex-start;
     padding: 12px 14px;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 10px;
     cursor: pointer;
+    transition: border 80ms ease-out, background 80ms ease-out;
 
     &:hover {
       background: var(--bg-subtle);
@@ -204,7 +209,7 @@ export const ChoiceList = styled.div`
 export const FormError = styled.p`
   margin: 0 0 16px;
   padding: 10px 12px;
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--bg-danger);
   color: #b0123d;
   font-size: 14px;
@@ -217,11 +222,17 @@ export const Actions = styled.div`
   margin-top: 24px;
 
   & > button {
-    height: 36px;
-    padding: 0 16px;
-    border-radius: 6px;
-    font-size: 15px;
+    height: 38px;
+    padding: 0 18px;
+    border-radius: 8px;
+    font-size: 14px;
     font-weight: 700;
+    transition: background 80ms ease-out, transform 80ms ease-out;
+
+    &:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+
     cursor: pointer;
     border: 1px solid var(--border-strong);
     background: var(--bg);
